@@ -8,7 +8,7 @@ block main
         p.dashboard__subtitle Quản lý danh sách băng tải và truy cập nhanh vào trang theo dõi, thiết lập
 
     .conveyor-grid
-      each conveyor in conveyorList || []
+      each conveyor in conveyorList 
         .card.conveyor-card
           .conveyor-card__head
             .conveyor-card__info
@@ -37,5 +37,5 @@ block main
               strong #{conveyor.camera_id}
 
           .conveyor-actions
-            a.btn.btn--primary(href=`/conveyors/${conveyor.id}/monitor`) Theo dõi
-            a.btn.btn--secondary(href=`/conveyors/${conveyor.id}/settings`) Thiết lập
+            a.btn.btn--primary(href=`/inspection/monitor/${conveyor.id}`) Theo dõi
+            a.btn.btn--secondary(href=`/settings/${conveyor.id}`) Thiết lập

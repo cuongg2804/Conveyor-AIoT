@@ -1,0 +1,79 @@
+extends ../layout/default.pug
+
+block main
+  .dashboard
+    .dashboard__header
+      .dashboard__heading
+        h1.dashboard__title THIẾT LẬP BĂNG TẢI
+        p.dashboard__subtitle Cấu hình thông số vận hành cho #{conveyor.name}
+
+      .dashboard-actions
+        a.btn.btn--secondary(href=dashboardUrl) Quay lại
+        a.btn.btn--primary(href=monitorUrl) Theo dõi
+
+    if updated
+      .alert.alert--success
+        | Cập nhật cấu hình thành công. Cấu hình mới sẽ được Python AI đọc ở lần khởi động tiếp theo.
+
+    .settings-grid
+      .card
+        .card__head
+          h2.card__title Thông tin băng tải
+          p.card__desc Cấu hình định danh và mô tả
+
+        form.settings-form(method="POST" action=`/settings/${conveyor.conveyor_code}`)
+          .field
+            label.field__label Mã băng tải
+            input.field__control(type="text" value=conveyor.conveyor_code disabled)
+
+          .field
+            label.field__label(for="name") Tên băng tải
+            input#name.field__control(type="text" name="name" value=conveyor.name required)
+
+          .field
+            label.field__label(for="description") Mô tả
+            textarea#description.field__control(name="description" rows="3") #{conveyor.description}
+
+          .field
+            label.field__label Trạng thái hiện tại
+            input.field__control(type="text" value=conveyor.status disabled)
+
+          .field.checkbox-field
+            label
+              input(type="checkbox" name="is_active" checked=conveyor.is_active)
+              |  Hiển thị băng tải trên dashboard
+
+          .divider
+
+          h3.section-title Camera
+
+          .field
+            label.field__label(for="camera_source") Camera Source
+            input#camera_source.field__control(type="text" name="camera_source" value=conveyor.camera_source required)
+
+          .field
+            label.field__label(for="camera_trigger_delay") Trigger Delay
+            input#camera_trigger_delay.field__control(type="number" name="camera_trigger_delay" step="1" value=conveyor.camera_trigger_delay)
+
+          .divider
+
+          h3.section-title Arduino / Serial
+
+          .field
+            label.field__label(for="serial_port") Serial Port
+            input#serial_port.field__control(type="text" name="serial_port" value=conveyor.serial_port required)
+
+          .field
+            label.field__label(for="baud_rate") Baud Rate
+            input#baud_rate.field__control(type="number" name="baud_rate" value=conveyor.baud_rate required)
+
+          .divider
+
+          h3.section-title AI
+
+          .field
+            label.field__label(for="ai_threshold") AI Threshold
+            input#ai_threshold.field__control(type="number" name="ai_threshold" step="0.000001" value=conveyor.ai_threshold required)
+
+          .settings-actions
+            button.btn.btn--primary(type="submit") Lưu cấu hình

@@ -128,3 +128,109 @@ socket.on("inspection_result", (data) => {
 
   showToast(`Nhận kết quả Job ${data.job_id}: ${data.label}`, "info");
 });
+
+///* ================= CONTROL COMMANDS ================= */
+
+function getCurrentConveyorId() {
+  const el = document.querySelector("[data-conveyor-id]");
+  return el ? el.dataset.conveyorId : "CONVEYOR-01";
+}
+
+async function sendControlCommand(command, payload = {}) {
+  try {
+    const conveyorId = getCurrentConveyorId();
+
+    const res = await fetch("/control/command", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        command,
+        payload: {
+          conveyor_id: conveyorId,
+          ...payload,
+        },
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      showToast(data.message || "Gửi lệnh thất bại", "error");
+      updateControlAckBox({
+        status: "ERROR",
+        command,
+        message: data.message || data.error || "Gửi lệnh thất bại",
+      });
+      return;
+    }
+
+    showToast(`Đã gửi lệnh: ${command}`, "success");
+
+    updateControlAckBox({
+      status: "PENDING",
+      command,
+      message: "Đã gửi lệnh, đang chờ AI phản hồi...",
+    });
+  } catch (error) {
+    console.error("sendControlCommand error:", error);
+    showToast("Không gửi được lệnh điều khiển", "error");
+
+    updateControlAckBox({
+      status: "ERROR",
+      command,
+      message: error.message,
+    });
+  }
+}
+
+function updateControlAckBox(ack) {
+  const box = document.querySelector(".control-ack-box");
+  const text = document.getElementById("lastControlAck");
+
+  if (!box || !text) return;
+
+  box.classList.remove("success", "error");
+
+  if (ack.status === "SUCCESS") box.classList.add("success");
+  if (ack.status === "ERROR") box.classList.add("error");
+
+  text.textContent = `[${ack.status || "-"}] ${ack.command || "-"}: ${ack.message || "-"}`;
+}
+
+socket.on("control_ack", (ack) => {
+  console.log("control_ack:", ack);
+  updateControlAckBox(ack);
+
+  if (ack.status === "SUCCESS") {
+    showToast(`${ack.command} thành công`, "success");
+  }
+
+  if (ack.status === "ERROR") {
+    showToast(`${ack.command} lỗi: ${ack.message}`, "error");
+  }
+});
+
+socket.on("system_status", (status) => {
+  console.log("system_status:", status);
+
+  const aiStatus = document.getElementById("aiStatus");
+  const topStatus = document.getElementById("systemStatusText");
+
+  if (aiStatus) {
+    aiStatus.classList.remove("connected", "disconnected");
+
+    if (status.running) {
+      aiStatus.classList.add("connected");
+      aiStatus.innerHTML = `<span class="status-dot"></span>Đang chạy`;
+    } else {
+      aiStatus.classList.add("disconnected");
+      aiStatus.innerHTML = `<span class="status-dot"></span>Đang dừng`;
+    }
+  }
+
+  if (topStatus) {
+    topStatus.textContent = status.running ? "AI đang chạy" : "AI đang dừng";
+  }
+});

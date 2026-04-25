@@ -1,7 +1,7 @@
 extends ../layout/default.pug
 
 block main
-  .dashboard
+  .dashboard(data-conveyor-id=(conveyor ? conveyor.id : "CONVEYOR-01"))
     .dashboard__header
       .dashboard__heading
         h1.dashboard__title HỆ THỐNG PHÁT HIỆN LỖI SẢN PHẨM
@@ -35,9 +35,21 @@ block main
               img#roiPreviewImage(src="" alt="ROI Preview Frame 2")
               .image-placeholder Chưa có ảnh ROI
 
-
-      // ===== Cột phải: Kết quả + trạng thái =====
+      // ===== Cột phải: Điều khiển + Kết quả + Trạng thái =====
       .side-panel
+
+        .card.control-card
+          .card__head
+            h2.card__title ĐIỀU KHIỂN NHANH
+            p.card__desc Start / Stop hệ thống AI và băng tải
+
+          .btn-row
+            a.btn.btn--success(type="button" onclick="sendControlCommand('START_SYSTEM')") Start
+            a.btn.btn--danger(type="button" onclick="sendControlCommand('STOP_SYSTEM')") Stop
+            a.btn.btn--secondary(href="/settings/1") Thiết lập thông số
+
+          .control-ack-box
+            p#lastControlAck Chưa có phản hồi
 
         .result-card.card
           .card__head
@@ -67,13 +79,19 @@ block main
         .card
           .card__head
             h2.card__title TRẠNG THÁI HỆ THỐNG
-            p.card__desc Kết nối backend và MQTT broker
+            p.card__desc Kết nối backend, MQTT broker và AI
 
           .system-status
             span.system-status__label MQTT
             span#systemStatus.system-status__value
               span.status-dot
               | Chưa kết nối
+
+          .system-status
+            span.system-status__label AI
+            span#aiStatus.system-status__value
+              span.status-dot
+              | Chưa rõ
 
           .system-status
             span.system-status__label Backend

@@ -10,9 +10,14 @@ import path from "path";
 
 dotenv.config();
 
+
+
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 database.connect();
 
@@ -30,7 +35,8 @@ app.use(express.static(path.join(__dirname, "public")));
 
 // Khởi tạo MQTT
 const mqttClient = connectMqtt();        
-initMqttService(mqttClient, io);          
+initMqttService(mqttClient, io);         
+
 
 io.on("connection", (socket) => {
   const client = getClient();
