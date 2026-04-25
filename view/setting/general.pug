@@ -1,0 +1,16 @@
+extends ../layout/default.pug
+
+block main
+  .dashboard
+    .dashboard__header
+      h1.dashboard__title CẤU HÌNH
+
+    .dashboard__grid
+      // ===== Card: Điều khiển =====
+      .card
+        .card__head
+          h2.card__title Điều khiển
+          p.card__desc Chỉnh sửa kết nối
+
+        .btn-row
+          button.btn.btn--success(type="button" onclick="sendCmd('WIFI')") CẬP NHẬP WIFI

@@ -1,0 +1,109 @@
+extends ../layout/default.pug
+
+block main
+  .history-page
+    .dashboard__header
+      .dashboard__heading
+        h1.dashboard__title LỊCH SỬ KIỂM TRA SẢN PHẨM
+        p.dashboard__subtitle Tra cứu kết quả kiểm tra AI đã lưu trong hệ thống
+
+    .card.history-filter-card
+      .card__head
+        h2.card__title Bộ lọc lịch sử
+        p.card__desc Lọc theo kết quả và khoảng thời gian kiểm tra
+
+      form.history-filters(method="GET" action="/history")
+        .field
+          label.field__label(for="label") Kết quả
+          select#label.field__control(name="label")
+            option(value="" selected=filters.label=="") Tất cả
+            option(value="OK" selected=filters.label=="OK") OK
+            option(value="NG" selected=filters.label=="NG") NG
+
+        .field
+          label.field__label(for="fromDate") Từ ngày
+          input#fromDate.field__control(type="date" name="fromDate" value=filters.fromDate)
+
+        .field
+          label.field__label(for="toDate") Đến ngày
+          input#toDate.field__control(type="date" name="toDate" value=filters.toDate)
+
+        .history-filters__actions
+          button.btn.btn--primary(type="submit") Lọc
+          a.btn.btn--secondary(href="/history") Xóa lọc
+
+    .card.history-table-card
+      .card__head
+        h2.card__title Danh sách kiểm tra
+        p.card__desc Các lần kiểm tra gần nhất
+
+      if inspectionList && inspectionList.length > 0
+        .history-table-wrap
+          table.history-table
+            thead
+              tr
+                th Ảnh lỗi
+                th Mã kiểm tra
+                th Thời gian
+                th Kết quả
+                th Avg Score
+                th Frame
+                th Frame Score
+                th Thao tác
+
+            tbody
+              each item in inspectionList
+                - const date = item.timestamp ? new Date(item.timestamp * 1000).toLocaleString("vi-VN") : "-"
+                - const preview = item.preview_frame || {}
+                - const labelClass = item.label === "OK" ? "ok" : item.label === "NG" ? "ng" : ""
+                - const displayId = item.display_id || item.inspection_id || item.job_id || "-"
+                - const score = item.average_score !== undefined ? Number(item.average_score).toFixed(3) : "-"
+                - const frameScore = preview.predicted_score !== undefined ? Number(preview.predicted_score).toFixed(3) : "-"
+
+                tr
+                  td
+                    .history-thumb
+                      if preview.overlay_path
+                        img(
+                          src=preview.overlay_path
+                          alt="Ảnh khoanh lỗi"
+                          onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                        )
+                        .history-thumb__empty(style="display:none") Chưa có ảnh
+                      else
+                        .history-thumb__empty Chưa có ảnh
+
+                  td.history-id-cell
+                    strong #{displayId}
+
+                  td.history-time-cell #{date}
+
+                  td
+                    span.history-label-badge(class=labelClass) #{item.label || "-"}
+
+                  td #{score}
+
+                  td #{preview.frame_index || "-"}
+
+                  td #{frameScore}
+
+                  td
+                    .history-actions
+                      if preview.roi_path
+                        a(href=preview.roi_path target="_blank") Sản phẩm
+                      if preview.overlay_path
+                        a(href=preview.overlay_path target="_blank") Khoanh lỗi
+      else
+        .empty-state
+          h3 Chưa có dữ liệu lịch sử
+          p Hệ thống chưa tìm thấy inspection nào phù hợp với bộ lọc.
+
+    if pagination && pagination.totalPages > 1
+      .pagination
+        if pagination.hasPrev
+          a.pagination__btn(href=pagination.prevUrl) Trước
+
+        span.pagination__info Trang #{pagination.page} / #{pagination.totalPages}
+
+        if pagination.hasNext
+          a.pagination__btn(href=pagination.nextUrl) Sau

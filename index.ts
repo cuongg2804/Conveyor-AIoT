@@ -2,7 +2,8 @@ import express, { Request, Response } from "express";
 import dotenv from "dotenv";
 import router from "./router/index.router";
 import * as database from "./config/database";
-import { initMqtt, getClient } from "./config/mqtt";
+import { connectMqtt, getClient } from "./config/mqtt";         
+import { initMqttService } from "./service/mqtt.service";       
 import { Server } from "socket.io";
 import http from "http";
 import path from "path";
@@ -10,41 +11,34 @@ import path from "path";
 dotenv.config();
 
 const app = express();
-
-// Tạo HTTP server để gắn Socket.IO vào
 const server = http.createServer(app);
-
-// Khởi tạo socket.io
 const io = new Server(server);
 
-// Kết nối database
 database.connect();
 
-// Router
 app.use(router);
 
-// View engine
 app.set("view engine", "pug");
 app.engine("html", require("ejs").renderFile);
-// app.set("views", `${__dirname}/view`);
 app.set("views", path.join(__dirname, "view"));
 
-// Static folder
-// app.use(express.static(`${__dirname}/public/`));
+const storagePath = path.resolve(
+  "C:/Users/ASUS/Downloads/app_code_fixed/app/storage"
+);
+app.use("/images", express.static(storagePath));
 app.use(express.static(path.join(__dirname, "public")));
 
-// Khởi tạo MQTT và truyền io vào
-initMqtt(io);
+// Khởi tạo MQTT
+const mqttClient = connectMqtt();        
+initMqttService(mqttClient, io);          
 
 io.on("connection", (socket) => {
   const client = getClient();
-
   socket.emit("mqtt_status", {
     status: client?.connected ? "connected" : "disconnected",
   });
 });
 
-// ---- CHỈ DÙNG server.listen ----
 const port = process.env.PORT || 3000;
 server.listen(port, () => {
   console.log(`Connected to port ${port}`);

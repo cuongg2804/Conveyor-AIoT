@@ -1,6 +1,6 @@
 // src/controller/dashboard.controller.ts
 import { Request, Response } from "express";
-import Session from "../model/session.model";
+import Session from "../model/inspection-result.model";
 
 export const dashboard = async (req: Request, res: Response) => {
   const { filterColor, sortBy, order } = req.query;
@@ -29,8 +29,10 @@ export const dashboard = async (req: Request, res: Response) => {
 
   const sessionList = await Session.find(query).sort(sortOptions);
 
-  res.render("dashboard", {
+  res.render("dashboard/dashboard", {
     sessionList: sessionList,
-    filters: req.query // Gửi lại filter để giữ trạng thái trên giao diện
+    filters: req.query ,// Gửi lại filter để giữ trạng thái trên giao diện
+    
+    pageTitle: "Tổng quan"
   });
 };

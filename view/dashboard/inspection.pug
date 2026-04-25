@@ -1,0 +1,82 @@
+extends ../layout/default.pug
+
+block main
+  .dashboard
+    .dashboard__header
+      .dashboard__heading
+        h1.dashboard__title HỆ THỐNG PHÁT HIỆN LỖI SẢN PHẨM
+        p.dashboard__subtitle Giám sát kết quả kiểm tra AI theo thời gian thực
+      .dashboard__status-pill
+        span.status-dot
+        span#systemStatusText Đang chờ dữ liệu
+
+    .inspection-layout
+
+      // ===== Cột trái: Preview ảnh =====
+      .preview-panel.card
+        .card__head.preview-panel__head
+          div
+            h2.card__title ẢNH PREVIEW KIỂM TRA
+            p.card__desc Hiển thị Frame 2 làm ảnh đại diện cho lần kiểm tra
+          .preview-frame-meta
+            span Frame 2
+            strong#framePreviewScore -
+
+        .main-preview
+          .main-preview__label Overlay
+          .main-preview__image
+            img#overlayPreviewImage(src="" alt="Overlay Preview Frame 2")
+            .image-placeholder Chưa có ảnh overlay
+
+        .thumb-grid
+          .thumb-box
+            .thumb-box__title ROI
+            .thumb-box__image
+              img#roiPreviewImage(src="" alt="ROI Preview Frame 2")
+              .image-placeholder Chưa có ảnh ROI
+
+
+      // ===== Cột phải: Kết quả + trạng thái =====
+      .side-panel
+
+        .result-card.card
+          .card__head
+            h2.card__title KẾT QUẢ KIỂM TRA
+            p.card__desc Kết quả mới nhất từ hệ thống AI
+
+          .result-main
+            span#resultLabel.result-badge -
+
+          .inspection-summary
+            .summary-row
+              span.summary-label Job ID
+              span#jobId.summary-value -
+
+            .summary-row
+              span.summary-label Average Score
+              span#averageScore.summary-value -
+
+            .summary-row
+              span.summary-label Frame Label
+              span#framePreviewLabel.summary-value -
+
+            .summary-row
+              span.summary-label Thời gian
+              span#resultTimestamp.summary-value -
+
+        .card
+          .card__head
+            h2.card__title TRẠNG THÁI HỆ THỐNG
+            p.card__desc Kết nối backend và MQTT broker
+
+          .system-status
+            span.system-status__label MQTT
+            span#systemStatus.system-status__value
+              span.status-dot
+              | Chưa kết nối
+
+          .system-status
+            span.system-status__label Backend
+            span.system-status__value.connected
+              span.status-dot
+              | Đang chạy
