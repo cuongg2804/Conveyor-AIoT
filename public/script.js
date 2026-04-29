@@ -79,9 +79,9 @@ const updateMqttStatus = (status) => {
 
   if (status === "connected") {
     el.classList.add("connected");
-    el.innerHTML = `<span class="status-dot"></span>Kết nối thành công`;
+    el.innerHTML = `<span class="status-dot"></span>Kết nối thành công!`;
     if (topEl) topEl.textContent = "MQTT đã kết nối";
-    showToast("MQTT đã kết nối", "success");
+    showToast("MQTT đã kết nối thành công", "success");
   }
 
   if (status === "disconnected") {
