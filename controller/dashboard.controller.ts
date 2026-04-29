@@ -6,7 +6,7 @@ export const index = async (req: Request, res: Response) => {
   const conveyorList = [
     {
       id: "1",
-      name: "Băng tải kiểm tra sản phẩm 01",
+      name: "Băng tải kiểm tra sản phẩm số 01",
       description: "Băng tải chính dùng cho hệ thống phát hiện lỗi bằng AI",
       line_id: "LINE-01",
       station_id: "STATION-AI-01",
