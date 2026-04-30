@@ -1,393 +1,414 @@
 #include <Servo.h>
 
-// ===================== PIN CONFIG =====================
-// ----- L298N channel B: IN3 / IN4 / ENB -> OUT3 / OUT4 -----
-const int PIN_IN3          = 2;    // L298N IN3
-const int PIN_IN4          = 3;    // L298N IN4
-const int PIN_ENB          = 5;    // PWM điều khiển tốc độ động cơ
+// ===================== CHAN KET NOI =====================
+const int IN3 = 2;
+const int IN4 = 3;
+const int ENB = 5;
 
-// ----- Sensors / actuator -----
-const int PIN_SENSOR1      = 4;    // Cảm biến vật thể 1
-const int PIN_SENSOR2      = 6;    // Cảm biến vật thể 2
-const int PIN_SERVO        = 7;    // Servo signal
-const int PIN_RELAY        = 8;    // Relay trigger camera
+const int S1 = 4;
+const int S2 = 6;
+const int CHAN_SERVO = 7;
+const int RELAY = 8;
 
-// ----- Buttons -----
-const int PIN_BTN_START    = 9;    // Nút Start
-const int PIN_BTN_STOP     = 10;   // Nút Stop
+const int NUT_START = 9;
+const int NUT_STOP  = 10;
 
-// ----- Traffic lights -----
-const int PIN_LED_RED      = 11;   // Đèn đỏ
-const int PIN_LED_YELLOW   = 12;   // Đèn vàng
-const int PIN_LED_GREEN    = 13;   // Đèn xanh
+const int DEN_DO    = 11;
+const int DEN_VANG  = 12;
+const int DEN_XANH  = 13;
 
-// ----- Analog pins -----
-const int PIN_BUZZER       = A0;   // + buzzer -> A0, - -> GND
-const int PIN_POT          = A1;   // B10K chỉnh tốc độ
-const int PIN_ESTOP        = A5;   // E-stop NO, đầu còn lại nối GND
+const int COI       = A0;
+const int BIEN_TRO  = A1;
+const int ESTOP     = A5;
 
-// ===================== LOGIC CONFIG =====================
-const bool SENSOR_ACTIVE_HIGH = false;   // LM393 thường phát hiện = LOW
-const bool RELAY_ACTIVE_HIGH  = false;   // Relay module active LOW
-const bool BUTTON_ACTIVE_LOW  = true;    // Vì dùng INPUT_PULLUP
-const bool LED_ACTIVE_HIGH    = true;    // Đèn sáng khi digitalWrite(HIGH)
+// ===================== CAU HINH LOGIC =====================
+const bool S_ACTIVE_HIGH     = false;  // LM393 thuong phat hien = LOW
+const bool RELAY_ACTIVE_HIGH = false;  // Relay active LOW
+const bool NUT_ACTIVE_LOW    = true;   // INPUT_PULLUP
+const bool DEN_ACTIVE_HIGH   = true;
 
-// ===================== SPEED CONFIG =====================
-// Nếu pot <= threshold => dừng hẳn băng tải
-const int MOTOR_STOP_THRESHOLD = 35;
+// ===================== CAU HINH MOTOR =====================
+const int NGUONG_DUNG = 35;
+const int PWM_MIN = 120;
+const int PWM_MAX = 255;
 
-// Khi pot vượt ngưỡng dừng, PWM bắt đầu từ đây để motor đủ lực quay
-const int MOTOR_MIN_PWM = 120;
-const int MOTOR_MAX_PWM = 255;
+// ===================== CAU HINH SERVO =====================
+Servo servoGat;
 
-// ===================== SERVO CONFIG =====================
-Servo gatServo;
+const int GOC_HOME = 0;
+const int GOC_GAT  = 120;
 
-const int SERVO_HOME_ANGLE   = 1;
-const int SERVO_PUSH_ANGLE   = 120;
-const unsigned long SERVO_PRE_DELAY_MS = 50;   // chờ trước khi đẩy
-const unsigned long SERVO_HOLD_MS      = 300;  // giữ ở vị trí đẩy
+const unsigned long TRE_GAT_MS = 50;
+const unsigned long GIU_GAT_MS = 300;
 
-// ===================== RELAY CONFIG =====================
-const unsigned long RELAY_PULSE_MS = 100;
+// ===================== THOI GIAN =====================
+const unsigned long RELAY_MS = 100;
+const unsigned long DOI_S1_MS = 80;
+const unsigned long DOI_S2_MS = 50;
+const unsigned long DOI_NUT_MS = 150;
+const unsigned long NHAP_NHAY_MS = 250;
 
-// ===================== SENSOR DEBOUNCE =====================
-bool lastSensor1Detected = false;
-bool lastSensor2Detected = false;
-
-unsigned long lastSensor1TriggerTime = 0;
-unsigned long lastSensor2TriggerTime = 0;
-
-const unsigned long SENSOR1_DEBOUNCE_MS = 80;
-const unsigned long SENSOR2_DEBOUNCE_MS = 50;
-
-// ===================== BUTTON DEBOUNCE =====================
-bool lastStartPressed = false;
-bool lastStopPressed  = false;
-
-unsigned long lastButtonTime = 0;
-const unsigned long BUTTON_DEBOUNCE_MS = 150;
-
-// ===================== E-STOP EDGE =====================
-bool lastEStopPressed = false;
-
-// ===================== INDICATOR TIMING =====================
-unsigned long lastIndicatorToggle = 0;
-bool estopBlinkState = false;
-const unsigned long ESTOP_BLINK_MS = 250;
-
-// ===================== SYSTEM STATE =====================
-enum SystemState {
-  STOPPED,
-  RUNNING,
-  EMERGENCY_STOP
+// ===================== TRANG THAI HE THONG =====================
+enum TrangThai {
+  DUNG,
+  CHAY,
+  KHAN_CAP
 };
 
-SystemState systemState = STOPPED;
+TrangThai trangThai = DUNG;
 
-// ===================== SERIAL + QUEUE =====================
-const int QUEUE_SIZE = 30;
-int resultQueue[QUEUE_SIZE];
-int qHead = 0;
-int qTail = 0;
-int qCount = 0;
+// ===================== HANG DOI KET QUA AI =====================
+const int SIZE_HANG_DOI = 30;
+int hangDoi[SIZE_HANG_DOI];
 
-// ===================== RELAY STATE MACHINE =====================
-enum RelayState {
-  RELAY_IDLE,
-  RELAY_PULSE_ON
+int dau = 0;
+int cuoi = 0;
+int soLuong = 0;
+
+// ===================== TRANG THAI RELAY =====================
+enum TT_Relay {
+  RELAY_RANH,
+  RELAY_DANG_BAT
 };
 
-RelayState relayState = RELAY_IDLE;
-unsigned long relayStateStartMs = 0;
+TT_Relay ttRelay = RELAY_RANH;
+unsigned long mocRelay = 0;
 
-// ===================== SERVO STATE MACHINE =====================
-enum ServoState {
-  SERVO_IDLE,
-  SERVO_WAIT_PUSH,
-  SERVO_HOLD_PUSH
+// ===================== TRANG THAI SERVO =====================
+enum TT_Servo {
+  SERVO_RANH,
+  SERVO_CHO_GAT,
+  SERVO_GIU_GAT
 };
 
-ServoState servoState = SERVO_IDLE;
-unsigned long servoStateStartMs = 0;
+TT_Servo ttServo = SERVO_RANH;
+unsigned long mocServo = 0;
 
-// ===================== HELPER =====================
-bool isObjectDetected(int pin) {
-  int state = digitalRead(pin);
-  return SENSOR_ACTIVE_HIGH ? (state == HIGH) : (state == LOW);
+// ===================== BIEN CHONG DOI =====================
+bool truocS1 = false;
+bool truocS2 = false;
+bool truocStart = false;
+bool truocStop = false;
+bool truocEstop = false;
+
+unsigned long mocS1 = 0;
+unsigned long mocS2 = 0;
+unsigned long mocNut = 0;
+
+// ===================== DEN / COI =====================
+unsigned long mocBaoHieu = 0;
+bool nhapNhay = false;
+
+// ===================== HAM DOC TIN HIEU =====================
+bool coVat(int chan) {
+  int muc = digitalRead(chan);
+  return S_ACTIVE_HIGH ? (muc == HIGH) : (muc == LOW);
 }
 
-bool isButtonPressed(int pin) {
-  int state = digitalRead(pin);
-  return BUTTON_ACTIVE_LOW ? (state == LOW) : (state == HIGH);
+bool nutNhan(int chan) {
+  int muc = digitalRead(chan);
+  return NUT_ACTIVE_LOW ? (muc == LOW) : (muc == HIGH);
 }
 
-bool isEStopPressed() {
-  return digitalRead(PIN_ESTOP) == LOW;
+bool estopNhan() {
+  return digitalRead(ESTOP) == LOW;
 }
 
-void setRelay(bool on) {
+bool quaDoi(unsigned long &moc, unsigned long doiMs) {
+  unsigned long now = millis();
+
+  if (now - moc >= doiMs) {
+    moc = now;
+    return true;
+  }
+
+  return false;
+}
+
+// ===================== DEN / COI / RELAY =====================
+void ghiDen(int chan, bool bat) {
+  digitalWrite(chan, (DEN_ACTIVE_HIGH ? bat : !bat) ? HIGH : LOW);
+}
+
+void setDen(bool doBat, bool vangBat, bool xanhBat) {
+  ghiDen(DEN_DO, doBat);
+  ghiDen(DEN_VANG, vangBat);
+  ghiDen(DEN_XANH, xanhBat);
+}
+
+void batCoi() {
+  digitalWrite(COI, HIGH);
+}
+
+void tatCoi() {
+  digitalWrite(COI, LOW);
+}
+
+void setRelay(bool bat) {
   if (RELAY_ACTIVE_HIGH) {
-    digitalWrite(PIN_RELAY, on ? HIGH : LOW);
+    digitalWrite(RELAY, bat ? HIGH : LOW);
   } else {
-    digitalWrite(PIN_RELAY, on ? LOW : HIGH);
+    digitalWrite(RELAY, bat ? LOW : HIGH);
   }
 }
 
-void buzzerOn() {
-  digitalWrite(PIN_BUZZER, HIGH);
+// ===================== MOTOR =====================
+int docTocDo() {
+  int val = analogRead(BIEN_TRO);
+
+  if (val <= NGUONG_DUNG) return 0;
+
+  int pwm = map(val, NGUONG_DUNG, 1023, PWM_MIN, PWM_MAX);
+  return constrain(pwm, PWM_MIN, PWM_MAX);
 }
 
-void buzzerOff() {
-  digitalWrite(PIN_BUZZER, LOW);
+void motorChay(int pwm) {
+  pwm = constrain(pwm, 0, 255);
+
+  digitalWrite(IN3, HIGH);
+  digitalWrite(IN4, LOW);
+  analogWrite(ENB, pwm);
 }
 
-void ledWrite(int pin, bool on) {
-  digitalWrite(pin, (LED_ACTIVE_HIGH ? on : !on) ? HIGH : LOW);
+void motorDung() {
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, LOW);
+  analogWrite(ENB, 0);
 }
 
-void allLedsOff() {
-  ledWrite(PIN_LED_RED, false);
-  ledWrite(PIN_LED_YELLOW, false);
-  ledWrite(PIN_LED_GREEN, false);
-}
-
-int getMotorSpeedFromPot() {
-  int potValue = analogRead(PIN_POT);   // 0 -> 1023
-
-  // Vặn về thấp đủ thì dừng hẳn
-  if (potValue <= MOTOR_STOP_THRESHOLD) {
-    return 0;
+void capNhatMotor() {
+  if (trangThai != CHAY) {
+    motorDung();
+    return;
   }
 
-  // Từ sau ngưỡng mới map lên vùng PWM có ích
-  int pwmValue = map(
-    potValue,
-    MOTOR_STOP_THRESHOLD,
-    1023,
-    MOTOR_MIN_PWM,
-    MOTOR_MAX_PWM
-  );
+  int tocDo = docTocDo();
 
-  return constrain(pwmValue, MOTOR_MIN_PWM, MOTOR_MAX_PWM);
+  if (tocDo == 0) motorDung();
+  else motorChay(tocDo);
 }
 
-void motorForward(int pwmValue) {
-  pwmValue = constrain(pwmValue, 0, 255);
-  digitalWrite(PIN_IN3, HIGH);
-  digitalWrite(PIN_IN4, LOW);
-  analogWrite(PIN_ENB, pwmValue);
+// ===================== HANG DOI =====================
+void xoaHangDoi() {
+  dau = 0;
+  cuoi = 0;
+  soLuong = 0;
 }
 
-void motorStop() {
-  digitalWrite(PIN_IN3, LOW);
-  digitalWrite(PIN_IN4, LOW);
-  analogWrite(PIN_ENB, 0);
-}
+bool themKQ(int kq) {
+  if (soLuong >= SIZE_HANG_DOI) return false;
 
-void servoHome() {
-  gatServo.write(SERVO_HOME_ANGLE);
-}
+  hangDoi[cuoi] = kq;
+  cuoi = (cuoi + 1) % SIZE_HANG_DOI;
+  soLuong++;
 
-void clearQueue() {
-  qHead = 0;
-  qTail = 0;
-  qCount = 0;
-}
-
-bool enqueueResult(int value) {
-  if (qCount >= QUEUE_SIZE) return false;
-
-  resultQueue[qTail] = value;
-  qTail = (qTail + 1) % QUEUE_SIZE;
-  qCount++;
   return true;
 }
 
-bool dequeueResult(int &value) {
-  if (qCount <= 0) return false;
+bool layKQ(int &kq) {
+  if (soLuong <= 0) return false;
 
-  value = resultQueue[qHead];
-  qHead = (qHead + 1) % QUEUE_SIZE;
-  qCount--;
+  kq = hangDoi[dau];
+  dau = (dau + 1) % SIZE_HANG_DOI;
+  soLuong--;
+
   return true;
 }
 
-void printQueue() {
-  Serial.print("Queue: [");
-  for (int i = 0; i < qCount; i++) {
-    int idx = (qHead + i) % QUEUE_SIZE;
-    Serial.print(resultQueue[idx]);
-    if (i < qCount - 1) Serial.print(", ");
+void inHangDoi() {
+  Serial.print("Hang doi: [");
+
+  for (int i = 0; i < soLuong; i++) {
+    int idx = (dau + i) % SIZE_HANG_DOI;
+    Serial.print(hangDoi[idx]);
+
+    if (i < soLuong - 1) Serial.print(", ");
   }
+
   Serial.println("]");
 }
 
 // ===================== RELAY NON-BLOCKING =====================
-void startRelayPulse() {
-  if (relayState != RELAY_IDLE) {
-    Serial.println("WARN: Relay dang ban, bo qua pulse moi");
+void batDauRelay() {
+  if (ttRelay != RELAY_RANH) {
+    Serial.println("CANH BAO: Relay dang ban, bo qua xung moi");
     return;
   }
 
   setRelay(true);
-  relayState = RELAY_PULSE_ON;
-  relayStateStartMs = millis();
+  ttRelay = RELAY_DANG_BAT;
+  mocRelay = millis();
 
-  Serial.println("RELAY: ON");
+  Serial.println("RELAY: BAT");
 }
 
-void cancelRelayPulse() {
+void huyRelay() {
   setRelay(false);
-  relayState = RELAY_IDLE;
+  ttRelay = RELAY_RANH;
 }
 
-void updateRelay() {
-  unsigned long now = millis();
-
-  switch (relayState) {
-    case RELAY_IDLE:
-      break;
-
-    case RELAY_PULSE_ON:
-      if (now - relayStateStartMs >= RELAY_PULSE_MS) {
-        setRelay(false);
-        relayState = RELAY_IDLE;
-        Serial.println("RELAY: OFF");
-      }
-      break;
+void capNhatRelay() {
+  if (ttRelay == RELAY_DANG_BAT && millis() - mocRelay >= RELAY_MS) {
+    setRelay(false);
+    ttRelay = RELAY_RANH;
+    Serial.println("RELAY: TAT");
   }
 }
 
 // ===================== SERVO NON-BLOCKING =====================
-void startServoPushSequence() {
-  if (servoState != SERVO_IDLE) {
-    Serial.println("WARN: Servo dang ban, bo qua lenh gat moi");
+void servoHome() {
+  servoGat.write(GOC_HOME);
+}
+
+void batDauGat() {
+  if (ttServo != SERVO_RANH) {
+    Serial.println("CANH BAO: Servo dang ban, bo qua lenh gat moi");
     return;
   }
 
-  servoState = SERVO_WAIT_PUSH;
-  servoStateStartMs = millis();
+  ttServo = SERVO_CHO_GAT;
+  mocServo = millis();
 
-  Serial.println("SERVO: Start push sequence");
+  Serial.println("SERVO: Bat dau chu trinh gat");
 }
 
-void cancelServoSequence() {
-  servoState = SERVO_IDLE;
+void huyServo() {
+  ttServo = SERVO_RANH;
   servoHome();
 }
 
-void updateServo() {
+void capNhatServo() {
   unsigned long now = millis();
 
-  switch (servoState) {
-    case SERVO_IDLE:
+  switch (ttServo) {
+    case SERVO_RANH:
       break;
 
-    case SERVO_WAIT_PUSH:
-      if (now - servoStateStartMs >= SERVO_PRE_DELAY_MS) {
-        gatServo.write(SERVO_PUSH_ANGLE);
-        servoState = SERVO_HOLD_PUSH;
-        servoStateStartMs = now;
-        Serial.println("SERVO: PUSH");
+    case SERVO_CHO_GAT:
+      if (now - mocServo >= TRE_GAT_MS) {
+        servoGat.write(GOC_GAT);
+        ttServo = SERVO_GIU_GAT;
+        mocServo = now;
+        Serial.println("SERVO: GAT");
       }
       break;
 
-    case SERVO_HOLD_PUSH:
-      if (now - servoStateStartMs >= SERVO_HOLD_MS) {
-        gatServo.write(SERVO_HOME_ANGLE);
-        servoState = SERVO_IDLE;
+    case SERVO_GIU_GAT:
+      if (now - mocServo >= GIU_GAT_MS) {
+        servoHome();
+        ttServo = SERVO_RANH;
         Serial.println("SERVO: HOME");
       }
       break;
   }
 }
 
-// ===================== STATE ACTIONS =====================
-void startSystem() {
-  if (systemState == STOPPED) {
-    systemState = RUNNING;
+// ===================== DIEU KHIEN HE THONG =====================
+void dungTatCa() {
+  motorDung();
+  huyRelay();
+  huyServo();
+  tatCoi();
+}
+
+void batHeThong() {
+  if (trangThai == DUNG) {
+    trangThai = CHAY;
     Serial.println("START: He thong bat dau chay.");
   }
 }
 
-void stopSystem() {
-  if (systemState == RUNNING) {
-    systemState = STOPPED;
-    motorStop();
-    cancelRelayPulse();
-    cancelServoSequence();
-    buzzerOff();
+void dungHeThong() {
+  if (trangThai == CHAY) {
+    trangThai = DUNG;
+    dungTatCa();
     Serial.println("STOP: He thong dung.");
   }
 }
 
-void emergencyStopSystem() {
-  if (systemState != EMERGENCY_STOP) {
-    systemState = EMERGENCY_STOP;
+void dungKhanCap() {
+  if (trangThai == KHAN_CAP) return;
 
-    motorStop();
-    cancelRelayPulse();
-    cancelServoSequence();
+  trangThai = KHAN_CAP;
+  dungTatCa();
+  xoaHangDoi();
 
-    // Xoa queue de tranh lech trang thai sau su co
-    clearQueue();
-
-    Serial.println("EMERGENCY STOP: Dung khan cap!");
-  }
+  Serial.println("DUNG KHAN CAP: He thong da dung!");
 }
 
-void releaseEmergencyStopToStopped() {
-  // Nha E-stop KHONG tu chay lai
-  // Chi ve STOPPED, phai bam START moi chay
-  if (systemState == EMERGENCY_STOP) {
-    systemState = STOPPED;
-    motorStop();
-    cancelRelayPulse();
-    cancelServoSequence();
-    buzzerOff();
-    Serial.println("E-STOP RESET: He thong ve STOPPED. Can bam START de chay lai.");
-  }
+void nhaEstop() {
+  if (trangThai != KHAN_CAP) return;
+
+  trangThai = DUNG;
+  dungTatCa();
+
+  Serial.println("E-STOP RESET: He thong ve DUNG. Can bam START de chay lai.");
 }
 
-// ===================== INDICATOR UPDATE =====================
-void updateIndicators() {
+// ===================== BAO HIEU =====================
+void capNhatBaoHieu() {
   unsigned long now = millis();
 
-  switch (systemState) {
-    case RUNNING:
-      ledWrite(PIN_LED_RED, false);
-      ledWrite(PIN_LED_YELLOW, false);
-      ledWrite(PIN_LED_GREEN, true);
-      buzzerOff();
+  switch (trangThai) {
+    case CHAY:
+      setDen(false, false, true);
+      tatCoi();
       break;
 
-    case STOPPED:
-      ledWrite(PIN_LED_RED, false);
-      ledWrite(PIN_LED_YELLOW, true);
-      ledWrite(PIN_LED_GREEN, false);
-      buzzerOff();
+    case DUNG:
+      setDen(false, true, false);
+      tatCoi();
       break;
 
-    case EMERGENCY_STOP:
-      if (now - lastIndicatorToggle >= ESTOP_BLINK_MS) {
-        lastIndicatorToggle = now;
-        estopBlinkState = !estopBlinkState;
+    case KHAN_CAP:
+      if (now - mocBaoHieu >= NHAP_NHAY_MS) {
+        mocBaoHieu = now;
+        nhapNhay = !nhapNhay;
       }
 
-      ledWrite(PIN_LED_RED, estopBlinkState);
-      ledWrite(PIN_LED_YELLOW, false);
-      ledWrite(PIN_LED_GREEN, false);
+      setDen(nhapNhay, false, false);
 
-      if (estopBlinkState) buzzerOn();
-      else buzzerOff();
+      if (nhapNhay) batCoi();
+      else tatCoi();
       break;
   }
 }
 
-// ===================== SERIAL RECEIVE =====================
-void handleSerialInput() {
-  static String rxBuffer = "";
+// ===================== SERIAL =====================
+void xuLyKetQuaAI(int kq) {
+  if (themKQ(kq)) {
+    Serial.print("Nhan tu Python: ");
+    Serial.println(kq);
+    inHangDoi();
+  } else {
+    Serial.println("Hang doi day, khong them duoc.");
+  }
+}
+
+void xuLyLenh(String lenh) {
+  lenh.trim();
+
+  if (lenh == "0" || lenh == "1") {
+    xuLyKetQuaAI(lenh.toInt());
+    return;
+  }
+
+  if (lenh.equalsIgnoreCase("START")) {
+    batHeThong();
+    return;
+  }
+
+  if (lenh.equalsIgnoreCase("STOP")) {
+    dungHeThong();
+    return;
+  }
+
+  Serial.print("CANH BAO: Lenh khong hop le: ");
+  Serial.println(lenh);
+}
+
+void docSerial() {
+  static String boDem = "";
 
   while (Serial.available() > 0) {
     char c = (char)Serial.read();
@@ -395,199 +416,155 @@ void handleSerialInput() {
     if (c == '\r') continue;
 
     if (c == '\n') {
-      rxBuffer.trim();
-
-      if (rxBuffer.length() > 0) {
-        if (rxBuffer == "0" || rxBuffer == "1") {
-          int value = rxBuffer.toInt();
-
-          if (enqueueResult(value)) {
-            Serial.print("Nhan tu Python: ");
-            Serial.println(value);
-            printQueue();
-          } else {
-            Serial.println("Queue day, khong them duoc.");
-          }
-        }
-        else if (rxBuffer.equalsIgnoreCase("START")) {
-          startSystem();
-        }
-        else if (rxBuffer.equalsIgnoreCase("STOP")) {
-          stopSystem();
-        }
-        else {
-          Serial.print("WARN: Lenh khong hop le: ");
-          Serial.println(rxBuffer);
-        }
-      }
-
-      rxBuffer = "";
+      if (boDem.length() > 0) xuLyLenh(boDem);
+      boDem = "";
     } else {
-      rxBuffer += c;
+      boDem += c;
     }
   }
 }
 
-// ===================== BUTTON HANDLE =====================
-void handleButtons() {
-  bool startPressed = isButtonPressed(PIN_BTN_START);
-  bool stopPressed  = isButtonPressed(PIN_BTN_STOP);
+// ===================== NUT NHAN / E-STOP =====================
+void xuLyNut() {
+  bool startNhan = nutNhan(NUT_START);
+  bool stopNhan  = nutNhan(NUT_STOP);
 
-  unsigned long now = millis();
-
-  if (now - lastButtonTime >= BUTTON_DEBOUNCE_MS) {
-    if (startPressed && !lastStartPressed) {
-      startSystem();
-      lastButtonTime = now;
-    }
-
-    if (stopPressed && !lastStopPressed) {
-      stopSystem();
-      lastButtonTime = now;
-    }
+  if (quaDoi(mocNut, DOI_NUT_MS)) {
+    if (startNhan && !truocStart) batHeThong();
+    if (stopNhan && !truocStop) dungHeThong();
   }
 
-  lastStartPressed = startPressed;
-  lastStopPressed  = stopPressed;
+  truocStart = startNhan;
+  truocStop  = stopNhan;
 }
 
-// ===================== E-STOP HANDLE =====================
-void handleEStop() {
-  bool estopPressed = isEStopPressed();
+void xuLyEstop() {
+  bool dangNhan = estopNhan();
 
-  // Canh nhan
-  if (estopPressed && !lastEStopPressed) {
-    emergencyStopSystem();
-  }
+  if (dangNhan && !truocEstop) dungKhanCap();
+  if (!dangNhan && truocEstop) nhaEstop();
 
-  // Canh nha
-  if (!estopPressed && lastEStopPressed) {
-    releaseEmergencyStopToStopped();
-  }
-
-  lastEStopPressed = estopPressed;
+  truocEstop = dangNhan;
 }
 
-// ===================== SENSOR HANDLE =====================
-void handleSensors() {
-  bool sensor1Detected = isObjectDetected(PIN_SENSOR1);
-  bool sensor2Detected = isObjectDetected(PIN_SENSOR2);
-  unsigned long now = millis();
+// ===================== CAM BIEN =====================
+void canhLenS1() {
+  if (!quaDoi(mocS1, DOI_S1_MS)) return;
 
-  if (systemState == RUNNING) {
-    // Cam bien 1 phat hien vat -> kich relay 1 xung
-    if (sensor1Detected && !lastSensor1Detected) {
-      if (now - lastSensor1TriggerTime >= SENSOR1_DEBOUNCE_MS) {
-        lastSensor1TriggerTime = now;
-        Serial.println("Sensor 1: Phat hien vat -> kich relay");
-        startRelayPulse();
-      }
-    }
-
-    // Cam bien 2 phat hien vat -> doc queue roi quyet dinh gat
-    if (sensor2Detected && !lastSensor2Detected) {
-      if (now - lastSensor2TriggerTime >= SENSOR2_DEBOUNCE_MS) {
-        lastSensor2TriggerTime = now;
-
-        int resultValue;
-        if (dequeueResult(resultValue)) {
-          Serial.print("Lay tu queue: ");
-          Serial.println(resultValue);
-          printQueue();
-
-          if (resultValue == 1) {
-            Serial.println("Sensor 2: NG -> servo gat");
-            startServoPushSequence();
-          } else {
-            Serial.println("Sensor 2: OK -> khong gat");
-          }
-        } else {
-          Serial.println("Sensor 2: Queue rong -> khong gat");
-        }
-      }
-    }
-  }
-
-  lastSensor1Detected = sensor1Detected;
-  lastSensor2Detected = sensor2Detected;
+  Serial.println("S1: Phat hien vat -> kich relay");
+  batDauRelay();
 }
 
-// ===================== MOTOR UPDATE =====================
-void updateMotor() {
-  if (systemState == RUNNING) {
-    int motorSpeed = getMotorSpeedFromPot();
+void canhLenS2() {
+  if (!quaDoi(mocS2, DOI_S2_MS)) return;
 
-    if (motorSpeed == 0) {
-      motorStop();
-    } else {
-      motorForward(motorSpeed);
-    }
+  int kq;
+
+  if (!layKQ(kq)) {
+    Serial.println("S2: Hang doi rong -> khong gat");
+    return;
+  }
+
+  Serial.print("Lay tu hang doi: ");
+  Serial.println(kq);
+  inHangDoi();
+
+  if (kq == 1) {
+    Serial.println("S2: NG -> servo gat");
+    batDauGat();
   } else {
-    motorStop();
+    Serial.println("S2: OK -> khong gat");
   }
+}
+
+void xuLyCamBien() {
+  bool s1CoVat = coVat(S1);
+  bool s2CoVat = coVat(S2);
+
+  if (trangThai == CHAY) {
+    if (s1CoVat && !truocS1) canhLenS1();
+    if (s2CoVat && !truocS2) canhLenS2();
+  }
+
+  truocS1 = s1CoVat;
+  truocS2 = s2CoVat;
 }
 
 // ===================== SETUP =====================
+void cauHinhChan() {
+  pinMode(S1, INPUT);
+  pinMode(S2, INPUT);
+
+  pinMode(IN3, OUTPUT);
+  pinMode(IN4, OUTPUT);
+  pinMode(ENB, OUTPUT);
+
+  pinMode(RELAY, OUTPUT);
+
+  pinMode(NUT_START, INPUT_PULLUP);
+  pinMode(NUT_STOP, INPUT_PULLUP);
+  pinMode(ESTOP, INPUT_PULLUP);
+
+  pinMode(DEN_DO, OUTPUT);
+  pinMode(DEN_VANG, OUTPUT);
+  pinMode(DEN_XANH, OUTPUT);
+
+  pinMode(COI, OUTPUT);
+}
+
+void khoiTaoDauRa() {
+  servoGat.attach(CHAN_SERVO);
+  servoHome();
+
+  setRelay(false);
+  motorDung();
+  tatCoi();
+  setDen(false, false, false);
+
+  trangThai = DUNG;
+  capNhatBaoHieu();
+}
+
+void inKhoiDong() {
+  Serial.println("=== HE THONG GAT SAN PHAM LOI START ===");
+  Serial.println("Trang thai ban dau: DUNG");
+
+  Serial.print("GOC_HOME = ");
+  Serial.println(GOC_HOME);
+
+  Serial.print("GOC_GAT = ");
+  Serial.println(GOC_GAT);
+
+  Serial.print("TRE_GAT_MS = ");
+  Serial.println(TRE_GAT_MS);
+
+  Serial.print("GIU_GAT_MS = ");
+  Serial.println(GIU_GAT_MS);
+
+  Serial.println("Nhan START/STOP bang nut nhan hoac Serial.");
+  Serial.println("Nhan 0/1 tu Python.");
+  Serial.println("Bien tro B10K o A1 de chinh toc do.");
+  Serial.println("E-STOP o A5: nhan -> KHAN_CAP, nha -> DUNG, phai bam START lai.");
+}
+
 void setup() {
   Serial.begin(9600);
 
-  pinMode(PIN_SENSOR1, INPUT);
-  pinMode(PIN_SENSOR2, INPUT);
-
-  pinMode(PIN_IN3, OUTPUT);
-  pinMode(PIN_IN4, OUTPUT);
-  pinMode(PIN_ENB, OUTPUT);
-
-  pinMode(PIN_RELAY, OUTPUT);
-
-  pinMode(PIN_BTN_START, INPUT_PULLUP);
-  pinMode(PIN_BTN_STOP, INPUT_PULLUP);
-  pinMode(PIN_ESTOP, INPUT_PULLUP);
-
-  pinMode(PIN_LED_RED, OUTPUT);
-  pinMode(PIN_LED_YELLOW, OUTPUT);
-  pinMode(PIN_LED_GREEN, OUTPUT);
-
-  pinMode(PIN_BUZZER, OUTPUT);
-
-  gatServo.attach(PIN_SERVO);
-  gatServo.write(SERVO_HOME_ANGLE);
-
-  setRelay(false);
-  motorStop();
-  buzzerOff();
-  allLedsOff();
-
-  systemState = STOPPED;
-  updateIndicators();
-
-  Serial.println("=== Arduino Reject System Start ===");
-  Serial.println("Trang thai ban dau: STOPPED");
-  Serial.print("SERVO_HOME_ANGLE = ");
-  Serial.println(SERVO_HOME_ANGLE);
-  Serial.print("SERVO_PUSH_ANGLE = ");
-  Serial.println(SERVO_PUSH_ANGLE);
-  Serial.print("SERVO_PRE_DELAY_MS = ");
-  Serial.println(SERVO_PRE_DELAY_MS);
-  Serial.print("SERVO_HOLD_MS = ");
-  Serial.println(SERVO_HOLD_MS);
-  Serial.println("Nhan START/STOP bang nut nhan hoac Serial.");
-  Serial.println("Nhan 0/1 tu Python.");
-  Serial.println("B10K o A2 de dieu chinh toc do.");
-  Serial.println("B10K ve min duoc phep dung bang tai.");
-  Serial.println("E-STOP o A5: nhan -> EMERGENCY_STOP, nha -> STOPPED, phai bam START lai.");
+  cauHinhChan();
+  khoiTaoDauRa();
+  inKhoiDong();
 }
 
 // ===================== LOOP =====================
 void loop() {
-  handleEStop();        // uu tien cao nhat
-  updateIndicators();   // den + buzzer
-  handleSerialInput();  // doc serial tu Python / lenh
-  handleButtons();      // start / stop
-  updateMotor();        // cap nhat toc do motor
-  handleSensors();      // sensor1 / sensor2
-  updateRelay();        // relay non-blocking
-  updateServo();        // servo non-blocking
+  xuLyEstop();        // uu tien cao nhat
+  capNhatBaoHieu();  // den + coi
+  docSerial();        // nhan 0/1, START, STOP
+  xuLyNut();          // nut START / STOP
+  capNhatMotor();     // motor theo bien tro
+  xuLyCamBien();      // S1 / S2
+  capNhatRelay();     // relay non-blocking
+  capNhatServo();     // servo non-blocking
 
   delay(5);
 }
