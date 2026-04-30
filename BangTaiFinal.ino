@@ -43,7 +43,7 @@ const int MOTOR_MAX_PWM = 255;
 // ===================== SERVO CONFIG =====================
 Servo gatServo;
 
-const int SERVO_HOME_ANGLE   = 0;
+const int SERVO_HOME_ANGLE   = 1;
 const int SERVO_PUSH_ANGLE   = 120;
 const unsigned long SERVO_PRE_DELAY_MS = 50;   // chờ trước khi đẩy
 const unsigned long SERVO_HOLD_MS      = 300;  // giữ ở vị trí đẩy
