@@ -1,0 +1,41 @@
+extends ../layout/default.pug
+
+block main
+  .dashboard
+    .dashboard__header
+      .dashboard__heading
+        h1.dashboard__title HỆ THỐNG KIỂM TRA SẢN PHẨM AI
+        p.dashboard__subtitle Quản lý danh sách băng tải và truy cập nhanh vào trang theo dõi, thiết lập
+
+    .conveyor-grid
+      each conveyor in conveyorList 
+        .card.conveyor-card
+          .conveyor-card__head
+            .conveyor-card__info
+              h2 #{conveyor.name}
+              p #{conveyor.description}
+
+            span.conveyor-status(class=conveyor.statusClass)
+              span.status-dot
+              | #{conveyor.statusText}
+
+          .conveyor-meta
+            .conveyor-meta__item
+              span Mã băng tải
+              strong #{conveyor.id}
+
+            .conveyor-meta__item
+              span Line
+              strong #{conveyor.line_id}
+
+            .conveyor-meta__item
+              span Station
+              strong #{conveyor.station_id}
+
+            .conveyor-meta__item
+              span Camera
+              strong #{conveyor.camera_id}
+
+          .conveyor-actions
+            a.btn.btn--primary(href=`/inspection/monitor/${conveyor.id}`) Theo dõi
+            a.btn.btn--secondary(href=`/settings/${conveyor.id}`) Thiết lập

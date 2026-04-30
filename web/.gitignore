@@ -1,0 +1,6 @@
+# Bỏ môi trường
+.env
+.env.*   
+
+# Bỏ thư mục node_modules
+node_modules/

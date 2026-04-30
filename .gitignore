@@ -1,0 +1,22 @@
+# Environment and secrets
+.env
+.env.*
+
+# Dependencies and build output
+node_modules/
+web/node_modules/
+dist/
+build/
+__pycache__/
+*.py[cod]
+
+# Runtime output
+ai/logs/
+ai/storage/
+
+# Local editor and OS files
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+.DS_Store
