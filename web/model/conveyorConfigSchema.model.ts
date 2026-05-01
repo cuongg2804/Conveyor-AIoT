@@ -1,21 +1,6 @@
-import mongoose, { Model } from "mongoose";
+import mongoose from "mongoose";
 
-export interface ConveyorConfigDocument {
-  conveyor_code: string;
-  name: string;
-  description: string;
-  camera_source: string;
-  camera_trigger_delay: number;
-  serial_port: string;
-  baud_rate: number;
-  ai_threshold: number;
-  status: "READY" | "STARTING" | "RUNNING" | "STOPPING" | "STOPPED" | "ERROR";
-  is_active: boolean;
-  created_at?: Date;
-  updated_at?: Date;
-}
-
-const conveyorConfigSchema = new mongoose.Schema<ConveyorConfigDocument>(
+const conveyorConfigSchema = new mongoose.Schema(
   {
     conveyor_code: {
       type: String,
@@ -78,11 +63,7 @@ const conveyorConfigSchema = new mongoose.Schema<ConveyorConfigDocument>(
 );
 
 const ConveyorConfig =
-  (mongoose.models.ConveyorConfig as Model<ConveyorConfigDocument> | undefined) ||
-  mongoose.model<ConveyorConfigDocument>(
-    "ConveyorConfig",
-    conveyorConfigSchema,
-    "conveyor_configs"
-  );
+  mongoose.models.ConveyorConfig ||
+  mongoose.model("ConveyorConfig", conveyorConfigSchema, "conveyor_configs");
 
 export default ConveyorConfig;

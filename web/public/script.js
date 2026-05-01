@@ -1,5 +1,47 @@
 const socket = io();
-const pendingControlCommands = new Map();
+
+const COMMAND_LABELS = {
+  START_SYSTEM: "Khởi động hệ thống",
+  STOP_SYSTEM: "Dừng hệ thống",
+  GET_STATUS: "Kiểm tra trạng thái",
+};
+
+const ACK_STATUS_LABELS = {
+  SUCCESS: "Thành công",
+  ERROR: "Thất bại",
+  PENDING: "Đang xử lý",
+};
+
+const RESULT_LABELS = {
+  OK: "Đạt",
+  NG: "Không đạt",
+  UNKNOWN: "Chưa xác định",
+};
+
+const commandLabel = (command) => COMMAND_LABELS[command] || "Thao tác";
+const ackStatusLabel = (status) => ACK_STATUS_LABELS[status] || "Đang cập nhật";
+const resultLabel = (label) => RESULT_LABELS[String(label || "").toUpperCase()] || "-";
+let inspectionSessionActive = ["STARTING", "RUNNING"].includes(String(window.__CONVEYOR_STATUS__ || "").toUpperCase());
+
+const userMessage = (message, fallback = "Có lỗi xảy ra") => {
+  const raw = String(message || "").trim();
+  if (!raw) return fallback;
+
+  const normalized = raw.toLowerCase();
+  if (normalized.includes("command is required")) return "Thiếu thao tác điều khiển.";
+  if (normalized.includes("invalid command")) return "Thao tác điều khiển không hợp lệ.";
+  if (normalized.includes("conveyor_code is required")) return "Thiếu mã băng tải.";
+  if (normalized.includes("mqtt client is not connected")) return "Chưa kết nối tới bộ điều khiển AI.";
+  if (normalized.includes("publish command failed")) return "Không gửi được yêu cầu tới hệ thống AI.";
+
+  return raw
+    .replaceAll("START_SYSTEM", "Khởi động hệ thống")
+    .replaceAll("STOP_SYSTEM", "Dừng hệ thống")
+    .replaceAll("GET_STATUS", "Kiểm tra trạng thái")
+    .replaceAll("job_id", "mã lượt kiểm tra")
+    .replaceAll("Job", "Lượt kiểm tra")
+    .replaceAll("command", "thao tác");
+};
 
 /* ================= TOAST ================= */
 const showToast = (message, type = "success") => {
@@ -48,14 +90,6 @@ const formatTimestamp = (timestamp) => {
   return date.toLocaleString("vi-VN");
 };
 
-const normalizeStatusClass = (status) => {
-  const value = String(status || "").toUpperCase();
-  if (["RUNNING"].includes(value)) return "connected";
-  if (["STARTING", "STOPPING", "READY"].includes(value)) return "warning";
-  if (["ERROR", "STOPPED"].includes(value)) return "disconnected";
-  return "";
-};
-
 const setAiStatus = (mode, text) => {
   const aiStatus = document.getElementById("aiStatus");
   const topText = document.getElementById("systemStatusText");
@@ -80,7 +114,7 @@ const updateResultBadge = (label) => {
   if (!el) return;
 
   const normalized = String(label || "-").toUpperCase();
-  el.textContent = normalized;
+  el.textContent = resultLabel(normalized);
   el.classList.remove("ok", "ng");
   if (normalized === "OK") el.classList.add("ok");
   if (normalized === "NG") el.classList.add("ng");
@@ -94,7 +128,7 @@ const updateMqttStatus = (status) => {
 
   if (status === "connected") {
     el.classList.add("connected");
-    el.innerHTML = `<span class="status-dot"></span>Kết nối thành công`;
+    el.innerHTML = `<span class="status-dot"></span>Đã kết nối`;
     return;
   }
 
@@ -111,15 +145,24 @@ const updateMqttStatus = (status) => {
 function getCurrentConveyorCode() {
   const el = document.querySelector("[data-conveyor-code]");
   if (!el || !el.dataset.conveyorCode) {
-    throw new Error("Không tìm thấy conveyor_code trên trang monitor");
+    throw new Error("Không xác định được băng tải trên trang giám sát.");
   }
   return el.dataset.conveyorCode;
 }
 
+function hasMonitorContext() {
+  return Boolean(document.querySelector("[data-conveyor-code]"));
+}
+
 function renderInspectionResult(data) {
   if (!data) return;
+  if (!hasMonitorContext()) return;
 
-  setText("jobId", data.inspection_id || data.job_id);
+  const resultConveyorCode = String(data.conveyor_code || "").trim().toUpperCase();
+  if (resultConveyorCode && resultConveyorCode !== getCurrentConveyorCode()) return;
+  if (!inspectionSessionActive) return;
+
+  setText("jobId", data.job_id ? `Lượt ${data.job_id}` : "-");
   updateResultBadge(data.label);
   setText("averageScore", formatScore(data.average_score));
   setText("resultTimestamp", formatTimestamp(data.timestamp));
@@ -135,10 +178,21 @@ function renderInspectionResult(data) {
     return;
   }
 
-  setText("framePreviewLabel", previewFrame.predicted_label);
+  setText("framePreviewLabel", resultLabel(previewFrame.predicted_label));
   setText("framePreviewScore", formatScore(previewFrame.predicted_score));
   setImage("roiPreviewImage", previewFrame.roi_path);
   setImage("overlayPreviewImage", previewFrame.overlay_path);
+}
+
+function clearInspectionResult() {
+  setText("jobId", "-");
+  updateResultBadge("-");
+  setText("averageScore", "-");
+  setText("resultTimestamp", "-");
+  setText("framePreviewLabel", "-");
+  setText("framePreviewScore", "-");
+  setImage("roiPreviewImage", "");
+  setImage("overlayPreviewImage", "");
 }
 
 async function sendControlCommand(command, payload = {}) {
@@ -151,10 +205,11 @@ async function sendControlCommand(command, payload = {}) {
 
   try {
     const conveyorCode = getCurrentConveyorCode();
+    const label = commandLabel(command);
 
-    if (command === "START_SYSTEM") setAiStatus("warning", "AI đang khởi động...");
-    if (command === "STOP_SYSTEM") setAiStatus("warning", "AI đang dừng...");
-    if (command === "GET_STATUS") setAiStatus("warning", "Đang kiểm tra trạng thái AI...");
+    if (command === "START_SYSTEM") setAiStatus("warning", "Đang khởi động hệ thống...");
+    if (command === "STOP_SYSTEM") setAiStatus("warning", "Đang dừng hệ thống...");
+    if (command === "GET_STATUS") setAiStatus("warning", "Đang kiểm tra trạng thái...");
 
     const res = await fetch("/control/command", {
       method: "POST",
@@ -171,29 +226,35 @@ async function sendControlCommand(command, payload = {}) {
     const data = await res.json();
 
     if (!res.ok) {
-      pendingControlCommands.delete(command);
-      showToast(data.message || "Gửi lệnh thất bại", "error");
+      const message = userMessage(data.message || data.error, "Không gửi được yêu cầu.");
+      showToast(message, "error");
       updateControlAckBox({
         status: "ERROR",
         command,
-        message: data.message || data.error || "Gửi lệnh thất bại",
+        message,
       });
-      setAiStatus("disconnected", "Lỗi gửi lệnh");
+      setAiStatus("disconnected", "Không gửi được yêu cầu");
       return;
     }
 
-    showToast(`Đã gửi lệnh: ${command}`, "success");
+    showToast(`Đã gửi yêu cầu: ${label}`, "success");
+    if (command === "START_SYSTEM") inspectionSessionActive = true;
+    if (command === "STOP_SYSTEM") {
+      inspectionSessionActive = false;
+      clearInspectionResult();
+    }
     updateControlAckBox({
       status: "PENDING",
       command,
-      message: "Đã gửi lệnh, đang chờ AI phản hồi...",
+      message: "Yêu cầu đã được gửi, đang chờ phản hồi từ hệ thống AI.",
     });
   } catch (error) {
     pendingControlCommands.delete(command);
     console.error("sendControlCommand error:", error);
-    showToast(error.message || "Không gửi được lệnh điều khiển", "error");
-    updateControlAckBox({ status: "ERROR", command, message: error.message });
-    setAiStatus("disconnected", "Không lấy được trạng thái AI");
+    const message = userMessage(error.message, "Không gửi được yêu cầu điều khiển.");
+    showToast(message, "error");
+    updateControlAckBox({ status: "ERROR", command, message });
+    setAiStatus("disconnected", "Không kiểm tra được trạng thái");
   }
 }
 
@@ -205,7 +266,11 @@ function updateControlAckBox(ack) {
   box.classList.remove("success", "error");
   if (ack.status === "SUCCESS") box.classList.add("success");
   if (ack.status === "ERROR") box.classList.add("error");
-  text.textContent = `[${ack.status || "-"}] ${ack.command || "-"}: ${ack.message || "-"}`;
+
+  const status = ackStatusLabel(ack.status);
+  const action = commandLabel(ack.command);
+  const message = userMessage(ack.message, "Đang chờ phản hồi.");
+  text.textContent = `${status} - ${action}: ${message}`;
 }
 
 /* ================= SOCKET EVENTS ================= */
@@ -216,9 +281,13 @@ socket.on("mqtt_status", (data) => {
 
 socket.on("inspection_result", (data) => {
   console.log("inspection_result:", data);
+  if (!hasMonitorContext()) return;
+  const resultConveyorCode = String(data.conveyor_code || "").trim().toUpperCase();
+  if (resultConveyorCode && resultConveyorCode !== getCurrentConveyorCode()) return;
+  inspectionSessionActive = true;
   renderInspectionResult(data);
-  setAiStatus("connected", "AI đang chạy");
-  showToast(`Nhận kết quả Job ${data.job_id}: ${data.label}`, "info");
+  setAiStatus("connected", "Hệ thống đang chạy");
+  showToast(`Đã nhận kết quả kiểm tra: ${resultLabel(data.label)}`, "info");
 });
 
 socket.on("control_ack", (ack) => {
@@ -226,15 +295,23 @@ socket.on("control_ack", (ack) => {
   updateControlAckBox(ack);
 
   if (ack.status === "SUCCESS") {
-    showToast(`${ack.command} thành công`, "success");
-    if (ack.command === "START_SYSTEM") setAiStatus("warning", "AI đang khởi động...");
-    if (ack.command === "STOP_SYSTEM") setAiStatus("warning", "AI đang dừng...");
+    showToast(`${commandLabel(ack.command)} thành công`, "success");
+    if (ack.command === "START_SYSTEM") {
+      inspectionSessionActive = true;
+      setAiStatus("warning", "Đang khởi động hệ thống...");
+    }
+    if (ack.command === "STOP_SYSTEM") {
+      inspectionSessionActive = false;
+      clearInspectionResult();
+      setAiStatus("warning", "Đang dừng hệ thống...");
+    }
+    if (ack.command === "GET_STATUS") setAiStatus("connected", "Đã nhận trạng thái hệ thống");
   }
 
   if (ack.status === "ERROR") {
-    pendingControlCommands.delete(ack.command);
-    showToast(`${ack.command} lỗi: ${ack.message}`, "error");
-    setAiStatus("disconnected", `AI lỗi: ${ack.message}`);
+    const message = userMessage(ack.message, "Thao tác không thực hiện được.");
+    showToast(`${commandLabel(ack.command)} thất bại: ${message}`, "error");
+    setAiStatus("disconnected", `Lỗi: ${message}`);
   }
 });
 
@@ -245,38 +322,87 @@ socket.on("system_status", (status) => {
   const running = status.running === true || dbStatus === "RUNNING";
 
   if (running) {
-    setAiStatus("connected", "AI đang chạy");
+    inspectionSessionActive = true;
+    setAiStatus("connected", "Hệ thống đang chạy");
     return;
   }
 
   if (dbStatus === "STARTING") {
-    setAiStatus("warning", "AI đang khởi động...");
+    inspectionSessionActive = true;
+    setAiStatus("warning", "Đang khởi động hệ thống...");
     return;
   }
 
   if (dbStatus === "STOPPING") {
-    setAiStatus("warning", "AI đang dừng...");
+    inspectionSessionActive = false;
+    clearInspectionResult();
+    setAiStatus("warning", "Đang dừng hệ thống...");
+    return;
+  }
+
+  if (dbStatus === "READY") {
+    inspectionSessionActive = false;
+    clearInspectionResult();
+    setAiStatus("warning", "Sẵn sàng vận hành");
     return;
   }
 
   if (dbStatus === "ERROR") {
-    setAiStatus("disconnected", "AI lỗi");
+    inspectionSessionActive = false;
+    clearInspectionResult();
+    setAiStatus("disconnected", "Hệ thống đang lỗi");
     return;
   }
 
-  setAiStatus("disconnected", "AI đang dừng");
+  inspectionSessionActive = false;
+  clearInspectionResult();
+  setAiStatus("disconnected", "Hệ thống đang dừng");
 });
 
 socket.on("system_error", (payload) => {
   console.error("system_error:", payload);
-  setAiStatus("disconnected", payload.message || "AI lỗi");
-  showToast(payload.message || "AI runtime error", "error");
+  const message = userMessage(payload.message, "Hệ thống AI gặp lỗi.");
+  setAiStatus("disconnected", `Lỗi: ${message}`);
+  showToast(message, "error");
 });
 
 /* ================= INITIALIZATION ================= */
 document.addEventListener("DOMContentLoaded", () => {
   if (window.__LATEST_INSPECTION__) {
     renderInspectionResult(window.__LATEST_INSPECTION__);
+  }
+
+  const historyModal = document.getElementById("historyImageModal");
+  if (historyModal && typeof $ === "function") {
+    $("#historyImageModal").on("show.bs.modal", (event) => {
+      const trigger = event.relatedTarget;
+      const src = trigger ? trigger.getAttribute("data-image-src") : "";
+      const title = trigger ? trigger.getAttribute("data-image-title") : "Ảnh kiểm tra";
+      const modalTitle = document.getElementById("historyImageModalTitle");
+      const modalImage = document.getElementById("historyImageModalImg");
+      const emptyState = historyModal.querySelector(".history-image-modal__empty");
+
+      if (modalTitle) modalTitle.textContent = title || "Ảnh kiểm tra";
+      if (emptyState) emptyState.style.display = "none";
+
+      if (modalImage) {
+        modalImage.style.display = "block";
+        modalImage.alt = title || "Ảnh kiểm tra";
+        modalImage.onerror = () => {
+          modalImage.style.display = "none";
+          if (emptyState) emptyState.style.display = "flex";
+        };
+        modalImage.src = src ? `${src}${String(src).includes("?") ? "&" : "?"}t=${Date.now()}` : "";
+      }
+    });
+
+    $("#historyImageModal").on("hidden.bs.modal", () => {
+      const modalImage = document.getElementById("historyImageModalImg");
+      if (modalImage) {
+        modalImage.onerror = null;
+        modalImage.removeAttribute("src");
+      }
+    });
   }
 
   if (document.querySelector("[data-conveyor-code]")) {

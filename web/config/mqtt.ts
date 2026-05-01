@@ -5,7 +5,10 @@ let client: MqttClient | undefined;
 export const connectMqtt = (): MqttClient => {
   if (client) return client;
 
-  const mqttServer = process.env.mqtt_server || "mqtt://127.0.0.1:1883";
+  const mqttServer =
+    process.env.mqtt_server ||
+    process.env.MQTT_SERVER ||
+    `mqtt://${process.env.MQTT_BROKER || "127.0.0.1"}:${process.env.MQTT_PORT || "1883"}`;
 
   const options: IClientOptions = {
     clientId: `web-backend-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
@@ -15,8 +18,11 @@ export const connectMqtt = (): MqttClient => {
     connectTimeout: 10000,
   };
 
-  if (process.env.mqtt_username) options.username = process.env.mqtt_username;
-  if (process.env.mqtt_password) options.password = process.env.mqtt_password;
+  const username = process.env.mqtt_username || process.env.MQTT_USERNAME;
+  const password = process.env.mqtt_password || process.env.MQTT_PASSWORD;
+
+  if (username) options.username = username;
+  if (password) options.password = password;
 
   client = mqtt.connect(mqttServer, options);
 

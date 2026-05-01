@@ -1,0 +1,115 @@
+extends ../layout/default.pug
+
+block main
+  - const date = inspection.timestamp ? new Date(inspection.timestamp * 1000) : null
+  - const timeText = date ? date.toLocaleString("vi-VN") : "-"
+  - const hour = date ? date.getHours() : 0
+  - const shiftText = hour < 12 ? "Ca sáng" : "Ca chiều"
+  - const labelClass = inspection.label === "OK" ? "ok" : inspection.label === "NG" ? "ng" : ""
+  - const labelText = inspection.label === "OK" ? "Đạt" : inspection.label === "NG" ? "Không đạt" : "Chưa xác định"
+  - const scoreText = inspection.average_score !== undefined ? Number(inspection.average_score).toFixed(3) : "-"
+  - const thresholdText = inspection.threshold !== undefined && inspection.threshold !== null ? Number(inspection.threshold).toFixed(6) : "-"
+
+  .history-page.product-detail-page
+    .dashboard__header
+      .dashboard__heading
+        h1.dashboard__title Chi tiết lượt kiểm tra #{inspection.display_id}
+        p.dashboard__subtitle Toàn bộ thông tin sản phẩm được lưu trong cơ sở dữ liệu
+
+      .dashboard-actions
+        a.btn.btn--secondary(href=backUrl) Quay lại
+
+    .card.product-detail-summary
+      .card__head
+        h2.card__title Thông tin sản phẩm
+        p.card__desc Toàn bộ thông tin lượt kiểm tra được lưu trong database
+
+      .product-detail-status
+        span.history-label-badge(class=labelClass) #{labelText}
+
+      .product-detail-fields.product-detail-fields--grid
+        .summary-row
+          span.summary-label Job ID
+          span.summary-value #{inspection.job_id || "-"}
+        .summary-row
+          span.summary-label Inspection ID
+          span.summary-value #{inspection.inspection_id || "-"}
+        .summary-row
+          span.summary-label Băng tải
+          span.summary-value #{inspection.conveyor_code || "-"}
+        .summary-row
+          span.summary-label Ca
+          span.summary-value #{shiftText}
+        .summary-row
+          span.summary-label Timestamp
+          span.summary-value #{inspection.timestamp || "-"}
+        .summary-row
+          span.summary-label Thời gian
+          span.summary-value #{timeText}
+        .summary-row
+          span.summary-label Kết quả
+          span.summary-value #{inspection.label || "-"} - #{labelText}
+        .summary-row
+          span.summary-label Điểm trung bình
+          span.summary-value #{scoreText}
+        .summary-row
+          span.summary-label Ngưỡng đánh giá
+          span.summary-value #{thresholdText}
+        .summary-row
+          span.summary-label Số frame
+          span.summary-value #{inspection.frames.length}
+
+    .card.product-frames-card
+      .card__head
+        h2.card__title 3 frame kiểm tra
+        p.card__desc Ảnh sản phẩm và ảnh khoanh lỗi theo từng frame
+
+      if inspection.frames && inspection.frames.length > 0
+        .product-frame-grid
+          each frame in inspection.frames
+            - const frameLabel = frame.predicted_label === "OK" ? "Đạt" : frame.predicted_label === "NG" ? "Không đạt" : "-"
+            - const frameLabelClass = frame.predicted_label === "OK" ? "ok" : frame.predicted_label === "NG" ? "ng" : ""
+            - const frameScore = frame.predicted_score !== undefined ? Number(frame.predicted_score).toFixed(3) : "-"
+            .product-frame-card
+              .product-frame-card__head
+                h3 Frame #{frame.frame_index || "-"}
+                span.history-label-badge(class=frameLabelClass) #{frameLabel}
+              .product-frame-card__score
+                span Điểm dự đoán
+                strong #{frameScore}
+
+              .product-frame-images
+                .product-frame-image
+                  .product-frame-image__label Ảnh sản phẩm
+                  if frame.roi_path
+                    img(src=frame.roi_path alt=`Ảnh sản phẩm frame ${frame.frame_index || ""}`)
+                  else
+                    .history-thumb__empty Chưa có ảnh
+
+                .product-frame-image
+                  .product-frame-image__label Ảnh khoanh lỗi
+                  if frame.overlay_path
+                    img(src=frame.overlay_path alt=`Ảnh khoanh lỗi frame ${frame.frame_index || ""}`)
+                  else
+                    .history-thumb__empty Chưa có ảnh
+
+              .product-frame-meta
+                .summary-row
+                  span.summary-label Frame index
+                  span.summary-value #{frame.frame_index || "-"}
+                .summary-row
+                  span.summary-label Predicted label
+                  span.summary-value #{frame.predicted_label || "-"}
+                .summary-row
+                  span.summary-label Predicted score
+                  span.summary-value #{frameScore}
+                .summary-row
+                  span.summary-label ROI path
+                  span.summary-value #{frame.roi_path || "-"}
+                .summary-row
+                  span.summary-label Overlay path
+                  span.summary-value #{frame.overlay_path || "-"}
+      else
+        .empty-state
+          h3 Chưa có dữ liệu frame
+          p Lượt kiểm tra này chưa lưu thông tin frame trong database.
