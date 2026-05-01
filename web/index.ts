@@ -33,7 +33,7 @@ const storagePath = path.resolve(
 app.use("/images", express.static(storagePath));
 app.use(express.static(path.join(__dirname, "public")));
 
-// Khởi tạo MQTT
+
 const mqttClient = connectMqtt();        
 initMqttService(mqttClient, io);         
 
