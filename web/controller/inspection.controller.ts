@@ -3,39 +3,46 @@ import { Server } from "socket.io";
 import InspectionResult from "../model/inspection-result.model";
 import ConveyorConfig from "../model/conveyorConfigSchema.model";
 
-const conveyorList = [
-  {
-    id: "1",
-    name: "Băng tải kiểm tra sản phẩm 01",
-    description: "Băng tải chính dùng cho hệ thống phát hiện lỗi bằng AI",
-    line_id: "LINE-01",
-    station_id: "STATION-AI-01",
-    camera_id: "CAM-01",
-    statusText: "Sẵn sàng",
-    statusClass: "ready",
-  },
-];
-
-
-
-const findConveyorById = (conveyorId: string) => {
-  return conveyorList.find((item) => item.id === conveyorId);
-};
-
+/**
+ * Trang monitor theo conveyor_code
+ * URL:
+ * /inspection/monitor/CONVEYOR-01
+ */
 export const monitor = async (req: Request, res: Response) => {
   try {
-    const conveyorId = req.params.conveyorId;
-    const conveyor = findConveyorById(conveyorId);
+    const conveyorCode = String(
+      req.params.conveyorCode || req.params.conveyorId || ""
+    )
+      .trim()
+      .toUpperCase();
+
+    if (!conveyorCode) {
+      return res.status(400).send("Thiếu mã băng tải");
+    }
+
+    const conveyor = (await ConveyorConfig.findOne({
+      conveyor_code: conveyorCode,
+    })
+      .select("-_id")
+      .lean()) as any;
 
     if (!conveyor) {
       return res.status(404).send("Không tìm thấy băng tải");
     }
 
+    const latestInspection = (await InspectionResult.findOne({
+      conveyor_code: conveyorCode,
+    })
+      .select("-_id")
+      .sort({ timestamp: -1 })
+      .lean()) as any;
+
     return res.render("dashboard/monitor", {
       title: `Theo dõi ${conveyor.name}`,
       conveyor,
+      latestInspection,
       dashboardUrl: "/dashboard",
-      settingsUrl: `/conveyors/${conveyor.id}/settings`,
+      settingsUrl: `/settings/${conveyor.conveyor_code}`,
     });
   } catch (error) {
     console.error("Render monitor error:", error);
@@ -48,9 +55,20 @@ export const monitor = async (req: Request, res: Response) => {
  */
 export const getLatestResult = async (req: Request, res: Response) => {
   try {
-    const data = await InspectionResult.findOne({}, { _id: 0 })
+    const conveyorCode = req.query.conveyor_code
+      ? String(req.query.conveyor_code).trim().toUpperCase()
+      : "";
+
+    const filter: any = {};
+
+    if (conveyorCode) {
+      filter.conveyor_code = conveyorCode;
+    }
+
+    const data = (await InspectionResult.findOne(filter)
+      .select("-_id")
       .sort({ timestamp: -1 })
-      .lean();
+      .lean()) as any;
 
     if (!data) {
       return res.status(404).json({
@@ -82,10 +100,11 @@ export const getResultByJobId = async (req: Request, res: Response) => {
       });
     }
 
-    const data = await InspectionResult.findOne(
-      { job_id: jobId },
-      { _id: 0 }
-    ).lean();
+    const data = (await InspectionResult.findOne({
+      job_id: jobId,
+    })
+      .select("-_id")
+      .lean()) as any;
 
     if (!data) {
       return res.status(404).json({
@@ -113,27 +132,40 @@ export const handleInspectionResultMessage = async (
 ) => {
   try {
     const jobId = Number(payload.job_id);
+    const inspectionId = payload.inspection_id
+      ? String(payload.inspection_id)
+      : "";
 
-    if (!jobId || Number.isNaN(jobId)) {
-      console.warn("Invalid MQTT payload, missing job_id:", payload);
+    if ((!jobId || Number.isNaN(jobId)) && !inspectionId) {
+      console.warn("Invalid MQTT payload, missing job_id/inspection_id:", payload);
       return;
     }
 
-    const inspection = await InspectionResult.findOne(
-      { job_id: jobId },
-      { _id: 0 }
-    ).lean();
+    const filter: any = {};
+
+    if (inspectionId) {
+      filter.inspection_id = inspectionId;
+    } else {
+      filter.job_id = jobId;
+    }
+
+    const inspection = (await InspectionResult.findOne(filter)
+      .select("-_id")
+      .lean()) as any;
 
     console.log("Found inspection:", inspection);
 
     if (!inspection) {
-      console.warn(`Không tìm thấy inspection result với job_id=${jobId}`);
+      console.warn("Không tìm thấy inspection result:", filter);
       return;
     }
 
     io.emit("inspection_result", inspection);
 
-    console.log("inspection_result emitted:", inspection.job_id);
+    console.log(
+      "inspection_result emitted:",
+      inspection.inspection_id || inspection.job_id
+    );
   } catch (error) {
     console.error("handleInspectionResultMessage error:", error);
   }

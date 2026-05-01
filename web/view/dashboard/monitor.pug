@@ -1,18 +1,21 @@
 extends ../layout/default.pug
 
 block main
-  .dashboard(data-conveyor-id=(conveyor ? conveyor.id : "CONVEYOR-01"))
+  .dashboard(data-conveyor-code=conveyor.conveyor_code)
     .dashboard__header
       .dashboard__heading
-        h1.dashboard__title HỆ THỐNG PHÁT HIỆN LỖI SẢN PHẨM
+        h1.dashboard__title #{conveyor.name}
         p.dashboard__subtitle Giám sát kết quả kiểm tra AI theo thời gian thực
-      .dashboard__status-pill
+
+      .dashboard-actions
+        a.btn.btn--secondary(href=dashboardUrl) Quay lại
+        a.btn.btn--primary(href=settingsUrl) Thiết lập thông số
+
+      .dashboard__status-pill(class=conveyor.status)
         span.status-dot
-        span#systemStatusText Đang chờ dữ liệu
+        span#systemStatusText #{conveyor.status || "Đang chờ dữ liệu"}
 
     .inspection-layout
-
-      // ===== Cột trái: Preview ảnh =====
       .preview-panel.card
         .card__head.preview-panel__head
           div
@@ -28,25 +31,23 @@ block main
             img#overlayPreviewImage(src="" alt="Overlay Preview Frame 2")
             .image-placeholder Chưa có ảnh overlay
 
-        .thumb-grid
+        .thumb-grid.thumb-grid--one
           .thumb-box
             .thumb-box__title ROI
             .thumb-box__image
               img#roiPreviewImage(src="" alt="ROI Preview Frame 2")
               .image-placeholder Chưa có ảnh ROI
 
-      // ===== Cột phải: Điều khiển + Kết quả + Trạng thái =====
       .side-panel
-
         .card.control-card
           .card__head
             h2.card__title ĐIỀU KHIỂN NHANH
             p.card__desc Start / Stop hệ thống AI và băng tải
 
           .btn-row
-            a.btn.btn--success(type="button" onclick="sendControlCommand('START_SYSTEM')") Start
-            a.btn.btn--danger(type="button" onclick="sendControlCommand('STOP_SYSTEM')") Stop
-            a.btn.btn--secondary(href="/settings/1") Thiết lập thông số
+            button.btn.btn--success(type="button" onclick="sendControlCommand('START_SYSTEM')") Start
+            button.btn.btn--danger(type="button" onclick="sendControlCommand('STOP_SYSTEM')") Stop
+            button.btn.btn--secondary(type="button" onclick="sendControlCommand('GET_STATUS')") Trạng thái
 
           .control-ack-box
             p#lastControlAck Chưa có phản hồi
@@ -89,12 +90,15 @@ block main
 
           .system-status
             span.system-status__label AI
-            span#aiStatus.system-status__value
+            span#aiStatus.system-status__value(class=conveyor.status)
               span.status-dot
-              | Chưa rõ
+              | #{conveyor.status || "Chưa rõ"}
 
           .system-status
             span.system-status__label Backend
             span.system-status__value.connected
               span.status-dot
               | Đang chạy
+
+  script.
+    window.__LATEST_INSPECTION__ = !{JSON.stringify(latestInspection || null)};

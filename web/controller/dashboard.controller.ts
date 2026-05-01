@@ -1,22 +1,24 @@
-// src/controller/dashboard.controller.ts
 import { Request, Response } from "express";
-import Session from "../model/inspection-result.model";
+import ConveyorConfig from "../model/conveyorConfigSchema.model";
 
 export const index = async (req: Request, res: Response) => {
-  const conveyorList = [
-    {
-      id: "1",
-      name: "Băng tải kiểm tra sản phẩm số 01",
-      description: "Băng tải chính dùng cho hệ thống phát hiện lỗi bằng AI",
-      line_id: "LINE-01",
-      station_id: "STATION-AI-01",
-      camera_id: "CAM-01",
-      statusText: "Sẵn sàng",
-      statusClass: "ready",
-    }];
+  try {
+    const conveyorList = await ConveyorConfig.find({ is_active: true })
+      .select("-_id")
+      .sort({ conveyor_code: 1 })
+      .lean();
 
-   res.render("dashboard/dashboard.pug", {
-    title: "Dashboard",
-    conveyorList : conveyorList,
-  });
+    return res.render("dashboard/dashboard.pug", {
+      title: "Dashboard",
+      conveyorList,
+    });
+  } catch (error) {
+    console.error("Dashboard index error:", error);
+
+    return res.status(500).render("dashboard/dashboard.pug", {
+      title: "Dashboard",
+      conveyorList: [],
+      errorMessage: "Không thể tải danh sách băng tải từ database.",
+    });
+  }
 };
