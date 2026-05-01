@@ -1,4 +1,5 @@
 const socket = io();
+const pendingControlCommands = new Map();
 
 /* ================= TOAST ================= */
 const showToast = (message, type = "success") => {
@@ -137,6 +138,13 @@ function getCurrentConveyorId() {
 }
 
 async function sendControlCommand(command, payload = {}) {
+  if (pendingControlCommands.get(command)) {
+    showToast("Lệnh đang được xử lý, vui lòng chờ phản hồi từ AI", "info");
+    return;
+  }
+
+  pendingControlCommands.set(command, true);
+
   try {
     const conveyorId = getCurrentConveyorId();
 
@@ -148,7 +156,7 @@ async function sendControlCommand(command, payload = {}) {
       body: JSON.stringify({
         command,
         payload: {
-          conveyor_id: conveyorId,
+          conveyor_code: conveyorId,
           ...payload,
         },
       }),
@@ -157,6 +165,7 @@ async function sendControlCommand(command, payload = {}) {
     const data = await res.json();
 
     if (!res.ok) {
+      pendingControlCommands.delete(command);
       showToast(data.message || "Gửi lệnh thất bại", "error");
       updateControlAckBox({
         status: "ERROR",
@@ -174,6 +183,7 @@ async function sendControlCommand(command, payload = {}) {
       message: "Đã gửi lệnh, đang chờ AI phản hồi...",
     });
   } catch (error) {
+    pendingControlCommands.delete(command);
     console.error("sendControlCommand error:", error);
     showToast("Không gửi được lệnh điều khiển", "error");
 
@@ -208,12 +218,20 @@ socket.on("control_ack", (ack) => {
   }
 
   if (ack.status === "ERROR") {
+    pendingControlCommands.delete(ack.command);
     showToast(`${ack.command} lỗi: ${ack.message}`, "error");
+  }
+
+  if (ack.status === "SUCCESS" && ack.command === "GET_STATUS") {
+    pendingControlCommands.delete(ack.command);
   }
 });
 
 socket.on("system_status", (status) => {
   console.log("system_status:", status);
+  pendingControlCommands.delete("START_SYSTEM");
+  pendingControlCommands.delete("STOP_SYSTEM");
+  pendingControlCommands.delete("GET_STATUS");
 
   const aiStatus = document.getElementById("aiStatus");
   const topStatus = document.getElementById("systemStatusText");
@@ -233,4 +251,31 @@ socket.on("system_status", (status) => {
   if (topStatus) {
     topStatus.textContent = status.running ? "AI đang chạy" : "AI đang dừng";
   }
+});
+
+socket.on("system_error", (error) => {
+  console.error("system_error:", error);
+
+  pendingControlCommands.clear();
+
+  updateControlAckBox({
+    status: "ERROR",
+    command: error.source || "AI",
+    message: error.message || "AI runtime error",
+  });
+
+  const aiStatus = document.getElementById("aiStatus");
+  const topStatus = document.getElementById("systemStatusText");
+
+  if (aiStatus) {
+    aiStatus.classList.remove("connected");
+    aiStatus.classList.add("disconnected");
+    aiStatus.innerHTML = `<span class="status-dot"></span>Lỗi AI`;
+  }
+
+  if (topStatus) {
+    topStatus.textContent = "AI lỗi";
+  }
+
+  showToast(`AI lỗi: ${error.message || "-"}`, "error");
 });

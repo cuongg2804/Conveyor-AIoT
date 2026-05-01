@@ -6,6 +6,7 @@ import ConveyorConfig from "../model/conveyorConfigSchema.model";
 const conveyorList = [
   {
     id: "1",
+    conveyor_code: "CONVEYOR-01",
     name: "Băng tải kiểm tra sản phẩm 01",
     description: "Băng tải chính dùng cho hệ thống phát hiện lỗi bằng AI",
     line_id: "LINE-01",
@@ -19,7 +20,9 @@ const conveyorList = [
 
 
 const findConveyorById = (conveyorId: string) => {
-  return conveyorList.find((item) => item.id === conveyorId);
+  return conveyorList.find(
+    (item) => item.id === conveyorId || item.conveyor_code === conveyorId
+  );
 };
 
 export const monitor = async (req: Request, res: Response) => {
