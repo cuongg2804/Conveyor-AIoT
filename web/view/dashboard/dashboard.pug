@@ -5,37 +5,58 @@ block main
     .dashboard__header
       .dashboard__heading
         h1.dashboard__title HỆ THỐNG KIỂM TRA SẢN PHẨM AI
-        p.dashboard__subtitle Quản lý danh sách băng tải và truy cập nhanh vào trang theo dõi, thiết lập
+        p.dashboard__subtitle Quản lý danh sách băng tải, theo dõi realtime và thiết lập thông số vận hành
+
+    if errorMessage
+      .alert.alert--error
+        | #{errorMessage}
 
     .conveyor-grid
-      each conveyor in conveyorList 
-        .card.conveyor-card
-          .conveyor-card__head
-            .conveyor-card__info
-              h2 #{conveyor.name}
-              p #{conveyor.description}
+      if conveyorList && conveyorList.length > 0
+        each conveyor in conveyorList
+          .card.conveyor-card
+            .conveyor-card__head
+              .conveyor-card__info
+                h2 #{conveyor.name}
+                if conveyor.description
+                  p #{conveyor.description}
+                else
+                  p Chưa có mô tả
 
-            span.conveyor-status(class=conveyor.statusClass)
-              span.status-dot
-              | #{conveyor.statusText}
+              span.conveyor-status(class=conveyor.status)
+                span.status-dot
+                | #{conveyor.status || "READY"}
 
-          .conveyor-meta
-            .conveyor-meta__item
-              span Mã băng tải
-              strong #{conveyor.id}
+            .conveyor-meta
+              .conveyor-meta__item
+                span Mã băng tải
+                strong #{conveyor.conveyor_code}
 
-            .conveyor-meta__item
-              span Line
-              strong #{conveyor.line_id}
+              .conveyor-meta__item
+                span Camera Source
+                strong #{conveyor.camera_source}
 
-            .conveyor-meta__item
-              span Station
-              strong #{conveyor.station_id}
+              .conveyor-meta__item
+                span Serial Port
+                strong #{conveyor.serial_port}
 
-            .conveyor-meta__item
-              span Camera
-              strong #{conveyor.camera_id}
+              .conveyor-meta__item
+                span Baud Rate
+                strong #{conveyor.baud_rate}
 
-          .conveyor-actions
-            a.btn.btn--primary(href=`/inspection/monitor/${conveyor.id}`) Theo dõi
-            a.btn.btn--secondary(href=`/settings/${conveyor.id}`) Thiết lập
+              .conveyor-meta__item
+                span Camera Delay
+                strong #{conveyor.camera_trigger_delay}
+
+              .conveyor-meta__item
+                span AI Threshold
+                strong #{conveyor.ai_threshold}
+
+            .conveyor-actions
+              a.btn.btn--primary(href=`/inspection/monitor/${conveyor.conveyor_code}`) Theo dõi
+              a.btn.btn--secondary(href=`/settings/${conveyor.conveyor_code}`) Thiết lập
+      else
+        .card
+          .empty-state
+            h3 Chưa có băng tải
+            p Chưa có dữ liệu băng tải trong database.

@@ -2,11 +2,11 @@ import mongoose from "mongoose";
 
 export const connect = async () => {
   try {
-    mongoose.connect(`${process.env.DATABASE}`)
-    .then(() => 
-      console.log("Ket noi thanh cong toi database")
-    );
+    const uri = process.env.DATABASE;
+    if (!uri) throw new Error("Missing DATABASE in .env");
+    await mongoose.connect(uri);
+    console.log("Connect successfully to database");
   } catch (error) {
-    console.log("Ket noi database that bai");
+    console.error("Connect fail to database:", error);
   }
-}
+};

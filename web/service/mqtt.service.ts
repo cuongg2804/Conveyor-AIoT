@@ -1,15 +1,15 @@
 import { MqttClient } from "mqtt";
 import { Server } from "socket.io";
+import { getClient } from "../config/mqtt";
 import { handleInspectionResultMessage } from "../controller/inspection.controller";
+import { handleSystemStatusMessage, handleSystemErrorMessage } from "../controller/conveyor.controller";
 
 export const MQTT_TOPICS = {
-  INSPECTION_RESULT: "inspection/result",
-
-  CONTROL_COMMAND: "inspection/control/command",
-  CONTROL_ACK: "inspection/control/ack",
-
-  SYSTEM_STATUS: "inspection/system/status",
-  SYSTEM_ERROR: "inspection/system/error",
+  INSPECTION_RESULT: process.env.MQTT_TOPIC_INSPECTION_RESULT || "inspection/result",
+  CONTROL_COMMAND: process.env.MQTT_TOPIC_CONTROL_COMMAND || "inspection/control/command",
+  CONTROL_ACK: process.env.MQTT_TOPIC_CONTROL_ACK || "inspection/control/ack",
+  SYSTEM_STATUS: process.env.MQTT_TOPIC_SYSTEM_STATUS || "inspection/system/status",
+  SYSTEM_ERROR: process.env.MQTT_TOPIC_SYSTEM_ERROR || "inspection/system/error",
 } as const;
 
 type ControlCommandPayload = {
@@ -32,32 +32,35 @@ const generateCommandId = (): string => {
 };
 
 const parseJsonPayload = (message: Buffer): any => {
-  const msg = message.toString();
-
-  console.log("MQTT raw message:", msg);
-
+  const raw = message.toString();
+  console.log("MQTT raw message:", raw);
   try {
-    return JSON.parse(msg);
-  } catch (error) {
-    throw new Error(`Invalid MQTT JSON message: ${msg}`);
+    return JSON.parse(raw);
+  } catch {
+    throw new Error(`Invalid MQTT JSON message: ${raw}`);
   }
+};
+
+const subscribeAll = (client: MqttClient): void => {
+  client.subscribe(SUBSCRIBE_TOPICS, { qos: 1 }, (err) => {
+    if (err) {
+      console.error("MQTT subscribe error:", err);
+      return;
+    }
+    console.log("MQTT subscribed topics:", SUBSCRIBE_TOPICS);
+  });
 };
 
 export const initMqttService = (client: MqttClient, io: Server): void => {
   client.on("connect", () => {
-    console.log("MQTT connected");
-
     io.emit("mqtt_status", {
       status: "connected",
       message: "MQTT Broker connected successfully",
     });
-
     subscribeAll(client);
   });
 
   client.on("reconnect", () => {
-    console.log("MQTT reconnecting");
-
     io.emit("mqtt_status", {
       status: "reconnecting",
       message: "MQTT reconnecting",
@@ -66,7 +69,6 @@ export const initMqttService = (client: MqttClient, io: Server): void => {
 
   client.on("error", (err) => {
     console.error("MQTT Error:", err);
-
     io.emit("mqtt_status", {
       status: "disconnected",
       message: err.message,
@@ -74,8 +76,6 @@ export const initMqttService = (client: MqttClient, io: Server): void => {
   });
 
   client.on("offline", () => {
-    console.warn("MQTT offline");
-
     io.emit("mqtt_status", {
       status: "disconnected",
       message: "MQTT client offline",
@@ -83,8 +83,6 @@ export const initMqttService = (client: MqttClient, io: Server): void => {
   });
 
   client.on("close", () => {
-    console.warn("MQTT connection closed");
-
     io.emit("mqtt_status", {
       status: "disconnected",
       message: "MQTT connection closed",
@@ -94,52 +92,33 @@ export const initMqttService = (client: MqttClient, io: Server): void => {
   client.on("message", async (topic: string, message: Buffer) => {
     try {
       console.log("MQTT topic:", topic);
-
       const payload = parseJsonPayload(message);
       console.log("MQTT parsed payload:", payload);
 
       switch (topic) {
-        case MQTT_TOPICS.INSPECTION_RESULT: {
+        case MQTT_TOPICS.INSPECTION_RESULT:
           await handleInspectionResultMessage(payload, io);
           return;
-        }
 
-        case MQTT_TOPICS.CONTROL_ACK: {
+        case MQTT_TOPICS.CONTROL_ACK:
           io.emit("control_ack", payload);
           return;
-        }
 
-        case MQTT_TOPICS.SYSTEM_STATUS: {
-          io.emit("system_status", payload);
+        case MQTT_TOPICS.SYSTEM_STATUS:
+          await handleSystemStatusMessage(payload, io);
           return;
-        }
 
-        case MQTT_TOPICS.SYSTEM_ERROR: {
-          io.emit("system_error", payload);
+        case MQTT_TOPICS.SYSTEM_ERROR:
+          await handleSystemErrorMessage(payload, io);
           return;
-        }
 
-        default: {
+        default:
           console.warn("MQTT unhandled topic:", topic);
           return;
-        }
       }
     } catch (error) {
       console.error("MQTT message error:", error);
     }
-  });
-};
-
-const subscribeAll = (client: MqttClient): void => {
-  SUBSCRIBE_TOPICS.forEach((topic) => {
-    client.subscribe(topic, { qos: 1 }, (err) => {
-      if (err) {
-        console.error(`MQTT subscribe error [${topic}]:`, err);
-        return;
-      }
-
-      console.log(`MQTT subscribed: ${topic}`);
-    });
   });
 };
 
@@ -148,8 +127,7 @@ export const publish = (
   payload: Record<string, any>,
   qos: 0 | 1 | 2 = 1
 ): void => {
-  const { getClient } = require("../config/mqtt");
-  const client: MqttClient | undefined = getClient?.();
+  const client = getClient();
 
   if (!client || !client.connected) {
     throw new Error("MQTT client is not connected");
@@ -171,8 +149,6 @@ export const publishControlCommand = (
   };
 
   publish(MQTT_TOPICS.CONTROL_COMMAND, commandPayload, 1);
-
   console.log("Published control command:", commandPayload);
-
   return commandPayload;
 };

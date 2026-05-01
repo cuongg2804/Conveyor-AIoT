@@ -1255,3 +1255,50 @@ img[src]:not([src=""]) + .image-placeholder {
     width: 100%;
   }
 }
+/* ===== Runtime status colors ===== */
+.system-status__value.warning,
+.dashboard__status-pill.warning,
+.conveyor-status.STARTING,
+.conveyor-status.STOPPING,
+.conveyor-status.READY {
+  color: #f59e0b;
+}
+
+.system-status__value.warning .status-dot,
+.dashboard__status-pill.warning .status-dot,
+.conveyor-status.STARTING .status-dot,
+.conveyor-status.STOPPING .status-dot,
+.conveyor-status.READY .status-dot {
+  background: #f59e0b;
+}
+
+.conveyor-status.RUNNING,
+.system-status__value.RUNNING,
+.dashboard__status-pill.RUNNING {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.conveyor-status.RUNNING .status-dot,
+.system-status__value.RUNNING .status-dot,
+.dashboard__status-pill.RUNNING .status-dot {
+  background: #16a34a;
+}
+
+.conveyor-status.ERROR,
+.conveyor-status.STOPPED,
+.system-status__value.ERROR,
+.system-status__value.STOPPED,
+.dashboard__status-pill.ERROR,
+.dashboard__status-pill.STOPPED {
+  color: #991b1b;
+}
+
+.conveyor-status.ERROR .status-dot,
+.conveyor-status.STOPPED .status-dot,
+.system-status__value.ERROR .status-dot,
+.system-status__value.STOPPED .status-dot,
+.dashboard__status-pill.ERROR .status-dot,
+.dashboard__status-pill.STOPPED .status-dot {
+  background: #ef4444;
+}

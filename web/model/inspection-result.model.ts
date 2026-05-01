@@ -1,6 +1,25 @@
-import mongoose from "mongoose";
+import mongoose, { Model } from "mongoose";
 
-const frameSchema = new mongoose.Schema(
+export interface InspectionFrame {
+  frame_index?: number;
+  predicted_label?: string;
+  predicted_score?: number;
+  roi_path?: string;
+  overlay_path?: string;
+}
+
+export interface InspectionResultDocument {
+  inspection_id?: string;
+  job_id: number;
+  conveyor_code?: string;
+  timestamp: number;
+  label: "OK" | "NG" | "UNKNOWN";
+  average_score: number;
+  threshold?: number;
+  frames: InspectionFrame[];
+}
+
+const inspectionFrameSchema = new mongoose.Schema<InspectionFrame>(
   {
     frame_index: Number,
     predicted_label: String,
@@ -11,21 +30,57 @@ const frameSchema = new mongoose.Schema(
   { _id: false }
 );
 
-const inspectionResultSchema = new mongoose.Schema(
+const inspectionResultSchema = new mongoose.Schema<InspectionResultDocument>(
   {
-    job_id: { type: Number, required: true, unique: true },
-    timestamp: { type: Number, required: true },
-    label: { type: String, required: true },
-    average_score: { type: Number, required: true },
-    frames: [frameSchema],
+    inspection_id: {
+      type: String,
+      index: true,
+      trim: true,
+    },
+    job_id: {
+      type: Number,
+      required: true,
+      index: true,
+    },
+    conveyor_code: {
+      type: String,
+      index: true,
+      trim: true,
+      uppercase: true,
+    },
+    timestamp: {
+      type: Number,
+      required: true,
+      index: true,
+    },
+    label: {
+      type: String,
+      enum: ["OK", "NG", "UNKNOWN"],
+      required: true,
+    },
+    average_score: {
+      type: Number,
+      required: true,
+    },
+    threshold: {
+      type: Number,
+    },
+    frames: {
+      type: [inspectionFrameSchema],
+      default: [],
+    },
   },
-  { versionKey: false }
+  {
+    versionKey: false,
+  }
 );
 
-const InspectionResult = mongoose.model(
-  "InspectionResult",
-  inspectionResultSchema,
-  "inspection_results"
-);
+const InspectionResult =
+  (mongoose.models.InspectionResult as Model<InspectionResultDocument> | undefined) ||
+  mongoose.model<InspectionResultDocument>(
+    "InspectionResult",
+    inspectionResultSchema,
+    "inspection_results"
+  );
 
 export default InspectionResult;

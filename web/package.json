@@ -6,22 +6,22 @@
   "scripts": {
     "build": "tsc && cp -r view dist/ && cp -r public dist/",
     "start": "node dist/index.js",
-    "dev": "nodemon --exec \"node --inspect -r ts-node/register\" index.ts"
+    "dev": "nodemon --exec \"node -r ts-node/register\" index.ts"
   },
   "dependencies": {
     "dotenv": "^17.2.3",
     "ejs": "^3.1.10",
     "express": "^5.2.1",
-    "mongoose": "^9.0.2",
+    "mongoose": "8.8.4",
     "mqtt": "^5.14.1",
     "pug": "^3.0.3",
     "socket.io": "^4.8.1"
   },
   "devDependencies": {
-    "@types/node": "^25.0.3",
     "@types/express": "^5.0.6",
-    "nodemon": "^3.1.11",
+    "@types/node": "^25.6.0",
+    "nodemon": "^3.1.14",
     "ts-node": "^10.9.2",
-    "typescript": "^5.9.3"
+    "typescript": "^6.0.3"
   }
 }
