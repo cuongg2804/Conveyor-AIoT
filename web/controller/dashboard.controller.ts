@@ -9,16 +9,16 @@ export const index = async (req: Request, res: Response) => {
       .lean();
 
     return res.render("dashboard/dashboard.pug", {
-      title: "Dashboard",
+      title: "Tổng quan",
       conveyorList,
     });
   } catch (error) {
     console.error("Dashboard index error:", error);
 
     return res.status(500).render("dashboard/dashboard.pug", {
-      title: "Dashboard",
+      title: "Tổng quan",
       conveyorList: [],
-      errorMessage: "Không thể tải danh sách băng tải từ database.",
+      errorMessage: "Không thể tải danh sách băng tải từ cơ sở dữ liệu.",
     });
   }
 };

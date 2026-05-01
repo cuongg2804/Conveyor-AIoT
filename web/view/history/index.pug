@@ -4,38 +4,109 @@ block main
   .history-page
     .dashboard__header
       .dashboard__heading
-        h1.dashboard__title LỊCH SỬ KIỂM TRA SẢN PHẨM
-        p.dashboard__subtitle Tra cứu kết quả kiểm tra AI đã lưu trong hệ thống
+        h1.dashboard__title Thống kê kiểm tra theo ngày
+        p.dashboard__subtitle Theo dõi sản lượng và kết quả kiểm tra theo ca sáng, ca chiều
 
     .card.history-filter-card
       .card__head
-        h2.card__title Bộ lọc lịch sử
-        p.card__desc Lọc theo kết quả và khoảng thời gian kiểm tra
+        h2.card__title Chọn ngày thống kê
+        p.card__desc Mỗi ngày được chia thành ca sáng từ 00:00 đến 11:59 và ca chiều từ 12:00 đến 23:59
 
-      form.history-filters(method="GET" action="/history")
+      form.history-filters.history-filters--daily(method="GET" action="/history")
+        input(type="hidden" name="shift" value=filters.shift)
+        .field
+          label.field__label(for="statsDate") Ngày thống kê
+          input#statsDate.field__control(type="date" name="statsDate" value=filters.statsDate)
+
         .field
           label.field__label(for="label") Kết quả
           select#label.field__control(name="label")
             option(value="" selected=filters.label=="") Tất cả
-            option(value="OK" selected=filters.label=="OK") OK
-            option(value="NG" selected=filters.label=="NG") NG
-
-        .field
-          label.field__label(for="fromDate") Từ ngày
-          input#fromDate.field__control(type="date" name="fromDate" value=filters.fromDate)
-
-        .field
-          label.field__label(for="toDate") Đến ngày
-          input#toDate.field__control(type="date" name="toDate" value=filters.toDate)
+            option(value="OK" selected=filters.label=="OK") Đạt
+            option(value="NG" selected=filters.label=="NG") Không đạt
 
         .history-filters__actions
-          button.btn.btn--primary(type="submit") Lọc
-          a.btn.btn--secondary(href="/history") Xóa lọc
+          button.btn.btn--primary(type="submit") Xem thống kê
+          a.btn.btn--secondary(href="/history") Hôm nay
+
+    - const formatNumber = (value) => Number(value || 0).toLocaleString("vi-VN")
+    - const formatPercent = (value) => `${Number(value || 0).toFixed(1)}%`
+    - const formatScore = (value) => value === null || value === undefined ? "-" : Number(value).toFixed(3)
+    - const selectedDateText = dailyStats && dailyStats.date ? new Date(`${dailyStats.date}T00:00:00`).toLocaleDateString("vi-VN") : "-"
+    - const shiftLabel = filters.shift === "morning" ? "Ca sáng" : filters.shift === "afternoon" ? "Ca chiều" : "Tất cả ca"
+
+    if dailyStats
+      .daily-stats
+        .daily-stats__header
+          h2 Thống kê ngày #{selectedDateText}
+          p Tổng hợp toàn bộ lượt kiểm tra trong ngày đã chọn
+
+        .daily-stats-grid
+          .daily-stat-card.daily-stat-card--total
+            .daily-stat-card__head
+              span Cả ngày
+              strong #{formatNumber(dailyStats.total.total)}
+            .daily-stat-card__body
+              .daily-stat-metric
+                span Đạt
+                strong #{formatNumber(dailyStats.total.ok)}
+              .daily-stat-metric
+                span Không đạt
+                strong #{formatNumber(dailyStats.total.ng)}
+              .daily-stat-metric
+                span Tỷ lệ đạt
+                strong #{formatPercent(dailyStats.total.okRate)}
+              .daily-stat-metric
+                span Điểm TB
+                strong #{formatScore(dailyStats.total.avgScore)}
+
+          .daily-stat-card
+            .daily-stat-card__head
+              span Ca sáng
+              strong #{formatNumber(dailyStats.morning.total)}
+            .daily-stat-card__sub 00:00 - 11:59
+            .daily-stat-card__body
+              .daily-stat-metric
+                span Đạt
+                strong #{formatNumber(dailyStats.morning.ok)}
+              .daily-stat-metric
+                span Không đạt
+                strong #{formatNumber(dailyStats.morning.ng)}
+              .daily-stat-metric
+                span Tỷ lệ đạt
+                strong #{formatPercent(dailyStats.morning.okRate)}
+              .daily-stat-metric
+                span Điểm TB
+                strong #{formatScore(dailyStats.morning.avgScore)}
+
+          .daily-stat-card
+            .daily-stat-card__head
+              span Ca chiều
+              strong #{formatNumber(dailyStats.afternoon.total)}
+            .daily-stat-card__sub 12:00 - 23:59
+            .daily-stat-card__body
+              .daily-stat-metric
+                span Đạt
+                strong #{formatNumber(dailyStats.afternoon.ok)}
+              .daily-stat-metric
+                span Không đạt
+                strong #{formatNumber(dailyStats.afternoon.ng)}
+              .daily-stat-metric
+                span Tỷ lệ đạt
+                strong #{formatPercent(dailyStats.afternoon.okRate)}
+              .daily-stat-metric
+                span Điểm TB
+                strong #{formatScore(dailyStats.afternoon.avgScore)}
+
+    .history-shift-tabs
+      a.history-shift-tab(class=filters.shift === "all" ? "active" : "" href=shiftLinks.all) Tất cả
+      a.history-shift-tab(class=filters.shift === "morning" ? "active" : "" href=shiftLinks.morning) Ca sáng
+      a.history-shift-tab(class=filters.shift === "afternoon" ? "active" : "" href=shiftLinks.afternoon) Ca chiều
 
     .card.history-table-card
       .card__head
-        h2.card__title Danh sách kiểm tra
-        p.card__desc Các lần kiểm tra gần nhất
+        h2.card__title Chi tiết lượt kiểm tra - #{shiftLabel}
+        p.card__desc Danh sách lượt kiểm tra trong ngày và ca đang xem
 
       if inspectionList && inspectionList.length > 0
         .history-table-wrap
@@ -43,22 +114,28 @@ block main
             thead
               tr
                 th Ảnh lỗi
-                th Mã kiểm tra
+                th Mã lượt kiểm tra
+                th Ca
                 th Thời gian
                 th Kết quả
-                th Avg Score
-                th Frame
-                th Frame Score
+                th Điểm trung bình
+                th Khung hình
+                th Điểm khung hình
                 th Thao tác
 
             tbody
               each item in inspectionList
-                - const date = item.timestamp ? new Date(item.timestamp * 1000).toLocaleString("vi-VN") : "-"
+                - const date = item.timestamp ? new Date(item.timestamp * 1000) : null
+                - const timeText = date ? date.toLocaleString("vi-VN") : "-"
+                - const hour = date ? date.getHours() : 0
+                - const shiftText = hour < 12 ? "Ca sáng" : "Ca chiều"
                 - const preview = item.preview_frame || {}
                 - const labelClass = item.label === "OK" ? "ok" : item.label === "NG" ? "ng" : ""
-                - const displayId = item.display_id || item.inspection_id || item.job_id || "-"
+                - const displayId = item.display_id || item.job_id || "-"
+                - const labelText = item.label === "OK" ? "Đạt" : item.label === "NG" ? "Không đạt" : "-"
                 - const score = item.average_score !== undefined ? Number(item.average_score).toFixed(3) : "-"
                 - const frameScore = preview.predicted_score !== undefined ? Number(preview.predicted_score).toFixed(3) : "-"
+                - const detailUrl = `/history/${item.job_id}${item.conveyor_code ? `?conveyor_code=${encodeURIComponent(item.conveyor_code)}` : ""}`
 
                 tr
                   td
@@ -66,7 +143,7 @@ block main
                       if preview.overlay_path
                         img(
                           src=preview.overlay_path
-                          alt="Ảnh khoanh lỗi"
+                          alt="Ảnh khoanh vùng lỗi"
                           onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
                         )
                         .history-thumb__empty(style="display:none") Chưa có ảnh
@@ -74,12 +151,14 @@ block main
                         .history-thumb__empty Chưa có ảnh
 
                   td.history-id-cell
-                    strong #{displayId}
+                    strong Lượt #{displayId}
 
-                  td.history-time-cell #{date}
+                  td #{shiftText}
+
+                  td.history-time-cell #{timeText}
 
                   td
-                    span.history-label-badge(class=labelClass) #{item.label || "-"}
+                    span.history-label-badge(class=labelClass) #{labelText}
 
                   td #{score}
 
@@ -89,14 +168,27 @@ block main
 
                   td
                     .history-actions
+                      a.history-image-link(href=detailUrl) Chi tiết
                       if preview.roi_path
-                        a(href=preview.roi_path target="_blank") Sản phẩm
+                        button.history-image-link(
+                          type="button"
+                          data-toggle="modal"
+                          data-target="#historyImageModal"
+                          data-image-src=preview.roi_path
+                          data-image-title=`Ảnh sản phẩm - Lượt ${displayId}`
+                        ) Ảnh sản phẩm
                       if preview.overlay_path
-                        a(href=preview.overlay_path target="_blank") Khoanh lỗi
+                        button.history-image-link(
+                          type="button"
+                          data-toggle="modal"
+                          data-target="#historyImageModal"
+                          data-image-src=preview.overlay_path
+                          data-image-title=`Ảnh khoanh lỗi - Lượt ${displayId}`
+                        ) Ảnh khoanh lỗi
       else
         .empty-state
-          h3 Chưa có dữ liệu lịch sử
-          p Hệ thống chưa tìm thấy inspection nào phù hợp với bộ lọc.
+          h3 Chưa có dữ liệu trong ca này
+          p Hệ thống chưa có lượt kiểm tra nào phù hợp với ngày, ca và bộ lọc đang chọn.
 
     if pagination && pagination.totalPages > 1
       .pagination
@@ -107,3 +199,16 @@ block main
 
         if pagination.hasNext
           a.pagination__btn(href=pagination.nextUrl) Sau
+
+    #historyImageModal.modal.fade(tabindex="-1" role="dialog" aria-labelledby="historyImageModalTitle" aria-hidden="true")
+      .modal-dialog.modal-xl.modal-dialog-centered(role="document")
+        .modal-content.history-image-modal
+          .modal-header
+            h5#historyImageModalTitle.modal-title Ảnh kiểm tra
+            button.close(type="button" data-dismiss="modal" aria-label="Đóng")
+              span(aria-hidden="true") &times;
+          .modal-body
+            img#historyImageModalImg.history-image-modal__img(src="" alt="Ảnh kiểm tra")
+            .history-image-modal__empty Không tải được ảnh
+          .modal-footer
+            button.btn.btn--primary(type="button" data-dismiss="modal") Đóng

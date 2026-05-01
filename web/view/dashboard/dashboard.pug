@@ -1,11 +1,12 @@
 extends ../layout/default.pug
 
 block main
+  - const statusLabels = { READY: "Sẵn sàng", STARTING: "Đang khởi động", RUNNING: "Đang chạy", STOPPING: "Đang dừng", STOPPED: "Đã dừng", ERROR: "Đang lỗi" }
   .dashboard
     .dashboard__header
       .dashboard__heading
-        h1.dashboard__title HỆ THỐNG KIỂM TRA SẢN PHẨM AI
-        p.dashboard__subtitle Quản lý danh sách băng tải, theo dõi realtime và thiết lập thông số vận hành
+        h1.dashboard__title Hệ thống kiểm tra sản phẩm
+        p.dashboard__subtitle Quản lý băng tải, theo dõi kết quả và cấu hình vận hành
 
     if errorMessage
       .alert.alert--error
@@ -25,7 +26,7 @@ block main
 
               span.conveyor-status(class=conveyor.status)
                 span.status-dot
-                | #{conveyor.status || "READY"}
+                | #{statusLabels[conveyor.status] || "Sẵn sàng"}
 
             .conveyor-meta
               .conveyor-meta__item
@@ -33,30 +34,30 @@ block main
                 strong #{conveyor.conveyor_code}
 
               .conveyor-meta__item
-                span Camera Source
+                span Nguồn camera
                 strong #{conveyor.camera_source}
 
               .conveyor-meta__item
-                span Serial Port
+                span Cổng điều khiển
                 strong #{conveyor.serial_port}
 
               .conveyor-meta__item
-                span Baud Rate
+                span Tốc độ truyền
                 strong #{conveyor.baud_rate}
 
               .conveyor-meta__item
-                span Camera Delay
+                span Độ trễ camera
                 strong #{conveyor.camera_trigger_delay}
 
               .conveyor-meta__item
-                span AI Threshold
+                span Ngưỡng đánh giá
                 strong #{conveyor.ai_threshold}
 
             .conveyor-actions
-              a.btn.btn--primary(href=`/inspection/monitor/${conveyor.conveyor_code}`) Theo dõi
-              a.btn.btn--secondary(href=`/settings/${conveyor.conveyor_code}`) Thiết lập
+              a.btn.btn--primary(href=`/inspection/monitor/${conveyor.conveyor_code}`) Giám sát
+              a.btn.btn--secondary(href=`/settings/${conveyor.conveyor_code}`) Cấu hình
       else
         .card
           .empty-state
             h3 Chưa có băng tải
-            p Chưa có dữ liệu băng tải trong database.
+            p Chưa có dữ liệu băng tải trong hệ thống.

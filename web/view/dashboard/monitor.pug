@@ -1,76 +1,78 @@
 extends ../layout/default.pug
 
 block main
+  - const statusLabels = { READY: "Sẵn sàng", STARTING: "Đang khởi động", RUNNING: "Đang chạy", STOPPING: "Đang dừng", STOPPED: "Đã dừng", ERROR: "Đang lỗi" }
+  - const conveyorStatusText = statusLabels[conveyor.status] || "Đang chờ dữ liệu"
   .dashboard(data-conveyor-code=conveyor.conveyor_code)
     .dashboard__header
       .dashboard__heading
         h1.dashboard__title #{conveyor.name}
-        p.dashboard__subtitle Giám sát kết quả kiểm tra AI theo thời gian thực
+        p.dashboard__subtitle Giám sát kết quả kiểm tra theo thời gian thực
 
       .dashboard-actions
         a.btn.btn--secondary(href=dashboardUrl) Quay lại
-        a.btn.btn--primary(href=settingsUrl) Thiết lập thông số
+        a.btn.btn--primary(href=settingsUrl) Cấu hình
 
       .dashboard__status-pill(class=conveyor.status)
         span.status-dot
-        span#systemStatusText #{conveyor.status || "Đang chờ dữ liệu"}
+        span#systemStatusText #{conveyorStatusText}
 
     .inspection-layout
       .preview-panel.card
         .card__head.preview-panel__head
           div
-            h2.card__title ẢNH PREVIEW KIỂM TRA
-            p.card__desc Hiển thị Frame 2 làm ảnh đại diện cho lần kiểm tra
+            h2.card__title Ảnh kiểm tra
+            p.card__desc Hiển thị ảnh đại diện của lượt kiểm tra mới nhất
           .preview-frame-meta
-            span Frame 2
+            span Khung hình 2
             strong#framePreviewScore -
 
         .main-preview
-          .main-preview__label Overlay
+          .main-preview__label Ảnh khoanh vùng lỗi
           .main-preview__image
-            img#overlayPreviewImage(src="" alt="Overlay Preview Frame 2")
-            .image-placeholder Chưa có ảnh overlay
+            img#overlayPreviewImage(src="" alt="Ảnh khoanh vùng lỗi")
+            .image-placeholder Chưa có ảnh khoanh vùng lỗi
 
         .thumb-grid.thumb-grid--one
           .thumb-box
-            .thumb-box__title ROI
+            .thumb-box__title Ảnh sản phẩm
             .thumb-box__image
-              img#roiPreviewImage(src="" alt="ROI Preview Frame 2")
-              .image-placeholder Chưa có ảnh ROI
+              img#roiPreviewImage(src="" alt="Ảnh sản phẩm")
+              .image-placeholder Chưa có ảnh sản phẩm
 
       .side-panel
         .card.control-card
           .card__head
-            h2.card__title ĐIỀU KHIỂN NHANH
-            p.card__desc Start / Stop hệ thống AI và băng tải
+            h2.card__title Điều khiển nhanh
+            p.card__desc Điều khiển hệ thống kiểm tra và băng tải
 
           .btn-row
-            button.btn.btn--success(type="button" onclick="sendControlCommand('START_SYSTEM')") Start
-            button.btn.btn--danger(type="button" onclick="sendControlCommand('STOP_SYSTEM')") Stop
-            button.btn.btn--secondary(type="button" onclick="sendControlCommand('GET_STATUS')") Trạng thái
+            button.btn.btn--success(type="button" onclick="sendControlCommand('START_SYSTEM')") Khởi động
+            button.btn.btn--danger(type="button" onclick="sendControlCommand('STOP_SYSTEM')") Dừng
+            button.btn.btn--secondary(type="button" onclick="sendControlCommand('GET_STATUS')") Kiểm tra
 
           .control-ack-box
-            p#lastControlAck Chưa có phản hồi
+            p#lastControlAck Chưa có phản hồi từ hệ thống
 
         .result-card.card
           .card__head
-            h2.card__title KẾT QUẢ KIỂM TRA
-            p.card__desc Kết quả mới nhất từ hệ thống AI
+            h2.card__title Kết quả kiểm tra
+            p.card__desc Kết quả mới nhất từ hệ thống kiểm tra
 
           .result-main
             span#resultLabel.result-badge -
 
           .inspection-summary
             .summary-row
-              span.summary-label Job ID
+              span.summary-label Mã lượt kiểm tra
               span#jobId.summary-value -
 
             .summary-row
-              span.summary-label Average Score
+              span.summary-label Điểm trung bình
               span#averageScore.summary-value -
 
             .summary-row
-              span.summary-label Frame Label
+              span.summary-label Kết quả khung hình
               span#framePreviewLabel.summary-value -
 
             .summary-row
@@ -79,26 +81,27 @@ block main
 
         .card
           .card__head
-            h2.card__title TRẠNG THÁI HỆ THỐNG
-            p.card__desc Kết nối backend, MQTT broker và AI
+            h2.card__title Trạng thái hệ thống
+            p.card__desc Kết nối máy chủ, bộ điều khiển và hệ thống kiểm tra
 
           .system-status
-            span.system-status__label MQTT
+            span.system-status__label Kết nối điều khiển
             span#systemStatus.system-status__value
               span.status-dot
               | Chưa kết nối
 
           .system-status
-            span.system-status__label AI
+            span.system-status__label Hệ thống kiểm tra
             span#aiStatus.system-status__value(class=conveyor.status)
               span.status-dot
-              | #{conveyor.status || "Chưa rõ"}
+              | #{conveyorStatusText}
 
           .system-status
-            span.system-status__label Backend
+            span.system-status__label Máy chủ Web
             span.system-status__value.connected
               span.status-dot
               | Đang chạy
 
   script.
+    window.__CONVEYOR_STATUS__ = !{JSON.stringify(conveyor.status || null)};
     window.__LATEST_INSPECTION__ = !{JSON.stringify(latestInspection || null)};
