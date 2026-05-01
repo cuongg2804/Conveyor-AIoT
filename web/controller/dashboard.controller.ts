@@ -1,4 +1,4 @@
-// src/controller/dashboard.controller.ts
+
 import { Request, Response } from "express";
 import Session from "../model/inspection-result.model";
 
