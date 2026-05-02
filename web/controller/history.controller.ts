@@ -1,39 +1,127 @@
 import { Request, Response } from "express";
 import InspectionResult from "../model/inspection-result.model";
 
+const toDateInputValue = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const parseDayRange = (dateValue: string) => {
+  const selectedDate = dateValue || toDateInputValue(new Date());
+  const dayStart = new Date(`${selectedDate}T00:00:00`);
+  const noon = new Date(`${selectedDate}T12:00:00`);
+  const dayEnd = new Date(`${selectedDate}T23:59:59.999`);
+
+  return {
+    selectedDate,
+    dayStartSec: dayStart.getTime() / 1000,
+    noonSec: noon.getTime() / 1000,
+    dayEndSec: dayEnd.getTime() / 1000,
+  };
+};
+
+const summarize = (items: any[]) => {
+  const total = items.length;
+  const ok = items.filter((item) => item.label === "OK").length;
+  const ng = items.filter((item) => item.label === "NG").length;
+  const scoreItems = items.filter((item) => Number.isFinite(Number(item.average_score)));
+  const avgScore = scoreItems.length
+    ? scoreItems.reduce((sum, item) => sum + Number(item.average_score), 0) / scoreItems.length
+    : null;
+
+  return {
+    total,
+    ok,
+    ng,
+    okRate: total ? (ok / total) * 100 : 0,
+    ngRate: total ? (ng / total) * 100 : 0,
+    avgScore,
+  };
+};
+
+const buildUrl = (query: Record<string, string | number | undefined>) => {
+  const params = new URLSearchParams();
+  Object.entries(query).forEach(([key, value]) => {
+    if (value !== undefined && value !== "") params.set(key, String(value));
+  });
+  return `/history?${params.toString()}`;
+};
+
+const normalizeConveyorCode = (value: any) => String(value || "").trim().toUpperCase();
+
+const normalizeInspectionDetail = (item: any) => {
+  const frames = Array.isArray(item.frames)
+    ? [...item.frames].sort((a: any, b: any) => Number(a.frame_index || 0) - Number(b.frame_index || 0))
+    : [];
+
+  return {
+    ...item,
+    display_id: item.job_id || "-",
+    frames,
+  };
+};
+
+const validInspectionFilter = () => ({
+  inspection_id: { $exists: true, $ne: "" },
+  conveyor_code: { $exists: true, $ne: "" },
+  frames: { $exists: true, $type: "array" },
+  "frames.2": { $exists: true },
+});
+
 export const index = async (req: Request, res: Response) => {
   try {
     const label = String(req.query.label || "").trim();
-    const fromDate = String(req.query.fromDate || "").trim();
-    const toDate = String(req.query.toDate || "").trim();
-
+    const statsDateQuery = String(req.query.statsDate || "").trim();
+    const shiftQuery = String(req.query.shift || "all").trim();
+    const shift = ["morning", "afternoon"].includes(shiftQuery) ? shiftQuery : "all";
     const page = Math.max(Number(req.query.page || 1), 1);
     const limit = 10;
     const skip = (page - 1) * limit;
 
-    const filter: any = {};
+    const { selectedDate, dayStartSec, noonSec, dayEndSec } = parseDayRange(statsDateQuery);
+
+    const dayTimestampFilter = {
+      $gte: dayStartSec,
+      $lte: dayEndSec,
+    };
+
+    const baseFilter: any = {
+      ...validInspectionFilter(),
+      timestamp: dayTimestampFilter,
+    };
+
+    const listFilter: any = {
+      ...validInspectionFilter(),
+      timestamp: { ...dayTimestampFilter },
+    };
+
+    if (shift === "morning") {
+      listFilter.timestamp = {
+        $gte: dayStartSec,
+        $lt: noonSec,
+      };
+    }
+
+    if (shift === "afternoon") {
+      listFilter.timestamp = {
+        $gte: noonSec,
+        $lte: dayEndSec,
+      };
+    }
 
     if (label === "OK" || label === "NG") {
-      filter.label = label;
+      listFilter.label = label;
     }
 
-    if (fromDate || toDate) {
-      filter.timestamp = {};
+    const dayItems = await InspectionResult.find(baseFilter, { _id: 0 })
+      .sort({ timestamp: -1 })
+      .lean();
 
-      if (fromDate) {
-        const from = new Date(`${fromDate}T00:00:00`);
-        filter.timestamp.$gte = from.getTime() / 1000;
-      }
+    const total = await InspectionResult.countDocuments(listFilter);
 
-      if (toDate) {
-        const to = new Date(`${toDate}T23:59:59`);
-        filter.timestamp.$lte = to.getTime() / 1000;
-      }
-    }
-
-    const total = await InspectionResult.countDocuments(filter);
-
-    const inspectionList = await InspectionResult.find(filter, { _id: 0 })
+    const inspectionList = await InspectionResult.find(listFilter, { _id: 0 })
       .sort({ timestamp: -1 })
       .skip(skip)
       .limit(limit)
@@ -45,32 +133,85 @@ export const index = async (req: Request, res: Response) => {
 
       return {
         ...item,
-        display_id: item.inspection_id || item.job_id || "-",
+        display_id: item.job_id || "-",
         preview_frame: previewFrame,
       };
     });
 
+    const morningItems = dayItems.filter((item: any) => Number(item.timestamp) < noonSec);
+    const afternoonItems = dayItems.filter((item: any) => Number(item.timestamp) >= noonSec);
+
     const totalPages = Math.max(Math.ceil(total / limit), 1);
+    const commonQuery = {
+      statsDate: selectedDate,
+      label,
+    };
+    const pageQuery = {
+      ...commonQuery,
+      shift,
+    };
 
     return res.render("history/index", {
       title: "Lịch sử kiểm tra",
       inspectionList: normalizedList,
       filters: {
         label,
-        fromDate,
-        toDate,
+        statsDate: selectedDate,
+        shift,
+      },
+      shiftLinks: {
+        all: buildUrl({ ...commonQuery, shift: "all" }),
+        morning: buildUrl({ ...commonQuery, shift: "morning" }),
+        afternoon: buildUrl({ ...commonQuery, shift: "afternoon" }),
+      },
+      dailyStats: {
+        date: selectedDate,
+        total: summarize(dayItems),
+        morning: summarize(morningItems),
+        afternoon: summarize(afternoonItems),
       },
       pagination: {
         page,
         totalPages,
         hasPrev: page > 1,
         hasNext: page < totalPages,
-        prevPage: page - 1,
-        nextPage: page + 1,
+        prevUrl: buildUrl({ ...pageQuery, page: page - 1 }),
+        nextUrl: buildUrl({ ...pageQuery, page: page + 1 }),
       },
     });
   } catch (error) {
     console.error("History page error:", error);
-    return res.status(500).send("Server error");
+    return res.status(500).send("Không thể tải lịch sử kiểm tra.");
+  }
+};
+
+export const detail = async (req: Request, res: Response) => {
+  try {
+    const jobId = Number(req.params.jobId);
+    const conveyorCode = normalizeConveyorCode(req.query.conveyor_code);
+
+    if (!Number.isFinite(jobId)) {
+      return res.status(400).send("Mã lượt kiểm tra không hợp lệ.");
+    }
+
+    const filter: any = { ...validInspectionFilter(), job_id: jobId };
+    if (conveyorCode) filter.conveyor_code = conveyorCode;
+
+    const inspection = await InspectionResult.findOne(filter, { _id: 0 })
+      .sort({ timestamp: -1 })
+      .lean();
+
+    if (!inspection) {
+      return res.status(404).send("Không tìm thấy lượt kiểm tra.");
+    }
+
+    return res.render("history/detail", {
+      title: `Chi tiết lượt ${jobId}`,
+      inspection: normalizeInspectionDetail(inspection),
+      backUrl: "/history",
+    });
+  } catch (error) {
+    console.error("History detail error:", error);
+    return res.status(500).send("Không thể tải chi tiết lượt kiểm tra.");
   }
 };

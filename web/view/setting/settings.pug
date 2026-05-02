@@ -1,19 +1,28 @@
 extends ../layout/default.pug
 
 block main
+  - const statusLabels = { READY: "Sẵn sàng", STARTING: "Đang khởi động", RUNNING: "Đang chạy", STOPPING: "Đang dừng", STOPPED: "Đã dừng", ERROR: "Đang lỗi" }
   .dashboard
     .dashboard__header
       .dashboard__heading
-        h1.dashboard__title THIẾT LẬP BĂNG TẢI
-        p.dashboard__subtitle Cấu hình thông số vận hành cho #{conveyor.name}
+        h1.dashboard__title Cấu hình băng tải
+        p.dashboard__subtitle Thiết lập thông số vận hành cho #{conveyor.name}
 
       .dashboard-actions
         a.btn.btn--secondary(href=dashboardUrl) Quay lại
-        a.btn.btn--primary(href=monitorUrl) Theo dõi
+        a.btn.btn--primary(href=monitorUrl) Giám sát
 
-    if updated
+    if updated && configSynced
       .alert.alert--success
-        | Cập nhật cấu hình thành công. Cấu hình mới sẽ được Python AI đọc ở lần khởi động tiếp theo.
+        | Đã cập nhật cấu hình và gửi yêu cầu đồng bộ tới hệ thống AI.
+
+    if updated && configSyncFailed
+      .alert.alert--success
+        | Đã cập nhật cấu hình trong cơ sở dữ liệu, nhưng chưa gửi được yêu cầu đồng bộ tới hệ thống AI.
+
+    if updated && !configSynced && !configSyncFailed
+      .alert.alert--success
+        | Đã cập nhật cấu hình. Hệ thống kiểm tra sẽ đọc cấu hình mới ở lần khởi động tiếp theo.
 
     .settings-grid
       .card
@@ -36,43 +45,43 @@ block main
 
           .field
             label.field__label Trạng thái hiện tại
-            input.field__control(type="text" value=conveyor.status disabled)
+            input.field__control(type="text" value=(statusLabels[conveyor.status] || "Chưa xác định") disabled)
 
           .field.checkbox-field
             label
               input(type="checkbox" name="is_active" checked=conveyor.is_active)
-              |  Hiển thị băng tải trên dashboard
+              |  Hiển thị băng tải trên trang tổng quan
 
           .divider
 
           h3.section-title Camera
 
           .field
-            label.field__label(for="camera_source") Camera Source
+            label.field__label(for="camera_source") Nguồn camera
             input#camera_source.field__control(type="text" name="camera_source" value=conveyor.camera_source required)
 
           .field
-            label.field__label(for="camera_trigger_delay") Trigger Delay
+            label.field__label(for="camera_trigger_delay") Độ trễ kích hoạt
             input#camera_trigger_delay.field__control(type="number" name="camera_trigger_delay" step="1" value=conveyor.camera_trigger_delay)
 
           .divider
 
-          h3.section-title Arduino / Serial
+          h3.section-title Bộ điều khiển
 
           .field
-            label.field__label(for="serial_port") Serial Port
+            label.field__label(for="serial_port") Cổng kết nối
             input#serial_port.field__control(type="text" name="serial_port" value=conveyor.serial_port required)
 
           .field
-            label.field__label(for="baud_rate") Baud Rate
+            label.field__label(for="baud_rate") Tốc độ truyền
             input#baud_rate.field__control(type="number" name="baud_rate" value=conveyor.baud_rate required)
 
           .divider
 
-          h3.section-title AI
+          h3.section-title Đánh giá AI
 
           .field
-            label.field__label(for="ai_threshold") AI Threshold
+            label.field__label(for="ai_threshold") Ngưỡng đánh giá
             input#ai_threshold.field__control(type="number" name="ai_threshold" step="0.000001" value=conveyor.ai_threshold required)
 
           .settings-actions

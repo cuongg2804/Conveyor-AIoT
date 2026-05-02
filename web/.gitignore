@@ -1,6 +1,9 @@
-# Bỏ môi trường
+# Environment files
 .env
-.env.*   
+.env.*
 
-# Bỏ thư mục node_modules
+# Dependencies
 node_modules/
+
+# Dev server logs
+*.log

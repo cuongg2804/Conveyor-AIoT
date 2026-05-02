@@ -9,53 +9,45 @@ const conveyorConfigSchema = new mongoose.Schema(
       trim: true,
       uppercase: true,
     },
-
     name: {
       type: String,
       required: true,
       trim: true,
     },
-
     description: {
       type: String,
       default: "",
       trim: true,
     },
-
     camera_source: {
       type: String,
       required: true,
       trim: true,
     },
-
     camera_trigger_delay: {
       type: Number,
       default: 0,
     },
-
     serial_port: {
       type: String,
       required: true,
       trim: true,
     },
-
     baud_rate: {
       type: Number,
       required: true,
       default: 9600,
     },
-
     ai_threshold: {
       type: Number,
-      required: true
+      required: true,
+      default: 30.436506,
     },
-
     status: {
       type: String,
-      enum: ["READY", "RUNNING", "STOPPED", "ERROR"],
+      enum: ["READY", "STARTING", "RUNNING", "STOPPING", "STOPPED", "ERROR"],
       default: "READY",
     },
-
     is_active: {
       type: Boolean,
       default: true,
@@ -70,10 +62,8 @@ const conveyorConfigSchema = new mongoose.Schema(
   }
 );
 
-const ConveyorConfig = mongoose.model(
-  "ConveyorConfig",
-  conveyorConfigSchema,
-  "conveyor_configs"
-);
+const ConveyorConfig =
+  mongoose.models.ConveyorConfig ||
+  mongoose.model("ConveyorConfig", conveyorConfigSchema, "conveyor_configs");
 
 export default ConveyorConfig;

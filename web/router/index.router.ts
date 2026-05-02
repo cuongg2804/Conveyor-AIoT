@@ -1,19 +1,18 @@
 import { Router } from "express";
+import dashboardRoute from "./dashboard.router";
+import inspectionRoute from "./inspection.router";
+import historyRoute from "./history.router";
+import settingRoute from "./setting.router";
+import controlRoute from "./control.router";
+
 const router = Router();
-import dashboard from "./dashboard.router";
-import setting from "./setting.router";
-import history from "./history.router";
-import inspection from "./inspection.router";
-import control from "./control.router";
 
-router.use("/dashboard", dashboard)
+router.use("/dashboard", dashboardRoute);
+router.use("/inspection", inspectionRoute);
+router.use("/history", historyRoute);
+router.use("/settings", settingRoute);
+router.use("/control", controlRoute);
 
-router.use("/settings", setting)
-
-router.use("/history", history)
-
-router.use("/inspection", inspection);
-
-router.use("/control", control);
+router.get("/", (_req, res) => res.redirect("/dashboard"));
 
 export default router;

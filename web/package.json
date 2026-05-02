@@ -1,10 +1,10 @@
 {
-  "name": "WS",
+  "name": "AI",
   "version": "1.0.0",
   "main": "dist/index.js",
   "license": "MIT",
   "scripts": {
-    "build": "tsc && cp -r view dist/ && cp -r public dist/",
+    "build": "tsc && powershell -NoProfile -Command \"Copy-Item -Recurse -Force view dist; Copy-Item -Recurse -Force public dist\"",
     "start": "node dist/index.js",
     "dev": "nodemon --exec \"node --inspect -r ts-node/register\" index.ts"
   },
@@ -12,7 +12,7 @@
     "dotenv": "^17.2.3",
     "ejs": "^3.1.10",
     "express": "^5.2.1",
-    "mongoose": "^9.0.2",
+    "mongoose": "^8.23.1",
     "mqtt": "^5.14.1",
     "pug": "^3.0.3",
     "socket.io": "^4.8.1"
