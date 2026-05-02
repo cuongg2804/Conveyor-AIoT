@@ -1,11 +1,12 @@
 import mongoose from "mongoose";
 
-const frameSchema = new mongoose.Schema(
+const inspectionFrameSchema = new mongoose.Schema(
   {
     frame_index: Number,
     predicted_label: String,
     predicted_score: Number,
     roi_path: String,
+    mask_path: String,
     overlay_path: String,
   },
   { _id: false }
@@ -13,19 +14,53 @@ const frameSchema = new mongoose.Schema(
 
 const inspectionResultSchema = new mongoose.Schema(
   {
-    job_id: { type: Number, required: true, unique: true },
-    timestamp: { type: Number, required: true },
-    label: { type: String, required: true },
-    average_score: { type: Number, required: true },
-    frames: [frameSchema],
+    inspection_id: {
+      type: String,
+      index: true,
+      unique: true,
+      sparse: true,
+      trim: true,
+    },
+    job_id: {
+      type: Number,
+      required: true,
+      index: true,
+    },
+    conveyor_code: {
+      type: String,
+      index: true,
+      trim: true,
+      uppercase: true,
+    },
+    timestamp: {
+      type: Number,
+      required: true,
+      index: true,
+    },
+    label: {
+      type: String,
+      enum: ["OK", "NG", "UNKNOWN"],
+      required: true,
+    },
+    average_score: {
+      type: Number,
+      required: true,
+    },
+    threshold: {
+      type: Number,
+    },
+    frames: {
+      type: [inspectionFrameSchema],
+      default: [],
+    },
   },
-  { versionKey: false }
+  {
+    versionKey: false,
+  }
 );
 
-const InspectionResult = mongoose.model(
-  "InspectionResult",
-  inspectionResultSchema,
-  "inspection_results"
-);
+const InspectionResult =
+  mongoose.models.InspectionResult ||
+  mongoose.model("InspectionResult", inspectionResultSchema, "inspection_results");
 
 export default InspectionResult;

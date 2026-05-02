@@ -2,9 +2,8 @@
   "compilerOptions": {
     "outDir": "dist",
     "target": "ES6",
-    "module": "CommonJS",
-    "moduleResolution": "node",
-    "ignoreDeprecations": "6.0",
+    "module": "Node16",
+    "moduleResolution": "node16",
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "strict": true,
