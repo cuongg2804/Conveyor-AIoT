@@ -2,79 +2,79 @@
 
 // ===================== PIN CONFIG =====================
 // ----- L298N channel B: IN3 / IN4 / ENB -> OUT3 / OUT4 -----
-cbatst int PIN_IN3          = 2;    // L298N IN3
-cbatst int PIN_IN4          = 3;    // L298N IN4
-cbatst int PIN_ENB          = 5;    // PWM điều khiển tốc độ động cơ
+const int PIN_IN3          = 2;    // L298N IN3
+const int PIN_IN4          = 3;    // L298N IN4
+const int PIN_ENB          = 5;    // PWM điều khiển tốc độ động cơ
 
 // ----- Sensors / actuator -----
-cbatst int PIN_S1      = 4;    // Cảm biến vật thể 1
-cbatst int PIN_S2      = 6;    // Cảm biến vật thể 2
-cbatst int PIN_SERVO        = 7;    // Servo signal
-cbatst int PIN_RELAY        = 8;    // Relay trigger camera
+const int PIN_S1      = 4;    // Cảm biến vật thể 1
+const int PIN_S2      = 6;    // Cảm biến vật thể 2
+const int PIN_SERVO        = 7;    // Servo signal
+const int PIN_RELAY        = 8;    // Relay trigger camera
 
 // ----- Buttbats -----
-cbatst int PIN_START    = 9;    // Nút Start
-cbatst int PIN_STOP     = 10;   // Nút Stop
+const int PIN_START    = 9;    // Nút Start
+const int PIN_STOP     = 10;   // Nút Stop
 
 // ----- Traffic lights -----
-cbatst int PIN_DEN_DO      = 11;   // Đèn đỏ
-cbatst int PIN_DEN_VANG   = 12;   // Đèn vàng
-cbatst int PIN_DEN_XANH    = 13;   // Đèn xanh
+const int PIN_DEN_DO      = 11;   // Đèn đỏ
+const int PIN_DEN_VANG   = 12;   // Đèn vàng
+const int PIN_DEN_XANH    = 13;   // Đèn xanh
 
 // ----- Analog pins -----
-cbatst int PIN_COI       = A0;   // + buzzer -> A0, - -> GND
-cbatst int PIN_NUT_TOC_DO    = A1;   // Nút đổi tốc độ, 1 đầu A1, 1 đầu GND
-cbatst int PIN_ESTOP        = A5;   // E-stop NO, đầu còn lại nối GND
+const int PIN_COI       = A0;   // + buzzer -> A0, - -> GND
+const int PIN_NUT_TOC_DO    = A1;   // Nút đổi tốc độ, 1 đầu A1, 1 đầu GND
+const int PIN_ESTOP        = A5;   // E-stop NO, đầu còn lại nối GND
 
 // ===================== LOGIC CONFIG =====================
-cbatst bool CB_ACTIVE_HIGH = false;   // LM393 thường phát hiện = LOW
-cbatst bool RELAY_ACTIVE_HIGH  = false;   // Relay module active LOW
-cbatst bool NUT_ACTIVE_LOW  = true;    // Vì dùng INPUT_PULLUP
-cbatst bool DEN_ACTIVE_HIGH    = true;    // Đèn sáng khi digitalWrite(HIGH)
+const bool CB_ACTIVE_HIGH = false;   // LM393 thường phát hiện = LOW
+const bool RELAY_ACTIVE_HIGH  = false;   // Relay module active LOW
+const bool NUT_ACTIVE_LOW  = true;    // Vì dùng INPUT_PULLUP
+const bool DEN_ACTIVE_HIGH    = true;    // Đèn sáng khi digitalWrite(HIGH)
 
 // ===================== SPEED CONFIG =====================
-cbatst int PWM_NHANH = 255;
-cbatst int PWM_CHAM = 170;
+const int PWM_NHANH = 255;
+const int PWM_CHAM = 170;
 
-int pwmDangChbat = PWM_NHANH;
+int pwmDangChon = PWM_NHANH;
 bool dangChayNhanh = true;
 
 // ===================== SPEED BUTTON DEBOUNCE =====================
 bool lastNutTocDo = false;
-unsigned lbatg mocNutTocDo = 0;
-cbatst unsigned lbatg DOI_NUT_TOC_DO_MS = 150;
+unsigned long mocNutTocDo = 0;
+const unsigned long DOI_NUT_TOC_DO_MS = 150;
 
 // ===================== SERVO CONFIG =====================
 Servo servoGat;
 
-cbatst int GOC_HOME = 0;
-cbatst int GOC_GAT = 130;
-cbatst unsigned lbatg GIU_GAT_MS = 300;
+const int GOC_HOME = 0;
+const int GOC_GAT = 130;
+const unsigned long GIU_GAT_MS = 300;
 
 // ===================== RELAY CONFIG =====================
-cbatst unsigned lbatg RELAY_PULSE_MS = 100;
+const unsigned long RELAY_PULSE_MS = 100;
 
 // ===================== SENSOR MEMORY =====================
 bool lastS1 = false;
 bool lastS2 = false;
 
-unsigned lbatg mocS2 = 0;
-cbatst unsigned lbatg DOI_S2_MS = 150;
+unsigned long mocS2 = 0;
+const unsigned long DOI_S2_MS = 150;
 
 // ===================== BUTTON DEBOUNCE =====================
 bool lastStart = false;
 bool lastStop  = false;
 
-unsigned lbatg mocNut = 0;
-cbatst unsigned lbatg DOI_NUT_MS = 150;
+unsigned long mocNut = 0;
+const unsigned long DOI_NUT_MS = 150;
 
 // ===================== E-STOP EDGE =====================
 bool lastEstop = false;
 
 // ===================== INDICATOR TIMING =====================
-unsigned lbatg mocNhapNhay = 0;
+unsigned long mocNhapNhay = 0;
 bool nhapNhay = false;
-cbatst unsigned lbatg NHAP_NHAY_ESTOP_MS = 250;
+const unsigned long NHAP_NHAY_ESTOP_MS = 250;
 
 // ===================== SYSTEM STATE =====================
 enum SystemState {
@@ -86,11 +86,11 @@ enum SystemState {
 SystemState trangThai = STOPPED;
 
 // ===================== SERIAL + QUEUE =====================
-cbatst int SIZE_QUEUE = 30;
+const int SIZE_QUEUE = 30;
 int queueKQ[SIZE_QUEUE];
 int qDau = 0;
 int qCuoi = 0;
-int qSoLubatg = 0;
+int qSoLuong = 0;
 
 // ===================== HELPER =====================
 bool coVat(int pin) {
@@ -136,17 +136,17 @@ void tatTatCaDen() {
 // ===================== SPEED BUTTON =====================
 void xuLyNutTocDo() {
   bool nutTocDoNhan = nutNhan(PIN_NUT_TOC_DO);
-  unsigned lbatg now = millis();
+  unsigned long now = millis();
 
   if (now - mocNutTocDo >= DOI_NUT_TOC_DO_MS) {
     if (nutTocDoNhan && !lastNutTocDo) {
       dangChayNhanh = !dangChayNhanh;
 
       if (dangChayNhanh) {
-        pwmDangChbat = PWM_NHANH;
+        pwmDangChon = PWM_NHANH;
         Serial.println("SPEED: FAST - PWM 255");
       } else {
-        pwmDangChbat = PWM_CHAM;
+        pwmDangChon = PWM_CHAM;
         Serial.println("SPEED: SLOW - PWM 170");
       }
 
@@ -158,11 +158,11 @@ void xuLyNutTocDo() {
 }
 
 int layTocDoMotorTuNut() {
-  return pwmDangChbat;
+  return pwmDangChon;
 }
 
 void motorChayThuan(int pwm) {
-  pwm = cbatstrain(pwm, 0, 255);
+  pwm = constrain(pwm, 0, 255);
   digitalWrite(PIN_IN3, HIGH);
   digitalWrite(PIN_IN4, LOW);
   analogWrite(PIN_ENB, pwm);
@@ -190,33 +190,33 @@ void gatSanPhamLoi() {
 void xoaQueue() {
   qDau = 0;
   qCuoi = 0;
-  qSoLubatg = 0;
+  qSoLuong = 0;
 }
 
 bool themKQ(int giaTri) {
-  if (qSoLubatg >= SIZE_QUEUE) return false;
+  if (qSoLuong >= SIZE_QUEUE) return false;
 
   queueKQ[qCuoi] = giaTri;
   qCuoi = (qCuoi + 1) % SIZE_QUEUE;
-  qSoLubatg++;
+  qSoLuong++;
   return true;
 }
 
 bool layKQ(int &giaTri) {
-  if (qSoLubatg <= 0) return false;
+  if (qSoLuong <= 0) return false;
 
   giaTri = queueKQ[qDau];
   qDau = (qDau + 1) % SIZE_QUEUE;
-  qSoLubatg--;
+  qSoLuong--;
   return true;
 }
 
 void inQueue() {
   Serial.print("Queue: [");
-  for (int i = 0; i < qSoLubatg; i++) {
+  for (int i = 0; i < qSoLuong; i++) {
     int idx = (qDau + i) % SIZE_QUEUE;
     Serial.print(queueKQ[idx]);
-    if (i < qSoLubatg - 1) Serial.print(", ");
+    if (i < qSoLuong - 1) Serial.print(", ");
   }
   Serial.println("]");
 }
@@ -267,7 +267,7 @@ void nhaEstopVeStopped() {
 
 // ===================== INDICATOR UPDATE =====================
 void capNhatBaoHieu() {
-  unsigned lbatg now = millis();
+  unsigned long now = millis();
 
   switch (trangThai) {
     case RUNNING:
@@ -341,7 +341,7 @@ void xuLyNutStartStop() {
   bool startNhan = nutNhan(PIN_START);
   bool stopNhan  = nutNhan(PIN_STOP);
 
-  unsigned lbatg now = millis();
+  unsigned long now = millis();
 
   if (now - mocNut >= DOI_NUT_MS) {
     if (startNhan && !lastStart) {
@@ -409,7 +409,7 @@ void setup() {
   tatTatCaDen();
 
   trangThai = STOPPED;
-  pwmDangChbat = PWM_NHANH;
+  pwmDangChon = PWM_NHANH;
   dangChayNhanh = true;
 
   capNhatBaoHieu();
@@ -466,7 +466,7 @@ void loop() {
 
     // Sensor 2 -> lấy queue để quyết định gạt
     if (s2CoVat && !lastS2) {
-      unsigned lbatg now = millis();
+      unsigned long now = millis();
 
       if (now - mocS2 >= DOI_S2_MS) {
         mocS2 = now;
