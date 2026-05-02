@@ -1,11 +1,13 @@
 {
   "compilerOptions": {
-    "outDir": "js",
-    "target": "ES6",                // Biên dịch về ES6
-    "module": "CommonJS",            // Hỗ trợ module của Node.js
-    "moduleResolution": "node",      // Hỗ trợ import module từ node_modules
-    "esModuleInterop": true,         // Dùng import thay require
-    "resolveJsonModule": true,       // Cho phép import file JSON
-    "strict": true                   // Bật chế độ kiểm tra chặt chẽ
+    "outDir": "dist",
+    "target": "ES6",
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "ignoreDeprecations": "6.0",
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "strict": true,
+    "skipLibCheck": true
   }
 }
