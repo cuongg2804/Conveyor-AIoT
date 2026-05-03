@@ -28,7 +28,7 @@ const int PIN_ESTOP = A5;        // E-stop NO, đầu còn lại nối GND
 
 // ===================== LOGIC CONFIG =====================
 const bool CB_ACTIVE_HIGH = false;       // LM393 thường phát hiện = LOW
-const bool RELAY_ACTIVE_HIGH = true;    // Relay module active LOW
+const bool RELAY_ACTIVE_HIGH = false;    // Relay module active LOW
 const bool NUT_ACTIVE_LOW = true;        // Vì dùng INPUT_PULLUP
 const bool DEN_ACTIVE_HIGH = true;       // Đèn sáng khi digitalWrite(HIGH)
 
