@@ -24,9 +24,10 @@ const resolveStoragePath = () => {
   if (process.env.AI_STORAGE_PATH) return path.resolve(process.env.AI_STORAGE_PATH);
 
   const candidates = [
+    path.resolve(process.cwd(), "../ai/storage"),
+    path.resolve(__dirname, "../ai/storage"),
+    path.resolve(__dirname, "../../ai/storage"),
     path.resolve(process.cwd(), "../app/storage"),
-    path.resolve(__dirname, "../app/storage"),
-    path.resolve(__dirname, "../../app/storage"),
   ];
 
   return candidates.find((candidate) => require("fs").existsSync(candidate)) || candidates[0];

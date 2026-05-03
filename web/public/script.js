@@ -196,13 +196,6 @@ function clearInspectionResult() {
 }
 
 async function sendControlCommand(command, payload = {}) {
-  if (pendingControlCommands.get(command)) {
-    showToast("Lệnh đang được xử lý, vui lòng chờ phản hồi từ AI", "info");
-    return;
-  }
-
-  pendingControlCommands.set(command, true);
-
   try {
     const conveyorCode = getCurrentConveyorCode();
     const label = commandLabel(command);
@@ -249,7 +242,6 @@ async function sendControlCommand(command, payload = {}) {
       message: "Yêu cầu đã được gửi, đang chờ phản hồi từ hệ thống AI.",
     });
   } catch (error) {
-    pendingControlCommands.delete(command);
     console.error("sendControlCommand error:", error);
     const message = userMessage(error.message, "Không gửi được yêu cầu điều khiển.");
     showToast(message, "error");
@@ -275,12 +267,10 @@ function updateControlAckBox(ack) {
 
 /* ================= SOCKET EVENTS ================= */
 socket.on("mqtt_status", (data) => {
-  console.log("mqtt_status:", data);
   updateMqttStatus(data.status);
 });
 
 socket.on("inspection_result", (data) => {
-  console.log("inspection_result:", data);
   if (!hasMonitorContext()) return;
   const resultConveyorCode = String(data.conveyor_code || "").trim().toUpperCase();
   if (resultConveyorCode && resultConveyorCode !== getCurrentConveyorCode()) return;
@@ -291,7 +281,6 @@ socket.on("inspection_result", (data) => {
 });
 
 socket.on("control_ack", (ack) => {
-  console.log("control_ack:", ack);
   updateControlAckBox(ack);
 
   if (ack.status === "SUCCESS") {
@@ -316,8 +305,6 @@ socket.on("control_ack", (ack) => {
 });
 
 socket.on("system_status", (status) => {
-  console.log("system_status:", status);
-
   const dbStatus = String(status.db_status || status.status || "").toUpperCase();
   const running = status.running === true || dbStatus === "RUNNING";
 
@@ -408,6 +395,4 @@ document.addEventListener("DOMContentLoaded", () => {
   if (document.querySelector("[data-conveyor-code]")) {
     setTimeout(() => sendControlCommand("GET_STATUS"), 600);
   }
-
-  showToast(`AI lỗi: ${error.message || "-"}`, "error");
 });

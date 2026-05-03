@@ -1,35 +1,30 @@
 import { Request, Response } from "express";
 import InspectionResult from "../model/inspection-result.model";
 
-const toDateInputValue = (date: Date) => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+const PAGE_SIZE = 10;
+
+const todayInputValue = () => new Date().toISOString().slice(0, 10);
+
+const dayRange = (dateValue: string) => {
+  const date = dateValue || todayInputValue();
+  const start = new Date(`${date}T00:00:00`).getTime() / 1000;
+  const noon = new Date(`${date}T12:00:00`).getTime() / 1000;
+  const end = new Date(`${date}T23:59:59.999`).getTime() / 1000;
+  return { date, start, noon, end };
 };
 
-const parseDayRange = (dateValue: string) => {
-  const selectedDate = dateValue || toDateInputValue(new Date());
-  const dayStart = new Date(`${selectedDate}T00:00:00`);
-  const noon = new Date(`${selectedDate}T12:00:00`);
-  const dayEnd = new Date(`${selectedDate}T23:59:59.999`);
-
-  return {
-    selectedDate,
-    dayStartSec: dayStart.getTime() / 1000,
-    noonSec: noon.getTime() / 1000,
-    dayEndSec: dayEnd.getTime() / 1000,
-  };
+const validInspectionFilter = {
+  inspection_id: { $exists: true, $ne: "" },
+  conveyor_code: { $exists: true, $ne: "" },
+  "frames.2": { $exists: true },
 };
 
 const summarize = (items: any[]) => {
   const total = items.length;
   const ok = items.filter((item) => item.label === "OK").length;
   const ng = items.filter((item) => item.label === "NG").length;
-  const scoreItems = items.filter((item) => Number.isFinite(Number(item.average_score)));
-  const avgScore = scoreItems.length
-    ? scoreItems.reduce((sum, item) => sum + Number(item.average_score), 0) / scoreItems.length
-    : null;
+  const scores = items.map((item) => Number(item.average_score)).filter(Number.isFinite);
+  const avgScore = scores.length ? scores.reduce((sum, score) => sum + score, 0) / scores.length : null;
 
   return {
     total,
@@ -41,177 +36,105 @@ const summarize = (items: any[]) => {
   };
 };
 
-const buildUrl = (query: Record<string, string | number | undefined>) => {
-  const params = new URLSearchParams();
-  Object.entries(query).forEach(([key, value]) => {
-    if (value !== undefined && value !== "") params.set(key, String(value));
-  });
-  return `/history?${params.toString()}`;
-};
+const url = (query: Record<string, string | number>) => `/history?${new URLSearchParams(
+  Object.entries(query).filter(([, value]) => String(value) !== "") as [string, string][]
+).toString()}`;
 
-const normalizeConveyorCode = (value: any) => String(value || "").trim().toUpperCase();
-
-const normalizeInspectionDetail = (item: any) => {
-  const frames = Array.isArray(item.frames)
-    ? [...item.frames].sort((a: any, b: any) => Number(a.frame_index || 0) - Number(b.frame_index || 0))
-    : [];
-
-  return {
-    ...item,
-    display_id: item.job_id || "-",
-    frames,
-  };
-};
-
-const validInspectionFilter = () => ({
-  inspection_id: { $exists: true, $ne: "" },
-  conveyor_code: { $exists: true, $ne: "" },
-  frames: { $exists: true, $type: "array" },
-  "frames.2": { $exists: true },
+const previewItem = (item: any) => ({
+  ...item,
+  display_id: item.job_id || "-",
+  preview_frame: Array.isArray(item.frames) ? item.frames[1] || item.frames[0] : null,
 });
 
 export const index = async (req: Request, res: Response) => {
   try {
-    const label = String(req.query.label || "").trim();
-    const statsDateQuery = String(req.query.statsDate || "").trim();
-    const shiftQuery = String(req.query.shift || "all").trim();
-    const shift = ["morning", "afternoon"].includes(shiftQuery) ? shiftQuery : "all";
+    const label = String(req.query.label || "");
+    const shift = ["morning", "afternoon"].includes(String(req.query.shift)) ? String(req.query.shift) : "all";
     const page = Math.max(Number(req.query.page || 1), 1);
-    const limit = 10;
-    const skip = (page - 1) * limit;
+    const { date, start, noon, end } = dayRange(String(req.query.statsDate || ""));
 
-    const { selectedDate, dayStartSec, noonSec, dayEndSec } = parseDayRange(statsDateQuery);
-
-    const dayTimestampFilter = {
-      $gte: dayStartSec,
-      $lte: dayEndSec,
+    const dayFilter: any = {
+      ...validInspectionFilter,
+      timestamp: { $gte: start, $lte: end },
     };
 
-    const baseFilter: any = {
-      ...validInspectionFilter(),
-      timestamp: dayTimestampFilter,
-    };
+    const listFilter: any = { ...dayFilter, timestamp: { ...dayFilter.timestamp } };
+    if (shift === "morning") listFilter.timestamp = { $gte: start, $lt: noon };
+    if (shift === "afternoon") listFilter.timestamp = { $gte: noon, $lte: end };
+    if (label === "OK" || label === "NG") listFilter.label = label;
 
-    const listFilter: any = {
-      ...validInspectionFilter(),
-      timestamp: { ...dayTimestampFilter },
-    };
+    const [dayItems, total, items] = await Promise.all([
+      InspectionResult.find(dayFilter, { _id: 0 }).sort({ timestamp: -1 }).lean(),
+      InspectionResult.countDocuments(listFilter),
+      InspectionResult.find(listFilter, { _id: 0 })
+        .sort({ timestamp: -1 })
+        .skip((page - 1) * PAGE_SIZE)
+        .limit(PAGE_SIZE)
+        .lean(),
+    ]);
 
-    if (shift === "morning") {
-      listFilter.timestamp = {
-        $gte: dayStartSec,
-        $lt: noonSec,
-      };
-    }
-
-    if (shift === "afternoon") {
-      listFilter.timestamp = {
-        $gte: noonSec,
-        $lte: dayEndSec,
-      };
-    }
-
-    if (label === "OK" || label === "NG") {
-      listFilter.label = label;
-    }
-
-    const dayItems = await InspectionResult.find(baseFilter, { _id: 0 })
-      .sort({ timestamp: -1 })
-      .lean();
-
-    const total = await InspectionResult.countDocuments(listFilter);
-
-    const inspectionList = await InspectionResult.find(listFilter, { _id: 0 })
-      .sort({ timestamp: -1 })
-      .skip(skip)
-      .limit(limit)
-      .lean();
-
-    const normalizedList = inspectionList.map((item: any) => {
-      const frames = Array.isArray(item.frames) ? item.frames : [];
-      const previewFrame = frames[1] || frames[0] || null;
-
-      return {
-        ...item,
-        display_id: item.job_id || "-",
-        preview_frame: previewFrame,
-      };
-    });
-
-    const morningItems = dayItems.filter((item: any) => Number(item.timestamp) < noonSec);
-    const afternoonItems = dayItems.filter((item: any) => Number(item.timestamp) >= noonSec);
-
-    const totalPages = Math.max(Math.ceil(total / limit), 1);
-    const commonQuery = {
-      statsDate: selectedDate,
-      label,
-    };
-    const pageQuery = {
-      ...commonQuery,
-      shift,
-    };
+    const totalPages = Math.max(Math.ceil(total / PAGE_SIZE), 1);
+    const commonQuery = { statsDate: date, label };
 
     return res.render("history/index", {
-      title: "Lịch sử kiểm tra",
-      inspectionList: normalizedList,
-      filters: {
-        label,
-        statsDate: selectedDate,
-        shift,
-      },
+      title: "Lich su kiem tra",
+      inspectionList: items.map(previewItem),
+      filters: { label, statsDate: date, shift },
       shiftLinks: {
-        all: buildUrl({ ...commonQuery, shift: "all" }),
-        morning: buildUrl({ ...commonQuery, shift: "morning" }),
-        afternoon: buildUrl({ ...commonQuery, shift: "afternoon" }),
+        all: url({ ...commonQuery, shift: "all" }),
+        morning: url({ ...commonQuery, shift: "morning" }),
+        afternoon: url({ ...commonQuery, shift: "afternoon" }),
       },
       dailyStats: {
-        date: selectedDate,
+        date,
         total: summarize(dayItems),
-        morning: summarize(morningItems),
-        afternoon: summarize(afternoonItems),
+        morning: summarize(dayItems.filter((item: any) => Number(item.timestamp) < noon)),
+        afternoon: summarize(dayItems.filter((item: any) => Number(item.timestamp) >= noon)),
       },
       pagination: {
         page,
         totalPages,
         hasPrev: page > 1,
         hasNext: page < totalPages,
-        prevUrl: buildUrl({ ...pageQuery, page: page - 1 }),
-        nextUrl: buildUrl({ ...pageQuery, page: page + 1 }),
+        prevUrl: url({ ...commonQuery, shift, page: page - 1 }),
+        nextUrl: url({ ...commonQuery, shift, page: page + 1 }),
       },
     });
   } catch (error) {
     console.error("History page error:", error);
-    return res.status(500).send("Không thể tải lịch sử kiểm tra.");
+    return res.status(500).send("Khong the tai lich su kiem tra.");
   }
 };
 
 export const detail = async (req: Request, res: Response) => {
   try {
     const jobId = Number(req.params.jobId);
-    const conveyorCode = normalizeConveyorCode(req.query.conveyor_code);
+    if (!Number.isFinite(jobId)) return res.status(400).send("Ma luot kiem tra khong hop le.");
 
-    if (!Number.isFinite(jobId)) {
-      return res.status(400).send("Mã lượt kiểm tra không hợp lệ.");
+    const filter: any = { ...validInspectionFilter, job_id: jobId };
+    if (req.query.conveyor_code) {
+      filter.conveyor_code = String(req.query.conveyor_code).trim().toUpperCase();
     }
 
-    const filter: any = { ...validInspectionFilter(), job_id: jobId };
-    if (conveyorCode) filter.conveyor_code = conveyorCode;
-
-    const inspection = await InspectionResult.findOne(filter, { _id: 0 })
+    const inspection: any = await InspectionResult.findOne(filter, { _id: 0 })
       .sort({ timestamp: -1 })
       .lean();
 
-    if (!inspection) {
-      return res.status(404).send("Không tìm thấy lượt kiểm tra.");
-    }
+    if (!inspection) return res.status(404).send("Khong tim thay luot kiem tra.");
 
     return res.render("history/detail", {
-      title: `Chi tiết lượt ${jobId}`,
-      inspection: normalizeInspectionDetail(inspection),
+      title: `Chi tiet luot ${jobId}`,
+      inspection: {
+        ...inspection,
+        display_id: inspection.job_id || "-",
+        frames: Array.isArray(inspection.frames)
+          ? inspection.frames.sort((a: any, b: any) => Number(a.frame_index) - Number(b.frame_index))
+          : [],
+      },
       backUrl: "/history",
     });
   } catch (error) {
     console.error("History detail error:", error);
-    return res.status(500).send("Không thể tải chi tiết lượt kiểm tra.");
+    return res.status(500).send("Khong the tai chi tiet luot kiem tra.");
   }
 };

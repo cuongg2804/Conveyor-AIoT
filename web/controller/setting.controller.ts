@@ -7,16 +7,9 @@ type ConveyorConfigView = {
   name: string;
 };
 
-const normalizeConveyorCode = (value: any) => String(value || "").trim().toUpperCase();
-
-const toNumber = (value: any, fallback: number) => {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
-};
-
 export const settings = async (req: Request, res: Response) => {
   try {
-    const conveyorCode = normalizeConveyorCode(req.params.conveyorCode);
+    const conveyorCode = String(req.params.conveyorCode || "").trim().toUpperCase();
 
     const conveyor = await ConveyorConfig.findOne({ conveyor_code: conveyorCode })
       .select("-_id")
@@ -43,16 +36,19 @@ export const settings = async (req: Request, res: Response) => {
 
 export const updateSettings = async (req: Request, res: Response) => {
   try {
-    const conveyorCode = normalizeConveyorCode(req.params.conveyorCode);
+    const conveyorCode = String(req.params.conveyorCode || "").trim().toUpperCase();
+    const cameraDelay = Number(req.body.camera_trigger_delay);
+    const baudRate = Number(req.body.baud_rate);
+    const aiThreshold = Number(req.body.ai_threshold);
 
     const updateData = {
       name: String(req.body.name || "").trim(),
       description: String(req.body.description || "").trim(),
       camera_source: String(req.body.camera_source || "").trim(),
-      camera_trigger_delay: toNumber(req.body.camera_trigger_delay, 0),
+      camera_trigger_delay: Number.isFinite(cameraDelay) ? cameraDelay : 0,
       serial_port: String(req.body.serial_port || "").trim(),
-      baud_rate: toNumber(req.body.baud_rate, 9600),
-      ai_threshold: toNumber(req.body.ai_threshold, 30.436506),
+      baud_rate: Number.isFinite(baudRate) ? baudRate : 9600,
+      ai_threshold: Number.isFinite(aiThreshold) ? aiThreshold : 30.436506,
       is_active: req.body.is_active === "on",
     };
 

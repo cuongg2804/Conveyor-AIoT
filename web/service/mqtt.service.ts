@@ -33,7 +33,6 @@ const generateCommandId = (): string => {
 
 const parseJsonPayload = (message: Buffer): any => {
   const raw = message.toString();
-  console.log("MQTT raw message:", raw);
   try {
     return JSON.parse(raw);
   } catch {
@@ -91,9 +90,7 @@ export const initMqttService = (client: MqttClient, io: Server): void => {
 
   client.on("message", async (topic: string, message: Buffer) => {
     try {
-      console.log("MQTT topic:", topic);
       const payload = parseJsonPayload(message);
-      console.log("MQTT parsed payload:", payload);
 
       switch (topic) {
         case MQTT_TOPICS.INSPECTION_RESULT:
@@ -149,6 +146,5 @@ export const publishControlCommand = (
   };
 
   publish(MQTT_TOPICS.CONTROL_COMMAND, commandPayload, 1);
-  console.log("Published control command:", commandPayload);
   return commandPayload;
 };
