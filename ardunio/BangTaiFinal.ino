@@ -244,7 +244,7 @@ void dungHeThong() {
 }
 
 void dungKhanCap() {
-  if (trangThai != EMERGENCY_STOP) {
+if (trangThai != EMERGENCY_STOP) {
     trangThai = EMERGENCY_STOP;
     dungCoCau();
 
@@ -377,7 +377,7 @@ void xuLyEstop() {
 
 // ===================== MOTOR UPDATE =====================
 void capNhatMotor() {
-  if (trangThai == RUNNING) {
+if (trangThai == RUNNING) {
     motorChayThuan(pwmDangChon);
   } else {
     dungMotor();
