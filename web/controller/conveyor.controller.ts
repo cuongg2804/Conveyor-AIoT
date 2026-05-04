@@ -20,8 +20,13 @@ export const handleSystemStatusMessage = async (payload: any, io: Server) => {
     const conveyorCode = normalizeConveyorCode(payload.conveyor_code);
 
     if (!conveyorCode) {
+<<<<<<< Updated upstream
       console.warn("Trạng thái hệ thống không có mã băng tải:", payload);
       io.emit("system_status", payload); // Phát sự kiện đi kèm payload gốc để client xử lý
+=======
+      console.warn("Không xác định được conveyor_code:", payload);
+      io.emit("system_status", payload);
+>>>>>>> Stashed changes
       return;
     }
     // Ánh xạ trạng thái runtime từ payload thành trạng thái chuẩn để lưu vào database
@@ -38,7 +43,7 @@ export const handleSystemStatusMessage = async (payload: any, io: Server) => {
     if (!conveyor) {
       console.warn(`Không tìm thấy conveyor_config: ${conveyorCode}`);
     } else {
-      console.log(`Conveyor ${conveyorCode} status updated: ${dbStatus}`);
+      console.log(`Băng tải ${conveyorCode} đã được cập nhật trạng thái: ${dbStatus}`);
     }
     // Phát sự kiện "system_status" qua Socket.IO với dữ liệu kết hợp giữa payload gốc và thông tin băng tải sau khi cập nhật
     io.emit("system_status", {
@@ -47,7 +52,7 @@ export const handleSystemStatusMessage = async (payload: any, io: Server) => {
       db_status: dbStatus,
     });
   } catch (error) {
-    console.error("handleSystemStatusMessage error:", error);
+    console.error("handleSystemStatusMessage lỗi:", error);
     io.emit("system_status", payload);
   }
 };
@@ -62,7 +67,7 @@ export const handleSystemErrorMessage = async (payload: any, io: Server) => {
 
     io.emit("system_error", payload);
   } catch (error) {
-    console.error("handleSystemErrorMessage error:", error);
+    console.error("handleSystemErrorMessage lỗi:", error);
     io.emit("system_error", payload);
   }
 };

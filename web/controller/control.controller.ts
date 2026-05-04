@@ -45,7 +45,7 @@ export const sendCommand = async (req: Request, res: Response) => {
 
     return res.json({ message: "Đã gửi yêu cầu tới hệ thống kiểm tra.", data });
   } catch (error: any) {
-    console.error("sendCommand error:", error);
+    console.error("sendCommand lỗi:", error);
     return res.status(500).json({
       message: "Không gửi được yêu cầu tới hệ thống kiểm tra.",
       error: error.message,

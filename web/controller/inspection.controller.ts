@@ -32,8 +32,13 @@ export const monitor = async (req: Request, res: Response) => {
       return res.status(404).send("Không tìm thấy băng tải.");
     }
 
+<<<<<<< Updated upstream
     const canShowLatestInspection = ["STARTING", "RUNNING"].includes(String(conveyor.status || "").toUpperCase());
     const latestInspection = canShowLatestInspection
+=======
+    const isRunning = ["STARTING", "RUNNING"].includes(String((conveyor as any).status || "").toUpperCase());
+    const latestInspection = isRunning
+>>>>>>> Stashed changes
       ? await InspectionResult.findOne({ conveyor_code: conveyorCode })
         .select("-_id")
         .sort({ timestamp: -1 })
@@ -41,13 +46,18 @@ export const monitor = async (req: Request, res: Response) => {
       : null;
 
     return res.render("dashboard/monitor", {
+<<<<<<< Updated upstream
       title: `Giám sát ${conveyor.name}`,
+=======
+      title: `Giam sat ${(conveyor as any).name}`,
+>>>>>>> Stashed changes
       conveyor,
       latestInspection,
       dashboardUrl: "/dashboard",
-      settingsUrl: `/settings/${conveyor.conveyor_code}`,
+      settingsUrl: `/settings/${conveyorCode}`,
     });
   } catch (error) {
+<<<<<<< Updated upstream
     console.error("Lỗi khi tải trang giám sát:", error);
     return res.status(500).send("Không thể tải trang giám sát.");
   }
@@ -95,10 +105,15 @@ export const getResultByJobId = async (req: Request, res: Response) => {
   } catch (error) {
     console.error("getResultByJobId lỗi:", error);
     return res.status(500).json({ message: "Không thể tải kết quả kiểm tra.", error });
+=======
+    console.error("Render monitor lỗi:", error);
+    return res.status(500).send("Khong the tai trang giam sat.");
+>>>>>>> Stashed changes
   }
 };
 
 export const handleInspectionResultMessage = async (payload: any, io: Server) => {
+<<<<<<< Updated upstream
   try {
     const jobId = Number(payload.job_id);
     const inspectionId = String(payload.inspection_id || "").trim();
@@ -143,5 +158,13 @@ export const handleInspectionResultMessage = async (payload: any, io: Server) =>
     console.log("inspection_result lỗi:", inspection.job_id);
   } catch (error) {
     console.error("handleInspectionResultMessage lỗi:", error);
+=======
+  const jobId = Number(payload.job_id);
+  console.log(payload);
+
+  if (!Number.isFinite(jobId)) {
+    console.warn("Số job không hợp lệ:", payload);
+    return;
+>>>>>>> Stashed changes
   }
 };

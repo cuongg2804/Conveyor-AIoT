@@ -45,7 +45,7 @@ const parseJsonPayload = (message: Buffer): any => {
 const subscribeAll = (client: MqttClient): void => {
   client.subscribe(SUBSCRIBE_TOPICS, { qos: 1 }, (err) => {
     if (err) {
-      console.error("MQTT subscribe error:", err);
+      console.error("MQTT subscribe lỗi:", err);
       return;
     }
     console.log("MQTT subscribed topics:", SUBSCRIBE_TOPICS);
@@ -114,11 +114,11 @@ export const initMqttService = (client: MqttClient, io: Server): void => {
           return;
 
         default:
-          console.warn("MQTT unhandled topic:", topic);
+          console.warn("MQTT topic không được xử lý:", topic);
           return;
       }
     } catch (error) {
-      console.error("MQTT message error:", error);
+      console.error("MQTT message lỗi:", error);
     }
   });
 };

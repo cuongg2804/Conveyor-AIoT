@@ -77,12 +77,20 @@ export const updateSettings = async (req: Request, res: Response) => {
       });
     } catch (syncError) {
       synced = "0";
+<<<<<<< Updated upstream
       console.error("Không thể đồng bộ cấu hình:", syncError);
+=======
+      console.error("Publish reload config command lỗi:", syncError);
+>>>>>>> Stashed changes
     }
 
     return res.redirect(`/settings/${conveyorCode}?updated=1&synced=${synced}`);
   } catch (error) {
+<<<<<<< Updated upstream
     console.error("Cập nhật cấu hình lỗi:", error);
+=======
+    console.error("Update settings lỗi:", error);
+>>>>>>> Stashed changes
     return res.status(500).send("Không thể cập nhật cấu hình.");
   }
 };

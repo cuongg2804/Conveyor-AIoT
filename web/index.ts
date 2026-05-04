@@ -11,11 +11,11 @@ import path from "path";
 dotenv.config({ override: true });
 
 const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
+const server = http.createServer(app); 
+const io = new Server(server); 
 
-app.set("view engine", "pug");
-app.set("views", path.join(__dirname, "view"));
+app.set("view engine", "pug"); // 
+app.set("views", path.join(__dirname, "view")); 
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -37,7 +37,7 @@ const storagePath = resolveStoragePath();
 app.use("/images", express.static(storagePath));
 app.use(express.static(path.join(__dirname, "public")));
 
-app.use(router);
+app.use(router); 
 
 database.connect();
 
