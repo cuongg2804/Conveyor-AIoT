@@ -2,14 +2,9 @@
   "compilerOptions": {
     "outDir": "dist",
     "target": "ES6",
-<<<<<<< Updated upstream
-    "module": "Node16",
-    "moduleResolution": "node16",
-=======
     "module": "CommonJS",
     "moduleResolution": "node",
     "ignoreDeprecations": "6.0",
->>>>>>> Stashed changes
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "strict": true,

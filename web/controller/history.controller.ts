@@ -1,13 +1,5 @@
 import { Request, Response } from "express";
 import InspectionResult from "../model/inspection-result.model";
-<<<<<<< Updated upstream
-// Hàm chuyển đổi đối tượng Date thành chuỗi định dạng "YYYY-MM-DD" để sử dụng làm giá trị mặc định cho input type="date"
-const toDateInputValue = (date: Date) => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0"); // Tháng trong JavaScript bắt đầu từ 0, nên cần cộng thêm 1
-  const day = String(date.getDate()).padStart(2, "0"); // Lấy ngày và đảm bảo luôn có 2 chữ số bằng cách thêm số 0 vào trước nếu cần
-  return `${year}-${month}-${day}`;
-=======
 
 const PAGE_SIZE = 10;
 
@@ -22,23 +14,8 @@ const dayRange = (dateValue: string) => {
   const noon = new Date(`${date}T12:00:00`).getTime() / 1000;
   const end = new Date(`${date}T23:59:59.999`).getTime() / 1000;
   return { date, start, noon, end };
->>>>>>> Stashed changes
 };
-// Hàm phân tích chuỗi ngày và tạo ra các mốc thời gian trong ngày (bắt đầu, giữa trưa, kết thúc)
-const parseDayRange = (dateValue: string) => { 
-  const selectedDate = dateValue || toDateInputValue(new Date()); // Nếu không có ngày nào được chọn, sử dụng ngày hiện tại làm mặc định
-  const dayStart = new Date(`${selectedDate}T00:00:00`);
-  const noon = new Date(`${selectedDate}T12:00:00`);
-  const dayEnd = new Date(`${selectedDate}T23:59:59.999`);
 
-<<<<<<< Updated upstream
-  return {
-    selectedDate,
-    dayStartSec: dayStart.getTime() / 1000, // ms -> s để lưu trữ và so sánh trong DB
-    noonSec: noon.getTime() / 1000,
-    dayEndSec: dayEnd.getTime() / 1000,
-  }; 
-=======
 // Dieu kien de chi lay cac lan kiem tra hop le:
 // - co inspection_id
 // - co conveyor_code
@@ -47,7 +24,6 @@ const validInspectionFilter = {
   inspection_id: { $exists: true, $ne: "" },
   conveyor_code: { $exists: true, $ne: "" },
   "frames.2": { $exists: true },
->>>>>>> Stashed changes
 };
 
 // Tinh so luong OK/NG, ti le OK/NG va diem trung binh de hien thi o phan thong ke.
@@ -55,10 +31,8 @@ const summarize = (items: any[]) => {
   const total = items.length;
   const ok = items.filter((item) => item.label === "OK").length;
   const ng = items.filter((item) => item.label === "NG").length;
-  const scoreItems = items.filter((item) => Number.isFinite(Number(item.average_score))); // Lọc ra các mục có average_score hợp lệ để tính điểm trung bình
-  const avgScore = scoreItems.length 
-    ? scoreItems.reduce((sum, item) => sum + Number(item.average_score), 0) / scoreItems.length
-    : null; 
+  const scores = items.map((item) => Number(item.average_score)).filter(Number.isFinite);
+  const avgScore = scores.length ? scores.reduce((sum, score) => sum + score, 0) / scores.length : null;
 
   return {
     total,
@@ -69,38 +43,7 @@ const summarize = (items: any[]) => {
     avgScore,
   };
 };
-// Hàm xây dựng URL với các tham số truy vấn, chỉ bao gồm những tham số có giá trị hợp lệ (không undefined hoặc rỗng)
-const buildUrl = (query: Record<string, string | number | undefined>) => {
-  const params = new URLSearchParams();
-  // Duyệt qua các cặp key-value trong đối tượng query và thêm vào URLSearchParams nếu giá trị hợp lệ
-  Object.entries(query).forEach(([key, value]) => {
-    if (value !== undefined && value !== "") params.set(key, String(value));
-  });
-  return `/history?${params.toString()}`;
-};
 
-<<<<<<< Updated upstream
-const normalizeConveyorCode = (value: any) => String(value || "").trim().toUpperCase();
-
-const normalizeInspectionDetail = (item: any) => {
-  // Sắp xếp frames theo frame_index để đảm bảo thứ tự hiển thị chính xác trong chi tiết lượt kiểm tra
-  const frames = Array.isArray(item.frames)
-    ? [...item.frames].sort((a: any, b: any) => Number(a.frame_index || 0) - Number(b.frame_index || 0))
-    : [];
-
-  return {
-    ...item, 
-    display_id: item.job_id || "-",
-    frames,
-  };
-};
-//
-const validInspectionFilter = () => ({
-  inspection_id: { $exists: true, $ne: "" },
-  conveyor_code: { $exists: true, $ne: "" },
-  frames: { $exists: true, $type: "array" },
-  "frames.2": { $exists: true },
-=======
 // Tao URL cho cac nut chuyen ca va phan trang.
 // Gia tri rong se bi bo qua de URL gon hon.
 const url = (query: Record<string, string | number>) => `/history?${new URLSearchParams(
@@ -113,91 +56,10 @@ const previewItem = (item: any) => ({
   ...item,
   display_id: item.job_id || "-",
   preview_frame: Array.isArray(item.frames) ? item.frames[1] || item.frames[0] : null,
->>>>>>> Stashed changes
 });
 
 export const index = async (req: Request, res: Response) => {
   try {
-<<<<<<< Updated upstream
-    const label = String(req.query.label || "").trim();
-    const statsDateQuery = String(req.query.statsDate || "").trim();
-    const shiftQuery = String(req.query.shift || "all").trim();
-    const shift = ["morning", "afternoon"].includes(shiftQuery) ? shiftQuery : "all";
-    const page = Math.max(Number(req.query.page || 1), 1);
-    const limit = 10;
-    const skip = (page - 1) * limit;
-
-    const { selectedDate, dayStartSec, noonSec, dayEndSec } = parseDayRange(statsDateQuery);
-
-    const dayTimestampFilter = {
-      $gte: dayStartSec,
-      $lte: dayEndSec,
-    };
-
-    const baseFilter: any = {
-      ...validInspectionFilter(),
-      timestamp: dayTimestampFilter,
-    };
-
-    const listFilter: any = {
-      ...validInspectionFilter(),
-      timestamp: { ...dayTimestampFilter },
-    };
-
-    if (shift === "morning") {
-      listFilter.timestamp = {
-        $gte: dayStartSec,
-        $lt: noonSec,
-      };
-    }
-
-    if (shift === "afternoon") {
-      listFilter.timestamp = {
-        $gte: noonSec,
-        $lte: dayEndSec,
-      };
-    }
-
-    if (label === "OK" || label === "NG") {
-      listFilter.label = label;
-    }
-
-    const dayItems = await InspectionResult.find(baseFilter, { _id: 0 })
-      .sort({ timestamp: -1 })
-      .lean();
-
-    const total = await InspectionResult.countDocuments(listFilter);
-
-    const inspectionList = await InspectionResult.find(listFilter, { _id: 0 })
-      .sort({ timestamp: -1 })
-      .skip(skip)
-      .limit(limit)
-      .lean();
-    // 
-    const normalizedList = inspectionList.map((item: any) => {
-      const frames = Array.isArray(item.frames) ? item.frames : [];
-      const previewFrame = frames[1] || frames[0] || null;
-
-      return {
-        ...item,
-        display_id: item.job_id || "-",
-        preview_frame: previewFrame,
-      };
-    });
-
-    const morningItems = dayItems.filter((item: any) => Number(item.timestamp) < noonSec);
-    const afternoonItems = dayItems.filter((item: any) => Number(item.timestamp) >= noonSec);
-
-    const totalPages = Math.max(Math.ceil(total / limit), 1);
-    const commonQuery = {
-      statsDate: selectedDate,
-      label,
-    };
-    const pageQuery = {
-      ...commonQuery,
-      shift,
-    };
-=======
     // 1. Lay gia tri nguoi dung chon tren giao dien
     // label: loc ket qua OK/NG. Neu rong thi hien thi tat ca.
     const selectedLabel = String(req.query.label || "");
@@ -224,7 +86,7 @@ export const index = async (req: Request, res: Response) => {
         $lte: selectedDay.end,
       },
     };
-    console.log(wholeDayFilter);
+
     // Danh sach nay dung cho cac the thong ke: ca ngay, ca sang, ca chieu.
     const allItemsInDay = await InspectionResult.find(wholeDayFilter, { _id: 0 })
       .sort({ timestamp: -1 })
@@ -274,7 +136,7 @@ export const index = async (req: Request, res: Response) => {
       .sort({ timestamp: -1 })
       .skip(skip)
       .limit(PAGE_SIZE)
-      .lean(); // trả về plain JavaScript object thay vì Mongoose document cho pug render 
+      .lean();
 
     // 6. Tinh thong ke sang/chieu
     // allItemsInDay da co toan bo ket qua trong ngay,
@@ -285,25 +147,15 @@ export const index = async (req: Request, res: Response) => {
     // 7. Tao du lieu phan trang va link chuyen ca
     // commonQuery giu lai ngay va label hien tai khi bam chuyen ca hoac chuyen trang.
     const totalPages = Math.max(Math.ceil(total / PAGE_SIZE), 1);
-    const commonQuery = { statsDate: selectedDay.date, label: selectedLabel }; //
->>>>>>> Stashed changes
+    const commonQuery = { statsDate: selectedDay.date, label: selectedLabel };
 
     // 8. Dua du lieu ra giao dien
     // Cac ten bien o day phai khop voi file view/history/index.pug.
     return res.render("history/index", {
-<<<<<<< Updated upstream
-      title: "Lịch sử kiểm tra",
-      inspectionList: normalizedList,
-      filters: {
-        label,
-        statsDate: selectedDate,
-        shift,
-      },
-=======
-    title: "Lịch sử kiểm tra",
+title: "Lich su kiem tra",
 
       // Danh sach cac lan kiem tra hien thi trong bang.
-      inspectionList: listItems.map(previewItem), // 
+      inspectionList: listItems.map(previewItem),
 
       // Gia tri filter hien tai de form giu lai lua chon cua nguoi dung.
       filters: {
@@ -313,22 +165,16 @@ export const index = async (req: Request, res: Response) => {
       },
 
       // Link cho 3 tab: tat ca, ca sang, ca chieu.
->>>>>>> Stashed changes
       shiftLinks: {
-        all: buildUrl({ ...commonQuery, shift: "all" }),
-        morning: buildUrl({ ...commonQuery, shift: "morning" }),
-        afternoon: buildUrl({ ...commonQuery, shift: "afternoon" }),
+        all: url({ ...commonQuery, shift: "all" }),
+        morning: url({ ...commonQuery, shift: "morning" }),
+        afternoon: url({ ...commonQuery, shift: "afternoon" }),
       },
 
       // Du lieu thong ke o cac card phia tren.
       dailyStats: {
-<<<<<<< Updated upstream
-        date: selectedDate,
-        total: summarize(dayItems),
-=======
         date: selectedDay.date,
         total: summarize(allItemsInDay),
->>>>>>> Stashed changes
         morning: summarize(morningItems),
         afternoon: summarize(afternoonItems),
       },
@@ -339,23 +185,13 @@ export const index = async (req: Request, res: Response) => {
         totalPages,
         hasPrev: page > 1,
         hasNext: page < totalPages,
-<<<<<<< Updated upstream
-        prevUrl: buildUrl({ ...pageQuery, page: page - 1 }),
-        nextUrl: buildUrl({ ...pageQuery, page: page + 1 }),
-      },
-    });
-  } catch (error) {
-    console.error("History page error:", error);
-    return res.status(500).send("Không thể tải lịch sử kiểm tra.");
-=======
         prevUrl: url({ ...commonQuery, shift: selectedShift, page: page - 1 }),
         nextUrl: url({ ...commonQuery, shift: selectedShift, page: page + 1 }),
       },
     });
   } catch (error) {
-    console.error("Lịch sử kiểm tra lỗi:", error);
+    console.error("History page error:", error);
     return res.status(500).send("Khong the tai lich su kiem tra.");
->>>>>>> Stashed changes
   }
 };
 
@@ -363,18 +199,8 @@ export const detail = async (req: Request, res: Response) => {
   try {
     // Lay jobId tu URL /history/:jobId.
     const jobId = Number(req.params.jobId);
-    const conveyorCode = normalizeConveyorCode(req.query.conveyor_code);
+    if (!Number.isFinite(jobId)) return res.status(400).send("Ma luot kiem tra khong hop le.");
 
-<<<<<<< Updated upstream
-    if (!Number.isFinite(jobId)) {
-      return res.status(400).send("Mã lượt kiểm tra không hợp lệ.");
-    }
-
-    const filter: any = { ...validInspectionFilter(), job_id: jobId };
-    if (conveyorCode) filter.conveyor_code = conveyorCode;
-
-    const inspection = await InspectionResult.findOne(filter, { _id: 0 })
-=======
     // Tim lan kiem tra theo job_id va chi lay ban ghi hop le.
     const filter: any = { ...validInspectionFilter, job_id: jobId };
 
@@ -385,27 +211,25 @@ export const detail = async (req: Request, res: Response) => {
 
     // Lay ban ghi moi nhat neu co nhieu ban ghi cung job_id.
     const inspection: any = await InspectionResult.findOne(filter, { _id: 0 })
->>>>>>> Stashed changes
       .sort({ timestamp: -1 })
       .lean();
 
-    if (!inspection) {
-      return res.status(404).send("Không tìm thấy lượt kiểm tra.");
-    }
+    if (!inspection) return res.status(404).send("Khong tim thay luot kiem tra.");
 
     // Sap xep frame theo frame_index truoc khi dua ra trang detail.
     return res.render("history/detail", {
-      title: `Chi tiết lượt ${jobId}`,
-      inspection: normalizeInspectionDetail(inspection),
+      title: `Chi tiet luot ${jobId}`,
+      inspection: {
+        ...inspection,
+        display_id: inspection.job_id || "-",
+        frames: Array.isArray(inspection.frames)
+          ? inspection.frames.sort((a: any, b: any) => Number(a.frame_index) - Number(b.frame_index))
+          : [],
+      },
       backUrl: "/history",
     });
   } catch (error) {
-<<<<<<< Updated upstream
     console.error("History detail error:", error);
-    return res.status(500).send("Không thể tải chi tiết lượt kiểm tra.");
-=======
-    console.error("Lịch sử kiểm tra lỗi:", error);
     return res.status(500).send("Khong the tai chi tiet luot kiem tra.");
->>>>>>> Stashed changes
   }
 };

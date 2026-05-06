@@ -20,13 +20,8 @@ export const handleSystemStatusMessage = async (payload: any, io: Server) => {
     const conveyorCode = normalizeConveyorCode(payload.conveyor_code);
 
     if (!conveyorCode) {
-<<<<<<< Updated upstream
       console.warn("Trạng thái hệ thống không có mã băng tải:", payload);
       io.emit("system_status", payload); // Phát sự kiện đi kèm payload gốc để client xử lý
-=======
-      console.warn("Không xác định được conveyor_code:", payload);
-      io.emit("system_status", payload);
->>>>>>> Stashed changes
       return;
     }
     // Ánh xạ trạng thái runtime từ payload thành trạng thái chuẩn để lưu vào database
