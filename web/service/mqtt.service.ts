@@ -31,7 +31,7 @@ const generateCommandId = (): string => {
   //
   return `CMD-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
 };
-//
+
 const parseJsonPayload = (message: Buffer): any => {
   const raw = message.toString();
   console.log("MQTT raw message:", raw);
