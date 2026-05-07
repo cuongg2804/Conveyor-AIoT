@@ -38,9 +38,9 @@ const userMessage = (message, fallback = "Có lỗi xảy ra") => {
     .replaceAll("START_SYSTEM", "Khởi động hệ thống")
     .replaceAll("STOP_SYSTEM", "Dừng hệ thống")
     .replaceAll("GET_STATUS", "Kiểm tra trạng thái")
-    .replaceAll("job_id", "mã lượt kiểm tra")
+    .replaceAll("job_id", "Mã lượt kiểm tra")
     .replaceAll("Job", "Lượt kiểm tra")
-    .replaceAll("command", "thao tác");
+    .replaceAll("command", "Thao tác");
 };
 
 /* ================= TOAST ================= */
