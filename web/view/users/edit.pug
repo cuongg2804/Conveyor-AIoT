@@ -1,0 +1,33 @@
+extend ../layout/default.pug 
+block main
+    .page 
+        .dashboard_header
+            .dashboard_heading
+                h1.dashboard_title Quản lý tài khoản
+                p.dashboard_subtitle Phân quyền, tạo người dùng hệ thống
+            .dashboard_actions
+                a.btn.btn-secondary(href="/users") Quay lại
+        if error
+            .alter.alter-danger = error
+        
+        .card 
+            form.setting-form(method="POST" action=`/users/edit/${user.user_id}`)
+                .field
+                    label.field__label User ID
+                    input.field__control(type="text" value=user.user_id disabled)
+                .field 
+                    label.field__label Tài khoản
+                    input.field__control(type="text" value=user.username required)
+                .field
+                    label.field__label(for="fullname") Họ tên
+                    input#fullname.field__control(type="text" name= "fullname"  value=user.fullname required)
+                .field
+                    label.field__label(for="password") Mật khẩu
+                    input#password.field__control(type="password" name="password" placeholder="Để trống nếu không muốn thay đổi mật khẩu")
+                .field
+                    label.field__label(for="role") Phân quyền
+                    select#role.field__control(name="role" required)
+                        option(value="USER" selected=user.role === "USER") USER
+                        option(value="ADMIN" selected=user.role === "ADMIN") ADMIN
+                .settings-actions
+                    button.btn.btn--primary(type="submit") Cập nhật tài khoản

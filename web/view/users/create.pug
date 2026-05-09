@@ -1,0 +1,31 @@
+extend ../layout/default.pug 
+block main
+    .page 
+        .dashboard_header
+            .dashboard_heading
+                h1.dashboard_title Quản lý tài khoản
+                p.dashboard_subtitle Phân quyền, tạo người dùng hệ thống
+            .dashboard_actions
+                a.btn.btn-secondary(href="/users") Quay lại
+        if error
+            .alter.alter-danger = error
+        
+        .card 
+            form.setting-form(method="POST" action="/users/create")
+                .field
+                    label.field__label(for="username") Tài khoản
+                    input#username.field__control(type="text" name="username" value=form.username required)
+
+                .field
+                    label.field__label(for="password") Mật khẩu
+                    input#password.field__control(type="password" name="password" value=form.password required)
+                .field
+                    label.field__label(for="fullname") Họ tên
+                    input#fullname.field__control(type="text" name="fullname" value=form.fullname required)
+                .field
+                    label.field__label(for="role") Phân quyền
+                    select#role.field__control(name="role" required)
+                        option(value="USER" selected=form.role === "USER") USER
+                        option(value="ADMIN" selected=form.role === "ADMIN") ADMIN
+                .setting-actions
+                    button.btn.btn--primary(type="submit") Tạo tài khoản

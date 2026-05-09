@@ -5,3 +5,6 @@
         a(href="/dashboard") Tổng quan
       li
         a(href="/history") Lịch sử kiểm tra
+      if user && user.role === "ADMIN"
+        li
+          a(href="/users") Quản lý tài khoản
