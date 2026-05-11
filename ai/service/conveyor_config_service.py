@@ -20,7 +20,7 @@ class ConveyorConfigService:
             {"conveyor_code": conveyor_code},
             {"_id": 0},
         )
-        print(f"Loaded conveyor config for {conveyor_code}: {config}")
+       
         if not config:
             raise RuntimeError(f"Không tìm thấy cấu hình băng tải: {conveyor_code}")
 

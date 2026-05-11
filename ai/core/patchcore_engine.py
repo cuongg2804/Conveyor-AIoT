@@ -23,6 +23,7 @@ if not hasattr(anomalib, "PrecisionType"):
 INPUT_SIZE = 256
 PIXEL_THRESHOLD = 0.3
 DEFAULT_IMAGE_THRESHOLD = 30.436506
+CORESET_SAMPLING_RATIO = 0.05
 _RAMDISK_BASE = "/dev/shm/patchcore_infer"
 
 
@@ -57,7 +58,7 @@ class PatchCoreEngine:
 
         backbone = hparams.get("backbone", "wide_resnet50_2")
         layers = hparams.get("layers", ["layer2", "layer3"])
-        coreset_sampling_ratio = hparams.get("coreset_sampling_ratio", 0.01)
+        coreset_sampling_ratio = CORESET_SAMPLING_RATIO
         num_neighbors = hparams.get("num_neighbors", 9)
 
         print(f"👉 backbone              : {backbone}")
@@ -121,10 +122,12 @@ class PatchCoreEngine:
         timing = {}
 
         t0 = cv2.getTickCount()
+        # Lưu frames tạm thời để engine.predict đọc được (do engine.predict chỉ nhận đường dẫn)
         run_dir = self._save_temp_frames(frames)
         t1 = cv2.getTickCount()
 
         try:
+            # Gọi engine.predict để lấy preds, mỗi pred có thể có pred_score, anomaly_map, pred_mask
             preds = self.engine.predict(
                 model=self.model,
                 data_path=run_dir,
@@ -135,15 +138,7 @@ class PatchCoreEngine:
             if not preds:
                 raise RuntimeError("No predictions returned from engine.predict.")
 
-            # debug 1 lần để biết object prediction có những field gì
-            if not hasattr(self, "_printed_pred_debug"):
-                self._printed_pred_debug = True
-                try:
-                    print("DEBUG pred type:", type(preds[0]))
-                    print("DEBUG pred attrs:", [x for x in dir(preds[0]) if not x.startswith("_")][:60])
-                except Exception:
-                    pass
-
+            # Chuyển preds sang định dạng chuẩn với pred_score, pred_label, anomaly_map, pred_mask
             results = [self._extract_single_prediction(p) for p in preds]
             t3 = cv2.getTickCount()
 
@@ -266,16 +261,6 @@ class PatchCoreEngine:
             amap_norm = cv2.normalize(anomaly_map, None, 0, 1.0, cv2.NORM_MINMAX)
             pred_mask = (amap_norm > PIXEL_THRESHOLD).astype(np.uint8) * 255
 
-        # debug 1 lần để biết có nhận được gì không
-        if not hasattr(self, "_printed_mask_debug"):
-            self._printed_mask_debug = True
-            print("DEBUG pred_score:", pred_score)
-            print("DEBUG has anomaly_map:", anomaly_map is not None)
-            print("DEBUG has pred_mask:", pred_mask is not None)
-            if anomaly_map is not None:
-                print("DEBUG anomaly_map shape:", anomaly_map.shape, "min/max:", float(np.min(anomaly_map)), float(np.max(anomaly_map)))
-            if pred_mask is not None:
-                print("DEBUG pred_mask shape:", pred_mask.shape, "dtype:", pred_mask.dtype, "unique:", np.unique(pred_mask)[:10])
 
         return {
             "pred_score": pred_score,
@@ -288,6 +273,8 @@ class PatchCoreEngine:
     def _warmup(self):
         dummy_frame = np.zeros((INPUT_SIZE, INPUT_SIZE, 3), dtype=np.uint8)
         try:
-            _ = self.predict_batch([dummy_frame])
+            dummy_batch = [dummy_frame.copy() for _ in range(3)]
+            for _ in range(3):
+                _ = self.predict_batch(dummy_batch)
         except Exception as e:
             print(f"⚠️ Warm-up failed but ignored: {e}")

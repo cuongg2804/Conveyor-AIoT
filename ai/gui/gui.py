@@ -5,8 +5,10 @@ import numpy as np
 import cv2
 import threading
 import time
+import os
 
 from service.control_cmd_service import ControlCommandService
+from config import BASE_DIR
 from core.patchcore_engine import DEFAULT_IMAGE_THRESHOLD
 from devices.arduino_comm import ArduinoComm
 from runtime.controller_factory import ControllerFactory
@@ -26,6 +28,8 @@ class AnomalyGUI:
         self.conveyor_config = None
         self.runtime_status = "STOPPED"
         self.current_conveyor_code = None
+        self.log_file_path = os.path.join(BASE_DIR, "logs", "app.log")
+        os.makedirs(os.path.dirname(self.log_file_path), exist_ok=True)
 
         # Photo refs
         self.orig_photos = [None, None, None]
@@ -108,10 +112,17 @@ class AnomalyGUI:
             pass
 
     def log(self, msg):
+        timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            with open(self.log_file_path, "a", encoding="utf-8") as f:
+                f.write(f"[{timestamp}] {msg}\n")
+        except Exception:
+            pass
+
         def _():
-            timestamp = time.strftime("%H:%M:%S")
+            ui_timestamp = time.strftime("%H:%M:%S")
             self.log_text.config(state="normal")
-            self.log_text.insert("end", f"[{timestamp}] {msg}\n")
+            self.log_text.insert("end", f"[{ui_timestamp}] {msg}\n")
             self.log_text.see("end")
             self.log_text.config(state="disabled")
 
@@ -203,6 +214,7 @@ class AnomalyGUI:
             "conveyor_code": conveyor_code,
             "message": "Start command scheduled on GUI main thread",
         }
+    
     def handle_web_stop_command(self, payload: dict):
         conveyor_code = payload.get("conveyor_code") or self.current_conveyor_code
 
@@ -218,7 +230,7 @@ class AnomalyGUI:
             "conveyor_code": conveyor_code,
             "message": "Stop command scheduled on GUI main thread",
         }
-
+    
     def handle_web_reload_config_command(self, payload: dict):
         conveyor_code = payload.get("conveyor_code")
 
@@ -642,7 +654,7 @@ class AnomalyGUI:
         # Startup cleanup is handled inside ControllerFactory.
         pass
 
-    def create_controller(self, image_threshold: float, conveyor_code: str):
+    def create_controller(self, conveyor_code: str):
         self.controller, self.conveyor_config = self.controller_factory.create(conveyor_code)
         self.current_conveyor_code = str(conveyor_code).strip().upper()
 
@@ -679,6 +691,7 @@ class AnomalyGUI:
 
     def start_system(self, show_message=True, conveyor_code=None):
         try:
+            # Nếu hệ thống đang chạy thì không start lại
             if self.controller is not None and (
                 bool(getattr(self.controller, "running", False))
                 or self.runtime_status == "RUNNING"
@@ -689,27 +702,26 @@ class AnomalyGUI:
                 self.publish_runtime_status()
                 return
 
+            # Bắt buộc phải có conveyor_code
             if not conveyor_code:
-                raise RuntimeError("Thiếu conveyor_code. Hãy start từ Web monitor.")
+                raise RuntimeError("Thiếu conveyor_code.")
 
             conveyor_code = str(conveyor_code).strip().upper()
-
+            if not conveyor_code:
+                raise RuntimeError("conveyor_code không hợp lệ.")
+            # Lưu conveyor_code vào runtime để các phần khác có thể truy cập, đồng thời cũng là để publish status đúng ngay cả khi controller chưa kịp start và set conveyor_code.
             self.current_conveyor_code = conveyor_code
             self.runtime_status = "STARTING"
             self.set_status("Đang khởi động")
 
-            try:
-                image_threshold = float(self.threshold_var.get().strip())
-            except ValueError:
-                image_threshold = DEFAULT_IMAGE_THRESHOLD
-
             self.log(f"[START] Starting system with conveyor_code={conveyor_code}")
 
+            # create_controller sẽ tự đọc config/threshold từ DB theo conveyor_code
             self.create_controller(
-                image_threshold=image_threshold,
                 conveyor_code=conveyor_code,
             )
 
+            # Chạy controller ở thread riêng để không block Tkinter GUI
             self.controller_thread = threading.Thread(
                 target=self.controller.start,
                 daemon=True,
@@ -727,10 +739,15 @@ class AnomalyGUI:
         except Exception as e:
             self.runtime_status = "ERROR"
             self.log(f"Lỗi khởi động hệ thống: {e}")
+
             self.publish_runtime_error(
                 "START_SYSTEM",
                 str(e),
-                {"payload": {"conveyor_code": conveyor_code or self.current_conveyor_code}},
+                {
+                    "payload": {
+                        "conveyor_code": conveyor_code or self.current_conveyor_code
+                    }
+                },
             )
 
             if show_message:
@@ -741,13 +758,16 @@ class AnomalyGUI:
                     self.controller.cleanup()
             except Exception:
                 pass
+
             self.cleanup_startup_resources()
 
             self.controller = None
             self.controller_thread = None
+
             self.btn_start.config(state="normal")
             self.btn_stop.config(state="disabled")
             self.set_status("Lỗi khởi động")
+
             self.publish_runtime_status()
 
     def stop_system(self):

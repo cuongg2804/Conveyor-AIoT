@@ -101,6 +101,7 @@ class ControllerFactory:
             arduino = self._create_arduino(resources, serial_port, baud_rate)
             camera = self._create_camera(resources, camera_trigger_delay)
 
+            # Khởi tạo các thành phần quan trọng
             queue = ResultQueue()
             logger = LatencyLogger()
             storage = StorageService()
@@ -108,6 +109,7 @@ class ControllerFactory:
             mqtt = self._create_optional_mqtt(resources)
 
             pipeline = PipelineService(camera=camera, model=model)
+            # Tạo controller với tất cả tài nguyên đã khởi tạo
             controller = SystemController(
                 pipeline=pipeline,
                 queue=queue,

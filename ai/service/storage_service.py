@@ -12,12 +12,12 @@ class StorageService:
         self.public_prefix = public_prefix.rstrip("/")
 
         self.preview_dir = os.path.join(base_dir, "previews")
-        self.overlay_dir = os.path.join(base_dir, "overlays")
+        self.mask_dir = os.path.join(base_dir, "masks")
         self._ensure_directories()
 
     def _ensure_directories(self) -> None:
         os.makedirs(self.preview_dir, exist_ok=True)
-        os.makedirs(self.overlay_dir, exist_ok=True)
+        os.makedirs(self.mask_dir, exist_ok=True)
 
     def _build_filename(self, job_id, frame_index: int, image_type: str) -> str:
         return f"job_{job_id}_frame_{frame_index}_{image_type}.jpg"
@@ -74,11 +74,11 @@ class StorageService:
     def save_overlay(self, image, job_id, frame_index: int, quality: int = 60) -> Optional[str]:
         return self._save_image(
             image=image,
-            folder=self.overlay_dir,
-            folder_name="overlays",
+            folder=self.mask_dir,
+            folder_name="masks",
             job_id=job_id,
             frame_index=frame_index,
-            image_type="overlay",
+            image_type="mask",
             quality=quality,
         )
 
