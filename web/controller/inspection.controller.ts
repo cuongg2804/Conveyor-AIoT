@@ -1,10 +1,10 @@
 import { Request, Response } from "express";
 import { Server } from "socket.io";
 import InspectionResult from "../model/inspection-result.model";
-import ConveyorConfig from "../model/conveyorConfigSchema.model";
+import Conveyor from "../model/conveyor.model";
 
 type ConveyorConfigView = {
-  conveyor_code: string;
+  conveyor_id: string;
   name: string;
   status?: string;
 };
@@ -24,9 +24,9 @@ export const monitor = async (req: Request, res: Response) => {
       return res.status(400).send("Thiếu mã băng tải.");
     }
 
-    const conveyor = await ConveyorConfig.findOne({ conveyor_code: conveyorCode })
+    const conveyor = await Conveyor.findOne({ conveyor_id: conveyorCode })
       .select("-_id")
-      .lean<ConveyorConfigView>();
+      .lean();
 
     if (!conveyor) {
       return res.status(404).send("Không tìm thấy băng tải.");
@@ -34,10 +34,10 @@ export const monitor = async (req: Request, res: Response) => {
 
     const isRunning = ["STARTING", "RUNNING"].includes(String((conveyor as any).status || "").toUpperCase());
     const latestInspection = isRunning
-      ? await InspectionResult.findOne({ conveyor_code: conveyorCode })
+      ? await InspectionResult.findOne({ conveyor_id: conveyorCode })
         .select("-_id")
         .sort({ timestamp: -1 })
-        .lean<InspectionResultView>()
+        .lean()
       : null;
 
     return res.render("dashboard/monitor", {

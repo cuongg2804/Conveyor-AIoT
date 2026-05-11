@@ -1,0 +1,51 @@
+extend ../layout/default.pug 
+block main
+    .page 
+        .dashboard_header
+            .dashboard_heading
+                h1.dashboard_title Quản lý băng tải
+                p.dashboard_subtitle Tạo, cập nhật, xóa băng tải trong hệ thống
+            .dashboard_actions
+                a.btn.btn-secondary(href="/conveyors") Quay lại
+        
+        .card 
+            form.setting-form(method="POST" action="/conveyors/create")
+                .field
+                        label.field__label(for="conveyor_id") Mã băng tải
+                        input#conveyor_id.field__control(type="text" name="conveyor_id" value=form.conveyor_id required)
+                .field
+                    label.field__label(for="name") Tên băng tải
+                    input#name.field__control(type="text" name="name" value=form.name required)
+
+                .field
+                    label.field__label(for="line_id") Dây chuyền
+                    input#line_id.field__control(type="text" name="line_id" value=form.line_id required)
+                .field
+                    label.field__label(for="status") Trạng thái
+                    select#status.field__control(name="status" required)
+                        option(value="READY" selected=form.status === "READY") Sẵn sàng
+                .setting-actions
+                    button.btn.btn--primary(type="submit") Thêm mới conveyor
+    block scripts
+        if error
+            script.
+                Toastify({
+                text: "#{error}",
+                duration: 3000,
+                gravity: "top",
+                position: "right",
+                backgroundColor: "#ef4444",
+                close: true
+                }).showToast();
+
+        if success
+            script.
+                Toastify({
+                text: "#{success}",
+                duration: 3000,
+                gravity: "top",
+                position: "right",
+                backgroundColor: "#16a34a",
+                close: true
+                }).showToast();
+        

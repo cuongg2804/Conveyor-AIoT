@@ -31,7 +31,7 @@ block main
             .conveyor-meta
               .conveyor-meta__item
                 span Mã băng tải
-                strong #{conveyor.conveyor_code}
+                strong #{conveyor.conveyor_id}
 
               .conveyor-meta__item
                 span Nguồn camera
@@ -54,8 +54,8 @@ block main
                 strong #{conveyor.ai_threshold}
 
             .conveyor-actions
-              a.btn.btn--primary(href=`/inspection/monitor/${conveyor.conveyor_code}`) Giám sát
-              a.btn.btn--secondary(href=`/settings/${conveyor.conveyor_code}`) Cấu hình
+              a.btn.btn--primary(href=`/inspection/monitor/${conveyor.conveyor_id}`) Giám sát
+              a.btn.btn--secondary(href=`/settings/${conveyor.conveyor_id}`) Cấu hình
       else
         .card
           .empty-state

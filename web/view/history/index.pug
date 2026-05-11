@@ -135,7 +135,7 @@ block main
                 - const labelText = item.label === "OK" ? "Đạt" : item.label === "NG" ? "Không đạt" : "-"
                 - const score = item.average_score !== undefined ? Number(item.average_score).toFixed(3) : "-"
                 - const frameScore = preview.predicted_score !== undefined ? Number(preview.predicted_score).toFixed(3) : "-"
-                - const detailUrl = `/history/${item.job_id}${item.conveyor_code ? `?conveyor_code=${encodeURIComponent(item.conveyor_code)}` : ""}`
+                - const detailUrl = `/history/${item.job_id}${item.conveyor_id ? `?conveyor_id=${encodeURIComponent(item.conveyor_id)}` : ""}`
 
                 tr
                   td

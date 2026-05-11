@@ -1,5 +1,5 @@
 import { Server } from "socket.io";
-import ConveyorConfig from "../model/conveyorConfigSchema.model";
+import Conveyor from "../model/conveyor.model";
 // Hàm chuẩn hóa mã băng tải từ payload
 const normalizeConveyorCode = (value: any) => String(value || "").trim().toUpperCase();
 // Hàm ánh xạ trạng thái runtime từ payload thành trạng thái chuẩn để lưu vào database
@@ -8,7 +8,7 @@ const mapRuntimeStatusToDbStatus = (payload: any) => {
   const rawStatus = String(payload.status || "").toUpperCase(); // Chuẩn hóa trạng thái từ payload để so sánh
 
   if (rawStatus === "STARTING") return "STARTING";
-  if (rawStatus === "STOPPING") return "STOPPING";
+  if (rawStatus === "STOP") return "STOP";
   if (running || rawStatus === "RUNNING") return "RUNNING";
   if (rawStatus === "ERROR" || rawStatus.includes("LỖI")) return "ERROR";
   if (rawStatus === "READY") return "READY";
@@ -17,7 +17,7 @@ const mapRuntimeStatusToDbStatus = (payload: any) => {
 // Controller để xử lý các thông điệp trạng thái hệ thống và lỗi từ MQTT và cập nhật database cũng như phát sự kiện qua Socket.IO
 export const handleSystemStatusMessage = async (payload: any, io: Server) => {
   try {
-    const conveyorCode = normalizeConveyorCode(payload.conveyor_code);
+    const conveyorCode = normalizeConveyorCode(payload.conveyor_id);
 
     if (!conveyorCode) {
       console.warn("Trạng thái hệ thống không có mã băng tải:", payload);
@@ -27,8 +27,8 @@ export const handleSystemStatusMessage = async (payload: any, io: Server) => {
     // Ánh xạ trạng thái runtime từ payload thành trạng thái chuẩn để lưu vào database
     const dbStatus = mapRuntimeStatusToDbStatus(payload);
     // Cập nhật trạng thái băng tải trong database và lấy thông tin băng tải sau khi cập nhật
-    const conveyor = await ConveyorConfig.findOneAndUpdate(
-      { conveyor_code: conveyorCode }, // Tìm kiếm băng tải theo mã băng tải
+    const conveyor = await Conveyor.findOneAndUpdate(
+      { conveyor_id: conveyorCode }, // Tìm kiếm băng tải theo mã băng tải
       { status: dbStatus }, // Cập nhật trạng thái mới cho băng tải
       { new: true, runValidators: true } // Trả về document sau khi cập nhật và chạy validators để đảm bảo dữ liệu hợp lệ
     )
@@ -43,7 +43,7 @@ export const handleSystemStatusMessage = async (payload: any, io: Server) => {
     // Phát sự kiện "system_status" qua Socket.IO với dữ liệu kết hợp giữa payload gốc và thông tin băng tải sau khi cập nhật
     io.emit("system_status", {
       ...payload,
-      conveyor_code: conveyorCode,
+      conveyor_id: conveyorCode,
       db_status: dbStatus,
     });
   } catch (error) {
@@ -54,10 +54,10 @@ export const handleSystemStatusMessage = async (payload: any, io: Server) => {
 // Controller để xử lý các thông điệp lỗi hệ thống từ MQTT và cập nhật trạng thái lỗi trong database cũng như phát sự kiện qua Socket.IO
 export const handleSystemErrorMessage = async (payload: any, io: Server) => {
   try {
-    const conveyorCode = normalizeConveyorCode(payload.conveyor_code);
+    const conveyorCode = normalizeConveyorCode(payload.conveyor_id);
 
     if (conveyorCode) {
-      await ConveyorConfig.updateOne({ conveyor_code: conveyorCode }, { status: "ERROR" });
+      await Conveyor.updateOne({ conveyor_id: conveyorCode }, { status: "ERROR" });
     }
 
     io.emit("system_error", payload);

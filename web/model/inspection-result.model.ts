@@ -27,7 +27,7 @@ const inspectionResultSchema = new mongoose.Schema(
       required: true,
       index: true, // 
     },
-    conveyor_code: {
+    conveyor_id: {
       type: String,
       index: true,
       trim: true,

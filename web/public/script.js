@@ -30,7 +30,7 @@ const userMessage = (message, fallback = "Có lỗi xảy ra") => {
   const normalized = raw.toLowerCase();
   if (normalized.includes("command is required")) return "Thiếu thao tác điều khiển.";
   if (normalized.includes("invalid command")) return "Thao tác điều khiển không hợp lệ.";
-  if (normalized.includes("conveyor_code is required")) return "Thiếu mã băng tải.";
+  if (normalized.includes("conveyor_id is required")) return "Thiếu mã băng tải.";
   if (normalized.includes("mqtt client is not connected")) return "Chưa kết nối tới bộ điều khiển AI.";
   if (normalized.includes("publish command failed")) return "Không gửi được yêu cầu tới hệ thống AI.";
 
@@ -158,7 +158,7 @@ function renderInspectionResult(data) {
   if (!data) return;
   if (!hasMonitorContext()) return;
 
-  const resultConveyorCode = String(data.conveyor_code || "").trim().toUpperCase();
+  const resultConveyorCode = String(data.conveyor_id || "").trim().toUpperCase();
   if (resultConveyorCode && resultConveyorCode !== getCurrentConveyorCode()) return;
   if (!inspectionSessionActive) return;
 
@@ -217,7 +217,7 @@ async function sendControlCommand(command, payload = {}) {
       body: JSON.stringify({
         command,
         payload: {
-          conveyor_code: conveyorCode,
+          conveyor_id: conveyorCode,
           ...payload,
         },
       }),
@@ -282,7 +282,7 @@ socket.on("mqtt_status", (data) => {
 socket.on("inspection_result", (data) => {
   console.log("inspection_result:", data);
   if (!hasMonitorContext()) return;
-  const resultConveyorCode = String(data.conveyor_code || "").trim().toUpperCase();
+  const resultConveyorCode = String(data.conveyor_id || "").trim().toUpperCase();
   if (resultConveyorCode && resultConveyorCode !== getCurrentConveyorCode()) return;
   inspectionSessionActive = true;
   renderInspectionResult(data);

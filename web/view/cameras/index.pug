@@ -1,0 +1,38 @@
+extend ../layout/default.pug
+
+block main 
+    .page 
+        .dashboard_header
+            .dashboard_heading
+                h1.dashboard_title Quản lý camera
+                p.dashboard_subtitle Tạo, cập nhật, xóa camera trong hệ thống
+
+            .dashboard-actions
+                a.btn.btn-primary(href="/cameras/create") Thêm camera mới
+            
+    .card
+        .table-wrap 
+            table.table
+                thead
+                    tr 
+                        th Mã camera  
+                        th Tên camera
+                        th Địa chỉ IP
+                        //th Loại camera
+                        th Trạng thái
+                        th Băng tải sử dụng
+                        th Mô tả
+                        th Thao tác
+                tbody 
+                    each item in camera
+                        tr
+                            td=item.camera_id
+                            td=item.camera_name
+                            td=item.camera_ip
+                            td=item.status
+                            td=item.conveyor_name
+                            td= item.description
+                            td
+                                a.btn.btn--secondary(href=`/cameras/edit/${item.camera_id}`) Sửa
+                                form(method="POST" action=`/cameras/delete/${item.camera_id}` style="display:inline-block; margin-left: 8px;")
+                                    button.btn.btn--danger(type="submit" onClick="return confirm('Bạn có chắc muốn xóa camera này?');") Xóa

@@ -18,11 +18,11 @@ const dayRange = (dateValue: string) => {
 
 // Dieu kien de chi lay cac lan kiem tra hop le:
 // - co inspection_id
-// - co conveyor_code
+// - co conveyor_id
 // - co du 3 frame, vi "frames.2" la frame thu 3 trong mang.
 const validInspectionFilter = {
   inspection_id: { $exists: true, $ne: "" },
-  conveyor_code: { $exists: true, $ne: "" },
+  conveyor_id: { $exists: true, $ne: "" },
   "frames.2": { $exists: true },
 };
 
@@ -79,7 +79,7 @@ export const index = async (req: Request, res: Response) => {
     // vi phan thong ke phia tren can tinh tong ca ngay.
     const wholeDayFilter: any = {
       inspection_id: validInspectionFilter.inspection_id,
-      conveyor_code: validInspectionFilter.conveyor_code,
+      conveyor_id: validInspectionFilter.conveyor_id,
       "frames.2": validInspectionFilter["frames.2"],
       timestamp: {
         $gte: selectedDay.start,
@@ -96,7 +96,7 @@ export const index = async (req: Request, res: Response) => {
     // Ban dau bang danh sach cung lay tat ca ket qua trong ngay.
     const listFilter: any = {
       inspection_id: validInspectionFilter.inspection_id,
-      conveyor_code: validInspectionFilter.conveyor_code,
+      conveyor_id: validInspectionFilter.conveyor_id,
       "frames.2": validInspectionFilter["frames.2"],
       timestamp: {
         $gte: selectedDay.start,
@@ -204,9 +204,9 @@ export const detail = async (req: Request, res: Response) => {
     // Tim lan kiem tra theo job_id va chi lay ban ghi hop le.
     const filter: any = { ...validInspectionFilter, job_id: jobId };
 
-    // Neu URL co conveyor_code thi loc them de tranh trung job_id giua cac bang tai.
-    if (req.query.conveyor_code) {
-      filter.conveyor_code = String(req.query.conveyor_code).trim().toUpperCase();
+    // Neu URL co conveyor_id thi loc them de tranh trung job_id giua cac bang tai.
+    if (req.query.conveyor_id) {
+      filter.conveyor_id = String(req.query.conveyor_id).trim().toUpperCase();
     }
 
     // Lay ban ghi moi nhat neu co nhieu ban ghi cung job_id.
