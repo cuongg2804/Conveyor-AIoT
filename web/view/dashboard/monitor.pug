@@ -3,7 +3,7 @@ extends ../layout/default.pug
 block main
   - const statusLabels = { READY: "Sẵn sàng", STARTING: "Đang khởi động", RUNNING: "Đang chạy", STOPPING: "Đang dừng", STOPPED: "Đã dừng", ERROR: "Đang lỗi" }
   - const conveyorStatusText = statusLabels[conveyor.status] || "Đang chờ dữ liệu"
-  .dashboard(data-conveyor-code=conveyor.conveyor_code)
+  .dashboard(data-conveyor-code=conveyor.conveyor_id)
     .dashboard__header
       .dashboard__heading
         h1.dashboard__title #{conveyor.name}

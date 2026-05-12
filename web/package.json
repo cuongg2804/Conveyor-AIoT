@@ -9,17 +9,23 @@
     "dev": "nodemon --exec \"node --inspect -r ts-node/register\" index.ts"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
     "dotenv": "^17.2.3",
     "ejs": "^3.1.10",
     "express": "^5.2.1",
+    "express-session": "^1.19.0",
     "mongoose": "^8.23.1",
     "mqtt": "^5.14.1",
     "pug": "^3.0.3",
     "socket.io": "^4.8.1"
   },
   "devDependencies": {
-    "@types/node": "^25.0.3",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.6",
+    "@types/express-session": "^1.19.0",
+    "@types/node": "^25.0.3",
     "nodemon": "^3.1.11",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"

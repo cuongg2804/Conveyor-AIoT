@@ -2,37 +2,38 @@ import mongoose from "mongoose";
 
 const inspectionFrameSchema = new mongoose.Schema(
   {
-    frame_index: Number,
-    predicted_label: String,
+    frame_index: Number, // chi so frame trong luot kiem tra, bat dau tu 0
+    predicted_label: String, 
     predicted_score: Number,
-    roi_path: String,
-    mask_path: String,
-    overlay_path: String,
+    roi_path: String, // duong dan anh vung quan tam (region of interest) de hien thi tren giao dien
+    mask_path: String, // duong dan anh bieu dien vung mask (neu co) de hien thi tren giao dien
+    overlay_path: String, // duong dan anh tong hop giua roi va mask (neu co) de hien thi tren giao dien
   },
   { _id: false }
 );
 
 const inspectionResultSchema = new mongoose.Schema(
   {
-    inspection_id: {
+    // mã phiên kiểm tra dùng để phân biệt sản phẩm khác nhau
+    inspection_id: { 
       type: String,
       index: true,
       unique: true,
       sparse: true,
       trim: true,
     },
-    job_id: {
+    job_id: { // 
       type: Number,
       required: true,
-      index: true,
+      index: true, // 
     },
-    conveyor_code: {
+    conveyor_id: {
       type: String,
       index: true,
       trim: true,
       uppercase: true,
     },
-    timestamp: {
+    timestamp: { // thời điểm xảy ra sự kiện kiểm tra, được lưu dưới dạng số giây
       type: Number,
       required: true,
       index: true,
@@ -49,13 +50,13 @@ const inspectionResultSchema = new mongoose.Schema(
     threshold: {
       type: Number,
     },
-    frames: {
+    frames: { 
       type: [inspectionFrameSchema],
-      default: [],
+      default: [], 
     },
   },
   {
-    versionKey: false,
+    versionKey: false, // bo truong __v mac dinh cua mongoose
   }
 );
 
