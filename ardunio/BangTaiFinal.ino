@@ -1,82 +1,82 @@
 #include <Servo.h>
 
-// ===================== PIN CONFIG =====================
-// ----- L298N channel B: IN3 / IN4 / ENB -> OUT3 / OUT4 -----
+//PIN CONFIG
+//L298N
 const int PIN_IN3 = 2;    // L298N IN3
 const int PIN_IN4 = 3;    // L298N IN4
 const int PIN_ENB = 5;    // PWM điều khiển tốc độ động cơ
 
-// ----- Sensors / actuator -----
+//Sensors / actuator 
 const int PIN_S1 = 4;        // Cảm biến vật thể 1
 const int PIN_S2 = 6;        // Cảm biến vật thể 2
 const int PIN_SERVO = 7;     // Servo signal
 const int PIN_RELAY = 8;     // Relay trigger camera
 
-// ----- Buttons -----
+//Buttons 
 const int PIN_START = 9;     // Nút Start
 const int PIN_STOP = 10;     // Nút Stop
 
-// ----- Traffic lights -----
+//Traffic lights 
 const int PIN_DEN_DO = 11;    // Đèn đỏ
 const int PIN_DEN_VANG = 12;  // Đèn vàng
 const int PIN_DEN_XANH = 13;  // Đèn xanh
 
-// ----- Analog pins used as digital -----
+//Analog pins used as digital 
 const int PIN_COI = A0;          // + buzzer -> A0, - -> GND
 const int PIN_NUT_TOC_DO = A1;   // Nút đổi tốc độ, 1 đầu A1, 1 đầu GND
 const int PIN_ESTOP = A5;        // E-stop NO, đầu còn lại nối GND
 
-// ===================== LOGIC CONFIG =====================
+//LOGIC CONFIG
 const bool CB_ACTIVE_HIGH = false;       // LM393 thường phát hiện = LOW
 const bool RELAY_ACTIVE_HIGH = false;    // Relay module active LOW
 const bool NUT_ACTIVE_LOW = true;        // Vì dùng INPUT_PULLUP
 const bool DEN_ACTIVE_HIGH = true;       // Đèn sáng khi digitalWrite(HIGH)
 
-// ===================== SPEED CONFIG =====================
+//SPEED CONFIG
 const int PWM_NHANH = 255;
 const int PWM_CHAM = 170;
 
 int pwmDangChon = PWM_NHANH;
 bool dangChayNhanh = true;
 
-// ===================== SPEED BUTTON DEBOUNCE =====================
+//SPEED BUTTON DEBOUNCE
 bool lastNutTocDo = false;
 unsigned long mocNutTocDo = 0;
 const unsigned long DOI_NUT_TOC_DO_MS = 150;
 
-// ===================== SERVO CONFIG =====================
+//SERVO CONFIG
 Servo servoGat;
 
 const int GOC_HOME = 0;
 const int GOC_GAT = 130;
 const unsigned long GIU_GAT_MS = 300;
 
-// ===================== RELAY CONFIG =====================
+//RELAY CONFIG
 const unsigned long RELAY_PULSE_MS = 100;
 
-// ===================== SENSOR MEMORY =====================
+//SENSOR MEMORY
 bool lastS1 = false;
 bool lastS2 = false;
 
 unsigned long mocS2 = 0;
 const unsigned long DOI_S2_MS = 150;
 
-// ===================== BUTTON DEBOUNCE =====================
+//BUTTON DEBOUNCE
 bool lastStart = false;
 bool lastStop = false;
 
 unsigned long mocNut = 0;
 const unsigned long DOI_NUT_MS = 150;
 
-// ===================== E-STOP EDGE =====================
+//E-STOP EDGE
 bool lastEstop = false;
 
-// ===================== INDICATOR TIMING =====================
+//THOI GIAN NHAP NHAY DEN
 unsigned long mocNhapNhay = 0;
 bool nhapNhay = false;
 const unsigned long NHAP_NHAY_ESTOP_MS = 250;
 
-// ===================== SYSTEM STATE =====================
+//TRANG THAI
 enum SystemState {
   STOPPED,
   RUNNING,
@@ -85,7 +85,7 @@ enum SystemState {
 
 SystemState trangThai = STOPPED;
 
-// ===================== SERIAL + QUEUE =====================
+//GIAO TIEP SERIAL + HANG DOI
 const int SIZE_QUEUE = 30;
 int queueKQ[SIZE_QUEUE];
 
@@ -93,7 +93,7 @@ int qDau = 0;
 int qCuoi = 0;
 int qSoLuong = 0;
 
-// ===================== HELPER =====================
+
 bool coVat(int pin) {
   int muc = digitalRead(pin);
   return CB_ACTIVE_HIGH ? (muc == HIGH) : (muc == LOW);
@@ -134,7 +134,7 @@ void tatTatCaDen() {
   ghiDen(PIN_DEN_XANH, false);
 }
 
-// ===================== SPEED BUTTON =====================
+//NUT TOC DO
 void xuLyNutTocDo() {
   bool nutTocDoNhan = nutNhan(PIN_NUT_TOC_DO);
   unsigned long now = millis();
@@ -185,7 +185,7 @@ void gatSanPhamLoi() {
   servoGat.write(GOC_HOME);
 }
 
-// ===================== QUEUE =====================
+//HANG DOI
 void xoaQueue() {
   qDau = 0;
   qCuoi = 0;
@@ -222,10 +222,9 @@ void inQueue() {
   Serial.println("]");
 }
 
-// ===================== STATE ACTIONS =====================
+//THUC HIEN TRANG THAI
 void batHeThong() {
   if (trangThai == STOPPED) {
-    // Đồng bộ trạng thái cảm biến hiện tại để tránh kích giả ngay khi START
     lastS1 = coVat(PIN_S1);
     lastS2 = coVat(PIN_S2);
 
@@ -244,11 +243,10 @@ void dungHeThong() {
 }
 
 void dungKhanCap() {
-if (trangThai != EMERGENCY_STOP) {
+  if (trangThai != EMERGENCY_STOP) {
     trangThai = EMERGENCY_STOP;
     dungCoCau();
 
-    // Xóa queue để tránh lệch trạng thái sau sự cố
     xoaQueue();
 
     Serial.println("EMERGENCY STOP: Dung khan cap!");
@@ -256,8 +254,6 @@ if (trangThai != EMERGENCY_STOP) {
 }
 
 void nhaEstopVeStopped() {
-  // Nhả E-stop KHÔNG tự chạy lại
-  // Chỉ về STOPPED, phải bấm START mới chạy
   if (trangThai == EMERGENCY_STOP) {
     trangThai = STOPPED;
     dungCoCau();
@@ -266,7 +262,7 @@ void nhaEstopVeStopped() {
   }
 }
 
-// ===================== INDICATOR UPDATE =====================
+//CAP NHAT BAO HIEU
 void capNhatBaoHieu() {
   unsigned long now = millis();
 
@@ -301,7 +297,7 @@ void capNhatBaoHieu() {
   }
 }
 
-// ===================== RELAY PULSE =====================
+//DO DOI RELAY
 void kichRelayChupAnh() {
   if (trangThai != RUNNING) return;
 
@@ -310,13 +306,12 @@ void kichRelayChupAnh() {
   setRelay(false);
 }
 
-// ===================== SERIAL RECEIVE =====================
+//NHAN SERIAL
 void xuLySerial() {
   while (Serial.available()) {
     String msg = Serial.readStringUntil('\n');
     msg.trim();
 
-    // Nhận kết quả 0/1 từ Python
     if (msg == "0" || msg == "1") {
       int giaTri = msg.toInt();
 
@@ -335,7 +330,7 @@ void xuLySerial() {
   }
 }
 
-// ===================== BUTTON HANDLE =====================
+//XU LY NUT NHAN
 void xuLyNutStartStop() {
   bool startNhan = nutNhan(PIN_START);
   bool stopNhan = nutNhan(PIN_STOP);
@@ -358,16 +353,14 @@ void xuLyNutStartStop() {
   lastStop = stopNhan;
 }
 
-// ===================== E-STOP HANDLE =====================
+//XY LY KHAN CAP
 void xuLyEstop() {
   bool estopHienTai = docEstop();
 
-  // Cạnh nhấn
   if (estopHienTai && !lastEstop) {
     dungKhanCap();
   }
 
-  // Cạnh nhả
   if (!estopHienTai && lastEstop) {
     nhaEstopVeStopped();
   }
@@ -375,16 +368,16 @@ void xuLyEstop() {
   lastEstop = estopHienTai;
 }
 
-// ===================== MOTOR UPDATE =====================
+//CAP NHAT MOTOR
 void capNhatMotor() {
-if (trangThai == RUNNING) {
+  if (trangThai == RUNNING) {
     motorChayThuan(pwmDangChon);
   } else {
     dungMotor();
   }
 }
 
-// ===================== SENSOR HANDLE =====================
+//XU LY CAM BIEN
 void xuLyCamBien() {
   bool s1CoVat = coVat(PIN_S1);
   bool s2CoVat = coVat(PIN_S2);
@@ -426,11 +419,9 @@ void xuLyCamBien() {
   lastS2 = s2CoVat;
 }
 
-// ===================== SETUP =====================
 void setup() {
   Serial.begin(9600);
 
-  // Dùng INPUT_PULLUP để tránh chân cảm biến bị trôi tín hiệu
   pinMode(PIN_S1, INPUT_PULLUP);
   pinMode(PIN_S2, INPUT_PULLUP);
 
@@ -438,7 +429,6 @@ void setup() {
   pinMode(PIN_IN4, OUTPUT);
   pinMode(PIN_ENB, OUTPUT);
 
-  // Set trạng thái nhả relay trước khi chuyển chân relay thành OUTPUT
   digitalWrite(PIN_RELAY, RELAY_ACTIVE_HIGH ? LOW : HIGH);
   pinMode(PIN_RELAY, OUTPUT);
 
@@ -466,7 +456,6 @@ void setup() {
   pwmDangChon = PWM_NHANH;
   dangChayNhanh = true;
 
-  // Đồng bộ trạng thái cảm biến ban đầu
   lastS1 = coVat(PIN_S1);
   lastS2 = coVat(PIN_S2);
 
@@ -480,7 +469,6 @@ void setup() {
   Serial.println("E-STOP o A5: nhan -> EMERGENCY_STOP, nha -> STOPPED, phai bam START lai.");
 }
 
-// ===================== LOOP =====================
 void loop() {
   xuLyEstop();         // ưu tiên cao nhất
   capNhatBaoHieu();    // đèn + còi
