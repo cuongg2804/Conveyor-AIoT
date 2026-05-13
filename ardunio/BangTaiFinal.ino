@@ -27,10 +27,10 @@ const int PIN_NUT_TOC_DO = A1;   // Nút đổi tốc độ, 1 đầu A1, 1 đ�
 const int PIN_ESTOP = A5;        // E-stop NO, đầu còn lại nối GND
 
 //LOGIC CONFIG
-const bool CB_ACTIVE_HIGH = false;       // LM393 thường phát hiện = LOW
-const bool RELAY_ACTIVE_HIGH = false;    // Relay module active LOW
-const bool NUT_ACTIVE_LOW = true;        // Vì dùng INPUT_PULLUP
-const bool DEN_ACTIVE_HIGH = true;       // Đèn sáng khi digitalWrite(HIGH)
+const bool CB_ACTIVE_HIGH = false;       
+const bool RELAY_ACTIVE_HIGH = false;    
+const bool NUT_ACTIVE_LOW = true;        
+const bool DEN_ACTIVE_HIGH = true;       
 
 //SPEED CONFIG
 const int PWM_NHANH = 255;
