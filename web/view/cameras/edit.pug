@@ -20,7 +20,7 @@ block main
                     input.field__control(type="text" name="camera_name" value=camera.camera_name required)
                 .field
                     label.field__label(for="camera_ip") Địa chỉ IP
-                    input#camera_ip.field__control(type="text" name="camera_ip" value=camera.camera_ip required)
+                    input#camera_ip.field__control(type="text" name="camera_ip" value=camera.camera_ip required placeholder="X.X.X.X (0-255)")
                 .field
                     label.field__label(for="status") Trạng thái
                     select#status.field__control(name="status" required)

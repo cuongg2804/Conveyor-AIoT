@@ -29,6 +29,27 @@ const conveyor = new mongoose.Schema({
       default: "",
       trim: true,
     },
+    speed: {
+        type: Number,
+        default: 150,
+        required: true,
+        min: 0,
+        max: 255
+    },
+    goc_home: {
+        type: Number,
+        default: 0,
+        required: true,
+        min: 0,
+        max: 180
+    },
+    goc_gat: {
+        type: Number,
+        default: 120,
+        min: 0,
+        max: 180,
+        required: true
+    },
     is_active: {
       type: Boolean,
       default: true,

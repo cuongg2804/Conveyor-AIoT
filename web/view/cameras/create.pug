@@ -6,7 +6,7 @@ block main
                 h1.dashboard_title Quản lý camera
                 p.dashboard_subtitle Tạo, cập nhật, xóa camera trong hệ thống
             .dashboard_actions
-                a.btn.btn-secondary(href="/camera_id") Quay lại
+                a.btn.btn-secondary(href="/cameras") Quay lại
         
         
         .card 
@@ -20,7 +20,7 @@ block main
 
                 .field
                     label.field__label(for="camera_ip") Địa chỉ IP
-                    input#camera_ip.field__control(type="text" name="camera_ip" value=form.camera_ip required)
+                    input#camera_ip.field__control(type="text" name="camera_ip" value=form.camera_ip required placeholder="X.X.X.X (0-255)")
                 .field
                     label.field__label(for="status") Trạng thái
                     select#status.field__control(name="status" required)
