@@ -33,6 +33,10 @@ class ConveyorConfigService:
             "serial_port",
             "baud_rate",
             "ai_threshold",
+            "speed",
+            "goc_home",
+            "goc_gat"
+
         ]
 
         missing_fields = [
