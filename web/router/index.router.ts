@@ -9,6 +9,7 @@ import logoutRoute from "./logout.router"
 import userRoute from "./user.router";
 import conveyorRoute from "./conveyor.router";
 import cameraRoute from "./camera.router";
+import modelRoute from "./model.router";
 
 import { requireAuth } from "../middleware/auth.middleware";
 
@@ -22,6 +23,7 @@ router.use("/settings", requireAuth, settingRoute);
 router.use("/control", requireAuth, controlRoute);
 router.use("/conveyors", requireAuth, conveyorRoute);
 router.use("/cameras", requireAuth, cameraRoute);
+router.use("/models", modelRoute);
 router.use("/login", loginRoute);
 router.use("/logout", logoutRoute);
 router.use("/users", userRoute);

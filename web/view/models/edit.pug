@@ -1,0 +1,84 @@
+extend ../layout/default.pug
+
+block main
+  .page
+    .dashboard__header
+      .dashboard__heading
+        h1.dashboard__title Cap nhat model
+        p.dashboard__subtitle Sua threshold, metric va status cho model registry
+      .dashboard-actions
+        a.btn.btn--secondary(href="/models") Quay lai
+
+    .model-upload-layout
+      .card
+        .card__head
+          h2.card__title Thong tin dinh danh
+          p.card__desc Cac truong nay gan voi object key tren MinIO nen khong sua tai day.
+
+        .upload-result
+          .upload-result__row
+            span Product
+            strong= model.product_code
+          .upload-result__row
+            span Model
+            strong= model.model_name
+          .upload-result__row
+            span Version
+            strong= model.version
+          .upload-result__row
+            span Bucket
+            strong= model.bucket
+          .upload-result__row
+            span Object key
+            strong= model.object_key
+
+      .card
+        .card__head
+          h2.card__title Metadata
+          p.card__desc Cap nhat thong so danh gia va trang thai su dung.
+
+        form.model-upload-form(method="POST" action=`/models/${model._id}/edit`)
+          .field
+            label.field__label(for="threshold") Threshold
+            input#threshold.field__control(type="number" name="threshold" value=model.threshold step="0.000001" required)
+
+          .model-form-grid
+            .field
+              label.field__label(for="accuracy") Accuracy
+              input#accuracy.field__control(type="number" name="accuracy" value=model.accuracy step="0.0001")
+
+            .field
+              label.field__label(for="precision") Precision
+              input#precision.field__control(type="number" name="precision" value=model.precision step="0.0001")
+
+            .field
+              label.field__label(for="recall") Recall
+              input#recall.field__control(type="number" name="recall" value=model.recall step="0.0001")
+
+            .field
+              label.field__label(for="f1_score") F1 score
+              input#f1_score.field__control(type="number" name="f1_score" value=model.f1_score step="0.0001")
+
+          .field
+            label.field__label(for="status") Status
+            select#status.field__control(name="status" required)
+              option(value="testing" selected=model.status === "testing") testing
+              option(value="active" selected=model.status === "active") active
+              option(value="inactive" selected=model.status === "inactive") inactive
+              option(value="archived" selected=model.status === "archived") archived
+              option(value="failed" selected=model.status === "failed") failed
+
+          .btn-row
+            button.btn.btn--primary(type="submit") Luu thay doi
+
+block scripts
+  if error
+    script.
+      Toastify({
+        text: "#{error}",
+        duration: 3000,
+        gravity: "top",
+        position: "right",
+        backgroundColor: "#ef4444",
+        close: true
+      }).showToast();

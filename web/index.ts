@@ -9,7 +9,8 @@ import http from "http";
 import path from "path";
 import cookieParser from "cookie-parser";
 
-dotenv.config({ override: true });
+dotenv.config({ path: path.resolve(__dirname, "../.env"), override: true });
+dotenv.config({ override: false });
 
 const app = express();
 const server = http.createServer(app); 
