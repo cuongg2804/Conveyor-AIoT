@@ -1,0 +1,34 @@
+extend ../layout/default.pug 
+block main
+    .page 
+        .dashboard_header
+            .dashboard_heading
+                h1.dashboard_title Quản lý camera
+                p.dashboard_subtitle Tạo, cập nhật, xóa camera trong hệ thống
+            .dashboard_actions
+                a.btn.btn-secondary(href="/cameras") Quay lại
+        if error
+            .alter.alter-danger = error
+        
+        .card 
+            form.setting-form(method="POST" action=`/cameras/edit/${camera.camera_id}`)
+                .field
+                    label.field__label Mã camera
+                    input.field__control(type="text" value=camera.camera_id required )
+                .field 
+                    label.field__label Tên camera
+                    input.field__control(type="text" name="camera_name" value=camera.camera_name required)
+                .field
+                    label.field__label(for="camera_ip") Địa chỉ IP
+                    input#camera_ip.field__control(type="text" name="camera_ip" value=camera.camera_ip required placeholder="X.X.X.X (0-255)")
+                .field
+                    label.field__label(for="status") Trạng thái
+                    select#status.field__control(name="status" required)
+                        option(value="AVAILABLE" selected=camera.status === "AVAILABLE") Sẵn sàng
+                        option(value="IN_USE" selected=camera.status === "IN_USE") Đang hoạt động
+                        option(value="ERROR" selected=camera.status === "ERROR") Lỗi
+                .field
+                    label.field__label(for="description") Mô tả
+                    input#description.field__control(type="text" name="description" value=camera.description required)
+                .settings-actions
+                    button.btn.btn--primary(type="submit") Cập nhật băng tải

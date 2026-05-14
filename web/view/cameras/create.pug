@@ -1,0 +1,53 @@
+extend ../layout/default.pug 
+block main
+    .page 
+        .dashboard_header
+            .dashboard_heading
+                h1.dashboard_title Quản lý camera
+                p.dashboard_subtitle Tạo, cập nhật, xóa camera trong hệ thống
+            .dashboard_actions
+                a.btn.btn-secondary(href="/cameras") Quay lại
+        
+        
+        .card 
+            form.setting-form(method="POST" action="/cameras/create")
+                .field
+                        label.field__label(for="camera_id") Mã camera
+                        input#camera_id.field__control(type="text" name="camera_id" value=form.name required)
+                .field
+                    label.field__label(for="camera_name") Tên camera
+                    input#camera_name.field__control(type="text" name="camera_name" value=form.name required)
+
+                .field
+                    label.field__label(for="camera_ip") Địa chỉ IP
+                    input#camera_ip.field__control(type="text" name="camera_ip" value=form.camera_ip required placeholder="X.X.X.X (0-255)")
+                .field
+                    label.field__label(for="status") Trạng thái
+                    select#status.field__control(name="status" required)
+                        option(value="AVAILABLE" selected=form.status === "AVAILABLE") Sẵn sàng
+                        //option(value="IN_USE" selected=form.status === "IN_USE") Đang hoạt động
+                        //option(value="ERROR" selected=form.status === "ERROR") Lỗi
+                .setting-actions
+                    button.btn.btn--primary(type="submit") Thêm mới camera
+    block scripts
+        if error
+            script.
+                Toastify({
+                text: "#{error}",
+                duration: 3000,
+                gravity: "top",
+                position: "right",
+                backgroundColor: "#ef4444",
+                close: true
+                }).showToast();
+
+        if success
+            script.
+                Toastify({
+                text: "#{success}",
+                duration: 3000,
+                gravity: "top",
+                position: "right",
+                backgroundColor: "#16a34a",
+                close: true
+                }).showToast();

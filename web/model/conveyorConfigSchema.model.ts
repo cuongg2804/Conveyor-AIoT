@@ -2,38 +2,26 @@ import mongoose from "mongoose";
 
 const conveyorConfigSchema = new mongoose.Schema(
   {
-    conveyor_code: {
+    conveyor_id: {
       type: String,
       required: true,
       unique: true,
       trim: true,
       uppercase: true,
     },
-    name: {
+    camera_id: { // URL hoặc ID nguồn camera
       type: String,
-      required: true,
       trim: true,
     },
-    description: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-    camera_source: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    camera_trigger_delay: {
+    camera_trigger_delay: { // thời gian trễ giữa lúc nhận được kết quả kiểm tra và lúc kích hoạt camera, tính bằng mili giây
       type: Number,
       default: 0,
     },
     serial_port: {
       type: String,
-      required: true,
       trim: true,
     },
-    baud_rate: {
+    baud_rate: { // tốc độ truyền dữ liệu qua cổng nối tiếp, đơn vị là bit/giây
       type: Number,
       required: true,
       default: 9600,
@@ -43,14 +31,10 @@ const conveyorConfigSchema = new mongoose.Schema(
       required: true,
       default: 30.436506,
     },
-    status: {
+    mode: {
       type: String,
-      enum: ["READY", "STARTING", "RUNNING", "STOPPING", "STOPPED", "ERROR"],
-      default: "READY",
-    },
-    is_active: {
-      type: Boolean,
-      default: true,
+      enum: ["AUTO", "MANUAL"],
+      default: "AUTO",
     },
   },
   {

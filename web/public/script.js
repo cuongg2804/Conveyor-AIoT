@@ -23,6 +23,42 @@ const ackStatusLabel = (status) => ACK_STATUS_LABELS[status] || "Đang cập nh�
 const resultLabel = (label) => RESULT_LABELS[String(label || "").toUpperCase()] || "-";
 let inspectionSessionActive = ["STARTING", "RUNNING"].includes(String(window.__CONVEYOR_STATUS__ || "").toUpperCase());
 
+const serial = document.getElementById("serial_port")
+if(serial && typeof socket !=="undefined"){
+  fetch(`/control/${window.CONVEYOR_ID}/command`, {
+    method: postMessage,
+    headers: {
+      "Conten-Type": "application/json",
+    },
+    body: JSON.stringify({
+      command: "GET_SERIAL_PORT",
+    }),
+  })
+  socket.on("control_ack", (payload) => {
+    if(payload.command !== "GET_SERIAL_PORT") return;
+
+    const ports = payload?.data?.ports || []
+    const curr_port = serial.dataset.current || "" // 
+
+    serial.innerHTML = ""
+
+    const initOption = document.createElement("option")
+    initOption.value = ""
+    initOption.text = "--Chọn cổng kết nối--"
+    serial.appendChild(initOption)
+
+    ports.forEach((ports) => {
+      const option = document.createElement("option")
+      option.value = ports.device
+      option.textContent = `${ports.value} - ${port.description || ""}`
+
+      if(ports.device === curr_port) {
+        option.selected = true
+      }
+      serial.appendChild(option)
+    })
+  })
+}
 const userMessage = (message, fallback = "Có lỗi xảy ra") => {
   const raw = String(message || "").trim();
   if (!raw) return fallback;
@@ -30,7 +66,7 @@ const userMessage = (message, fallback = "Có lỗi xảy ra") => {
   const normalized = raw.toLowerCase();
   if (normalized.includes("command is required")) return "Thiếu thao tác điều khiển.";
   if (normalized.includes("invalid command")) return "Thao tác điều khiển không hợp lệ.";
-  if (normalized.includes("conveyor_code is required")) return "Thiếu mã băng tải.";
+  if (normalized.includes("conveyor_id is required")) return "Thiếu mã băng tải.";
   if (normalized.includes("mqtt client is not connected")) return "Chưa kết nối tới bộ điều khiển AI.";
   if (normalized.includes("publish command failed")) return "Không gửi được yêu cầu tới hệ thống AI.";
 
@@ -38,9 +74,9 @@ const userMessage = (message, fallback = "Có lỗi xảy ra") => {
     .replaceAll("START_SYSTEM", "Khởi động hệ thống")
     .replaceAll("STOP_SYSTEM", "Dừng hệ thống")
     .replaceAll("GET_STATUS", "Kiểm tra trạng thái")
-    .replaceAll("job_id", "mã lượt kiểm tra")
+    .replaceAll("job_id", "Mã lượt kiểm tra")
     .replaceAll("Job", "Lượt kiểm tra")
-    .replaceAll("command", "thao tác");
+    .replaceAll("command", "Thao tác");
 };
 
 /* ================= TOAST ================= */
@@ -158,7 +194,7 @@ function renderInspectionResult(data) {
   if (!data) return;
   if (!hasMonitorContext()) return;
 
-  const resultConveyorCode = String(data.conveyor_code || "").trim().toUpperCase();
+  const resultConveyorCode = String(data.conveyor_id || "").trim().toUpperCase();
   if (resultConveyorCode && resultConveyorCode !== getCurrentConveyorCode()) return;
   if (!inspectionSessionActive) return;
 
@@ -217,7 +253,7 @@ async function sendControlCommand(command, payload = {}) {
       body: JSON.stringify({
         command,
         payload: {
-          conveyor_code: conveyorCode,
+          conveyor_id: conveyorCode,
           ...payload,
         },
       }),
@@ -282,7 +318,7 @@ socket.on("mqtt_status", (data) => {
 socket.on("inspection_result", (data) => {
   console.log("inspection_result:", data);
   if (!hasMonitorContext()) return;
-  const resultConveyorCode = String(data.conveyor_code || "").trim().toUpperCase();
+  const resultConveyorCode = String(data.conveyor_id || "").trim().toUpperCase();
   if (resultConveyorCode && resultConveyorCode !== getCurrentConveyorCode()) return;
   inspectionSessionActive = true;
   renderInspectionResult(data);
