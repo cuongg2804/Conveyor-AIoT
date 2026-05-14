@@ -23,6 +23,42 @@ const ackStatusLabel = (status) => ACK_STATUS_LABELS[status] || "Đang cập nh�
 const resultLabel = (label) => RESULT_LABELS[String(label || "").toUpperCase()] || "-";
 let inspectionSessionActive = ["STARTING", "RUNNING"].includes(String(window.__CONVEYOR_STATUS__ || "").toUpperCase());
 
+const serial = document.getElementById("serial_port")
+if(serial && typeof socket !=="undefined"){
+  fetch(`/control/${window.CONVEYOR_ID}/command`, {
+    method: postMessage,
+    headers: {
+      "Conten-Type": "application/json",
+    },
+    body: JSON.stringify({
+      command: "GET_SERIAL_PORT",
+    }),
+  })
+  socket.on("control_ack", (payload) => {
+    if(payload.command !== "GET_SERIAL_PORT") return;
+
+    const ports = payload?.data?.ports || []
+    const curr_port = serial.dataset.current || "" // 
+
+    serial.innerHTML = ""
+
+    const initOption = document.createElement("option")
+    initOption.value = ""
+    initOption.text = "--Chọn cổng kết nối--"
+    serial.appendChild(initOption)
+
+    ports.forEach((ports) => {
+      const option = document.createElement("option")
+      option.value = ports.device
+      option.textContent = `${ports.value} - ${port.description || ""}`
+
+      if(ports.device === curr_port) {
+        option.selected = true
+      }
+      serial.appendChild(option)
+    })
+  })
+}
 const userMessage = (message, fallback = "Có lỗi xảy ra") => {
   const raw = String(message || "").trim();
   if (!raw) return fallback;

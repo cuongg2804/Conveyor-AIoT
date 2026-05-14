@@ -80,7 +80,9 @@ block main
         .settings-section-grid--three.settings-section-grid
           .field
             label.field__label(for="serial_port") Cổng kết nối
-            input#serial_port.field__control(type="text" name="serial_port" value=config.serial_port || "" required)
+            select#serial_port.field__control(name="serial_port" required)
+              option(value=config.serial_port selected=config.serial_port)= config.serial_port || "-- Chưa chọn cổng --"
+            
 
           .field
             label.field__label(for="baud_rate") Tốc độ truyền
@@ -116,3 +118,5 @@ block main
 
         .settings-actions
           button.btn.btn--primary(type="submit") Lưu cấu hình
+  script.
+    window.CONVEYOR_ID = "#{conveyor.conveyor_id}";

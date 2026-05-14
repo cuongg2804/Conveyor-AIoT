@@ -143,7 +143,7 @@ export const publishControlCommand = (
 ): ControlCommandPayload => {
   const commandPayload: ControlCommandPayload = {
     command_id: generateCommandId(),
-    command, // Ví dụ: "START_SYSTEM", "STOP_SYSTEM", "GET_STATUS", "RELOAD_CONFIG"
+    command,
     source: "WEB",
     timestamp: Date.now() / 1000, // Thời gian hiện tại tính bằng giây kể từ epoch
     payload, // Dữ liệu bổ sung đi kèm lệnh, ví dụ: { conveyor_code: "CONV01" }
