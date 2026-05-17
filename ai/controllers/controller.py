@@ -145,10 +145,18 @@ class SystemController:
 
     def start(self):
         if self.running:
-            self.cb("log", "System is already running.")
+            self.cb("log", "Hệ thống đang chạy.")
             return False
 
         self.running = True
+        if self.arduino is not None:
+            try:
+                self.arduino.send_line("START")
+                self.cb("log", "Gửi lệnh Start tới Arduino")
+            except Exception as e:
+                self.cb("log", f"Lỗi: {e}")
+                self.running = False
+                return False
         if self.mongo is not None and hasattr(self.mongo, "get_max_job_id"):
             try:
                 self.job_id = self.mongo.get_max_job_id()
@@ -308,10 +316,17 @@ class SystemController:
 
     def stop(self):
         if not self.running:
-            self.cb("log", "System already stopped.")
+            self.cb("log", "Hệ thống đã dừng.")
             return
         self.running = False
-        self.cb("log", "Stop command received.")
+        self.cb("log", "Lệnh stopped đã được nhận.")
+
+        if self.arduino is not None:
+            try:
+                self.arduino.send_line("STOP")
+                self.cb("log", "Gửi lệnh dừng")
+            except Exception as e:
+                self.cb("log", f"Lỗi: {e}")
 
     def close(self):
         self.running = False
