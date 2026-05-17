@@ -10,7 +10,7 @@ type ConveyorConfigView = {
 };
 
 type InspectionResultView = {
-  job_id: number;
+  stt: number;
   [key: string]: any;
 };
 
@@ -54,7 +54,7 @@ export const monitor = async (req: Request, res: Response) => {
 };
 
 export const handleInspectionResultMessage = async (payload: any, io: Server) => {
-  const jobId = Number(payload.job_id);
+  const jobId = Number(payload.stt);
   console.log(payload);
 
   if (!Number.isFinite(jobId)) {

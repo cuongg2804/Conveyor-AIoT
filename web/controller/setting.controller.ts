@@ -21,10 +21,10 @@ type ConveyorConfigView = {
   serial_port?: string;
   baud_rate?: number;
   ai_threshold?: number;
-  mode?: string;
+  /*mode?: string;
   conveyor_speed?: number;
   goc_home?: number;
-  goc_gat?: number;
+  goc_gat?: number; */
 };
 
 const normalizeCode = (value: any) =>
@@ -115,10 +115,10 @@ export const updateSettings = async (req: Request, res: Response) => {
       serial_port,
       baud_rate,
       ai_threshold,
-      mode,
+      /*mode,
       speed,
       goc_home,
-      goc_gat,
+      goc_gat, */
     } = req.body;
 
     const newCameraId = normalizeCode(camera_id);
@@ -184,10 +184,10 @@ export const updateSettings = async (req: Request, res: Response) => {
           serial_port: String(serial_port || "").trim(),
           baud_rate: Number(baud_rate || 9600),
           ai_threshold: Number(ai_threshold || 30.436506),
-          mode: normalizeCode(mode || "AUTO"),
+          /*mode: normalizeCode(mode || "AUTO"),
           speed: Number(speed || 150),
           goc_home: Number(goc_home || 0),
-          goc_gat: Number(goc_gat || 120)
+          goc_gat: Number(goc_gat || 120) */
         },
       }
     );

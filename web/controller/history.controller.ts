@@ -54,7 +54,7 @@ const url = (query: Record<string, string | number>) => `/history?${new URLSearc
 // Uu tien frame thu 2, neu khong co thi lay frame dau tien.
 const previewItem = (item: any) => ({
   ...item,
-  display_id: item.job_id || "-",
+  display_id: item.stt || "-",
   preview_frame: Array.isArray(item.frames) ? item.frames[1] || item.frames[0] : null,
 });
 
@@ -204,15 +204,15 @@ export const detail = async (req: Request, res: Response) => {
     const jobId = Number(req.params.jobId);
     if (!Number.isFinite(jobId)) return res.status(400).send("Ma luot kiem tra khong hop le.");
 
-    // Tim lan kiem tra theo job_id va chi lay ban ghi hop le.
-    const filter: any = { ...validInspectionFilter, job_id: jobId };
+    // Tim lan kiem tra theo stt va chi lay ban ghi hop le.
+    const filter: any = { ...validInspectionFilter, stt: jobId };
 
-    // Neu URL co conveyor_id thi loc them de tranh trung job_id giua cac bang tai.
+    // Neu URL co conveyor_id thi loc them de tranh trung stt giua cac bang tai.
     if (req.query.conveyor_id) {
       filter.conveyor_id = String(req.query.conveyor_id).trim().toUpperCase();
     }
 
-    // Lay ban ghi moi nhat neu co nhieu ban ghi cung job_id.
+    // Lay ban ghi moi nhat neu co nhieu ban ghi cung stt.
     const inspection: any = await InspectionResult.findOne(filter, { _id: 0 })
       .sort({ timestamp: -1 })
       .lean();
@@ -224,7 +224,7 @@ export const detail = async (req: Request, res: Response) => {
       title: `Chi tiet luot ${jobId}`,
       inspection: {
         ...inspection,
-        display_id: inspection.job_id || "-",
+        display_id: inspection.stt || "-",
         frames: Array.isArray(inspection.frames)
           ? inspection.frames.sort((a: any, b: any) => Number(a.frame_index) - Number(b.frame_index))
           : [],

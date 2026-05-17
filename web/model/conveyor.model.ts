@@ -10,7 +10,6 @@ const conveyor = new mongoose.Schema({
     name: {
         type: String,
         required: true,
-        unique: true,
         trim: true
     },
     line_id: {
@@ -29,7 +28,7 @@ const conveyor = new mongoose.Schema({
       default: "",
       trim: true,
     },
-    speed: {
+    /*speed: {
         type: Number,
         default: 150,
         required: true,
@@ -49,7 +48,7 @@ const conveyor = new mongoose.Schema({
         min: 0,
         max: 180,
         required: true
-    },
+    },*/
     is_active: {
       type: Boolean,
       default: true,

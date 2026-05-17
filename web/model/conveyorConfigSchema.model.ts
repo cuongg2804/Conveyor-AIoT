@@ -31,11 +31,11 @@ const conveyorConfigSchema = new mongoose.Schema(
       required: true,
       default: 30.436506,
     },
-    mode: {
+    /*mode: {
       type: String,
       enum: ["AUTO", "MANUAL"],
       default: "AUTO",
-    },
+    }, */
   },
   {
     timestamps: {
