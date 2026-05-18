@@ -18,29 +18,18 @@ const config_logs_schema = new mongoose.Schema({
         trim: true
     },
     action: {
-        serial_port: {
-            type: String,
-            trim: true,
-        },
-        camera_id: {
-            type: String,
-            trim: true,
-        },
-        camera_trigger_delay: { 
-            type: Number,
-            default: 0,
-        },
-        baud_rate: {
-            type: Number,
-            required: true,
-            default: 9600,
-        },
-        ai_threshold: {
-            type: Number,
-            required: true,
-            default: 30.436506,
-        },
-    }
+        type: String,
+        required: true,
+        enum: ["UPDATE_CONFIG"],
+        default: "UPDATE_CONFIG"
+    },
+    changes: {
+        type: Object,
+        default: {},
+    },
+    /*message: {
+        type: String
+    }*/
 },
     {
         timestamps: {

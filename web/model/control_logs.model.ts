@@ -27,9 +27,9 @@ const control_logs_schema = new mongoose.Schema({
         trim: true,
         enum: ["OK", "ERROR", "DENIED"]
     },
-    message: {
+    /*message: {
         type: String
-    }
+    }*/
 }, 
     {
         timestamps: {

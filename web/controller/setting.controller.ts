@@ -3,6 +3,8 @@ import Conveyor from "../model/conveyor.model";
 import ConveyorConfig from "../model/conveyorConfigSchema.model";
 import Camera from "../model/camera.model";
 import User from "../model/user.model";
+import Config_log from "../model/config_logs.model";
+
 
 type ConveyorView = {
   conveyor_id: string;
@@ -88,7 +90,7 @@ export const settings = async (req: Request, res: Response) => {
 export const updateSettings = async (req: Request, res: Response) => {
   try {
     const getConveyorId = (req: Request) =>
-  normalizeCode(req.params.conveyor_id || req.params.conveyorCode);
+    normalizeCode(req.params.conveyor_id || req.params.conveyorCode);
     const conveyorId = getConveyorId(req);
     const conveyor = await Conveyor.findOne({ conveyor_id: conveyorId }).lean<ConveyorView | null>();
 
@@ -162,6 +164,17 @@ export const updateSettings = async (req: Request, res: Response) => {
       }
     }
 
+    const changes: any = {};
+
+    const addChange = (field: string, oldValue: any, newValue: any) => {
+      if(String(oldValue ?? "") !== String(newValue ?? "")) {
+        changes[field] = {
+          old: oldValue ?? "",
+          new: newValue ?? ""
+        }
+      }
+    }
+
     await Conveyor.updateOne(
       { conveyor_id: conveyorId },
       {
@@ -191,6 +204,28 @@ export const updateSettings = async (req: Request, res: Response) => {
         },
       }
     );
+
+    
+    addChange("operator_id", conveyor.operator_id, operator_id);
+    addChange("camera_id", oldConfig.camera_id, newCameraId);
+    addChange("serial_port", oldConfig.serial_port, serial_port);
+    addChange("baud_rate", oldConfig.baud_rate, Number(baud_rate || 9600));
+    addChange("ai_threshold", oldConfig.ai_threshold, Number(ai_threshold || 30.436506));
+    addChange("name", conveyor.name, name);
+    addChange("line_id", conveyor.line_id, line_id);
+    addChange("status", conveyor.status, normalizeCode(status || "ONLINE"));
+    addChange("description", conveyor.description, description);
+
+    if (Object.keys(changes).length > 0) {
+      await Config_log.create({
+        config_log_id: `CFG_${Date.now()}`,
+        conveyor_id: conveyorId,
+        user_id: res.locals.user?.user_id || req.cookies?.user_id || "UNKNOWN",
+        action: "UPDATE_CONFIG",
+        changes,
+        message: "Cập nhật cấu hình băng tải",
+      });
+    }
 
     return res.redirect(`/settings/${conveyorId}?updated=1`);
   } catch (error) {

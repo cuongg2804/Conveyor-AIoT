@@ -1,0 +1,94 @@
+extend ../layout/default.pug 
+
+block main
+    .page 
+        .dashboard_header
+            .dashboard_heading 
+                h1.dashboard_title Nhật ký hệ thống 
+                p.dashboard_subtitle Theo dõi lệnh điều khiển & thay đổi cấu hình 
+
+        .card.history-filter-card 
+            form.history-filters(method="GET" action="/logs")
+                input(type="hidden" name="tab" value=tab)
+
+                .field
+                    label.field__label(for="date") Lọc theo ngày
+                    input#date.field__control(type="date" name="date" value=filters.date)
+                .field
+                    label.field__label(for="conveyor_id") Băng tải 
+                    select#conveyor_id.field__control(name="conveyor_id")
+                        option(value="") Tất cả
+                        each conveyor in conveyors 
+                            option(value=conveyor.conveyor_id selected=filters.conveyor_id === conveyor.conveyor_id)= conveyor.name
+
+                .history-filters__actions
+                    button.btn.btn--primary(type="submit") Lọc
+                    a.btn.btn-secondary(href=`/logs?tab=${tab}`) Xóa
+        .history-shift-tabs 
+            a.history-shift-tab(
+                href="/logs?tab=control"
+                class=tab === "control" ? "active" : ""
+            ) Nhật ký điều khiển hệ thống
+
+            a.history-shift-tab(
+                href="/logs?tab=config"
+                class=tab === "config" ? "active" : ""
+            ) Nhật ký cấu hình hệ thống
+
+        if tab === "control"
+            .card.history-table-card
+                .table-wrap 
+                    table.table 
+                        thead
+                            tr 
+                                th Thời gian
+                                th Người điều khiển
+                                th Băng tải
+                                th Lệnh điều khiển
+                                th Trạng thái
+                                th Ghi chú
+                        tbody
+                            if controlLogs.length
+                                each item in controlLogs
+                                    tr 
+                                        td= item.created_at ? new Date(item.created_at).toLocaleString("vi-VN") : "-"
+                                        td= item.user_name  || "-"
+                                        td= item.conveyor_name || "-"
+                                        td= item.cmd || "-"
+                                        td= item.status || "-"
+                                        td= item.message || "-"
+                            else 
+                                tr 
+                                    td(colspan="6") Không có dữ liệu
+        if tab === "config"
+            .card.history-table-card
+                .table-wrap 
+                    table.table 
+                        thead
+                            tr 
+                                th Thời gian
+                                th Người điều khiển
+                                th Băng tải
+                                th Mục thay đổi
+                                th Giá trị cập nhật
+                                th Ghi chú
+                        tbody
+                            if configLogs.length
+                                each item in configLogs
+                                    tr 
+                                        td= item.created_at ? new Date(item.created_at).toLocaleString("vi-VN") : "-"
+                                        td= item.user_name || "-"
+                                        td= item.conveyor_name || "-"
+                                        td= item.action || "-"
+                                        td 
+                                            if item.changes
+                                                each value, key in item.changes
+                                                    div
+                                                        strong #{key}: 
+                                                        span #{value.old || "-"} → #{value.new || "-"}
+                                            else
+                                                | -
+                                        td= item.message || "-"
+                            else 
+                                tr 
+                                    td(colspan="6") Không có dữ liệu                            
