@@ -38,8 +38,17 @@ export const index = async (req: Request, res: Response) => {
         const controlLogs = tab === "control" ? await Control_log.find(filter).sort({created_at: -1}).lean() : []
         const configLogs = tab === "config" ? await Config_log.find(filter).sort({created_at: -1}).lean() : []
 
-        const user_ids = controlLogs.map((item: any) => item.user_id).filter(Boolean)
-        const conveyor_ids = controlLogs.map((item: any) => item.conveyor_id).filter(Boolean)
+        const logsForMap = tab === "control"
+            ? controlLogs
+            : configLogs;
+
+        const user_ids = logsForMap
+            .map((item: any) => item.user_id)
+            .filter(Boolean);
+
+        const conveyor_ids = logsForMap
+            .map((item: any) => item.conveyor_id)
+            .filter(Boolean);
 
         const users_log = await User.find(
             { user_id:  {$in: user_ids}},

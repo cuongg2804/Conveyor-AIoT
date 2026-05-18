@@ -54,7 +54,8 @@ export const settings = async (req: Request, res: Response) => {
     }).lean();
 
     const usedOperatorIds = await Conveyor.find({
-      operator_id: { $ne: "" },
+      conveyor_id: { $ne: conveyorId },
+      operator_id: { $ne: ""}
       }).distinct("operator_id");
 
       const operators = await User.find(
@@ -223,7 +224,7 @@ export const updateSettings = async (req: Request, res: Response) => {
         user_id: res.locals.user?.user_id || req.cookies?.user_id || "UNKNOWN",
         action: "UPDATE_CONFIG",
         changes,
-        message: "Cập nhật cấu hình băng tải",
+        message:  String(description || "").trim() || "Cập nhật cấu hình băng tải",
       });
     }
 

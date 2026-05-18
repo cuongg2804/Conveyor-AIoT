@@ -20,16 +20,14 @@ const config_logs_schema = new mongoose.Schema({
     action: {
         type: String,
         required: true,
-        enum: ["UPDATE_CONFIG"],
-        default: "UPDATE_CONFIG"
     },
     changes: {
         type: Object,
         default: {},
     },
-    /*message: {
+    message: {
         type: String
-    }*/
+    }
 },
     {
         timestamps: {

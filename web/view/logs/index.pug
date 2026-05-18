@@ -46,7 +46,6 @@ block main
                                 th Băng tải
                                 th Lệnh điều khiển
                                 th Trạng thái
-                                th Ghi chú
                         tbody
                             if controlLogs.length
                                 each item in controlLogs
@@ -67,7 +66,7 @@ block main
                         thead
                             tr 
                                 th Thời gian
-                                th Người điều khiển
+                                th Người thực hiện
                                 th Băng tải
                                 th Mục thay đổi
                                 th Giá trị cập nhật
@@ -79,12 +78,16 @@ block main
                                         td= item.created_at ? new Date(item.created_at).toLocaleString("vi-VN") : "-"
                                         td= item.user_name || "-"
                                         td= item.conveyor_name || "-"
-                                        td= item.action || "-"
+                                        td
+                                            if item.changes && Object.keys(item.changes).length
+                                                each value, key in item.changes
+                                                    div= key
+                                            else 
+                                                | -
                                         td 
-                                            if item.changes
+                                            if item.changes && Object.keys(item.changes).length
                                                 each value, key in item.changes
                                                     div
-                                                        strong #{key}: 
                                                         span #{value.old || "-"} → #{value.new || "-"}
                                             else
                                                 | -
