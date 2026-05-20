@@ -28,7 +28,7 @@ const getCreateViewData = async (form: any = {}, error: string | null = null) =>
   ).lean();
 
   return {
-    title: "Táº¡o bÄƒng táº£i má»›i",
+    title: "Tạo băng tải mới",
     error,
     cameras,
     operators,
@@ -82,23 +82,23 @@ export const index = async (req: Request, res: Response) => {
     }));
 
     return res.render("conveyors/index", {
-      title: "Quáº£n lÃ½ bÄƒng táº£i",
+      title: "Quản lý băng tải",
       conveyors: conveyorList,
-      success: req.query.created === "1" ? "Táº¡o bÄƒng táº£i thÃ nh cÃ´ng." : null,
+      success: req.query.created === "1" ? "Tạo băng tải thành công." : null,
 
     });
   } catch (error) {
     console.error("Load conveyors error:", error);
 
-    return res.status(500).send("KhÃ´ng thá»ƒ táº£i danh sÃ¡ch bÄƒng táº£i.");
+    return res.status(500).send("Không thể tải danh sách băng tải.");
   }
 };
 export const create = async (req: Request, res: Response) => {
   try {
     return res.render("conveyors/create", await getCreateViewData());
   } catch (error) {
-    console.error("Lá»—i: ", error);
-    return res.status(500).send("KhÃ´ng thá»ƒ táº£i form táº¡o bÄƒng táº£i.");
+    console.error("Lỗi: ", error);
+    return res.status(500).send("Không thể tải form tạo băng tải.");
   }
 };
 export const createPost = async (req: Request, res: Response) => {
@@ -126,13 +126,13 @@ export const createPost = async (req: Request, res: Response) => {
     if (!name) {
       return res.render(
         "conveyors/create",
-        await getCreateViewData(req.body, "Vui lÃ²ng nháº­p Ä‘áº§y Ä‘á»§ thÃ´ng tin bÄƒng táº£i")
+        await getCreateViewData(req.body, "Vui lòng nhập đầy đủ thông tin băng tải")
       );
     }
     if (existingConveyor) {
       return res.render(
         "conveyors/create",
-        await getCreateViewData(req.body, "MÃ£ bÄƒng táº£i Ä‘Ã£ tá»“n táº¡i.")
+        await getCreateViewData(req.body, "Mã băng tải đã tồn tại.")
       );
     }
 
@@ -168,7 +168,7 @@ export const createPost = async (req: Request, res: Response) => {
           new: String(operator_id || "").trim(),
         }
       },
-      message: String(description || "").trim() || "PhÃ¢n cÃ´ng ngÆ°á»i váº­n hÃ nh bÄƒng táº£i"
+      message: String(description || "").trim() || "Phân công người vận hành băng tải"
     })
 
     if (camera_id) {
@@ -187,11 +187,11 @@ export const createPost = async (req: Request, res: Response) => {
 
     return res.redirect("/conveyors?created=1");
   } catch (error) {
-    console.error("Lá»—i khá»Ÿi táº¡o:", error);
+    console.error("Lỗi khởi tạo:", error);
 
     return res.render(
       "conveyors/create",
-      await getCreateViewData(req.body, "KhÃ´ng thá»ƒ táº¡o bÄƒng táº£i.")
+      await getCreateViewData(req.body, "Không thể tạo băng tải.")
     );
   }
 };
@@ -233,8 +233,8 @@ export const deleteConveyor = async (
 
     return res.redirect("/conveyors");
   } catch (error) {
-    console.error("Lá»—i xÃ³a bÄƒng táº£i:", error);
+    console.error("Lỗi xóa băng tải:", error);
 
-    return res.status(500).send("KhÃ´ng thá»ƒ xÃ³a bÄƒng táº£i.");
+    return res.status(500).send("Không thể xóa băng tải.");
   }
 };

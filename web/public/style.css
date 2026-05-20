@@ -1342,7 +1342,7 @@ img[src]:not([src=""]) + .image-placeholder {
   font-weight: 900;
 }
 
-/* Cháº·n layout history card cÅ© náº¿u cÃ²n sÃ³t */
+/* Chặn layout history card cũ nếu còn sót */
 .inspection-history-item,
 .history-item {
   display: none !important;

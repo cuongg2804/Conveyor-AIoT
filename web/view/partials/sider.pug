@@ -2,14 +2,14 @@
   .inner-menu
     ul
       li
-        a(href="/dashboard") Tá»•ng quan
+        a(href="/dashboard") Tổng quan
       li
-        a(href="/history") Lá»‹ch sá»­ kiá»ƒm tra
+        a(href="/history") Lịch sử kiểm tra
       li
-        a(href="/logs") Nháº­t kÃ½ há»‡ thá»‘ng
+        a(href="/logs") Nhật ký hệ thống
       if user && user.role === "ADMIN"
         li
-          a(href="/conveyors") BÄƒng táº£i
+          a(href="/conveyors") Băng tải
       if user && user.role === "ADMIN"
         li
           a(href="/cameras") Camera
@@ -18,4 +18,4 @@
           a(href="/models") Model AI
       if user && user.role === "ADMIN"
         li
-          a(href="/users") Quáº£n lÃ½ tÃ i khoáº£n
+          a(href="/users") Quản lý tài khoản

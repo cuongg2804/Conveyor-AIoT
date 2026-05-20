@@ -24,7 +24,7 @@ export const requireAuth = async (
         return next();
     }
     catch(error){
-        console.log("Lá»—i xÃ¡c thá»±c: ", error);
+        console.log("Lỗi xác thực: ", error);
         return res.redirect("/login");
     }
 }
