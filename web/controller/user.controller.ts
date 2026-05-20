@@ -1,8 +1,6 @@
 import { Request, Response } from "express";
-import User from "../model/user.model";
+import User, { normalizeUserRole } from "../model/user.model";
 import bcrypt from "bcryptjs";
-import { error } from "node:console";
-import { readSync } from "node:fs";
 
 const gen_user_id = () => {
     return "U_" + Math.random().toString(36).substr(2, 9);
@@ -12,9 +10,13 @@ export const index = async (req: Request, res: Response) => {
     const user = await User.find({}, {password: 0, token: 0})
         .sort({created_at: -1})
         .lean();
+    const users = user.map((item: any) => ({
+        ...item,
+        role: normalizeUserRole(item.role) || item.role,
+    }));
     return res.render("users/index", {
         title: "Quản lý người dùng",
-        users: user
+        users
     })
 }
 export const create = async (req: Request, res: Response) => {
@@ -49,9 +51,7 @@ export const createPost = async (req: Request, res: Response) => {
             });
         }
         const hashedPassword = await bcrypt.hash(String(password), 10);
-        const normalizedRole = ["ADMIN", "USER"].includes(String(role).toUpperCase())
-        ? String(role).toUpperCase()
-        : "USER";
+        const normalizedRole = normalizeUserRole(role) || "USER";
         await User.create({
             user_id: gen_user_id(),
             username: String(username).trim(),
@@ -75,23 +75,25 @@ export const edit = async (req: Request, res: Response) => {
     if(!user){
         return res.status(404).send("Không tìm thấy người dùng.");
     }
+    const viewUser = {
+        ...user,
+        role: normalizeUserRole((user as any).role) || (user as any).role,
+    };
     return res.render("users/edit", {
         title: "Cập nhật người dùng",
-        user,
+        user: viewUser,
         error: null
     })
 }
 export const editPost = async (req: Request, res: Response) => {
     try {
         const { username, password, fullname, role } = req.body;
-        const normalizedRole = ["ADMIN", "USER"].includes(String(role).toUpperCase())
-        ? String(role).toUpperCase()
-        : "USER";
+        const normalizedRole = normalizeUserRole(role) || "USER";
         const updateData: any = {
             fullname: String(fullname || "").trim(),
             role : normalizedRole
         }
-        if(password || String(password).trim()) {
+        if(String(password || "").trim()) {
             updateData.password = await bcrypt.hash(String(password), 10)
             updateData.token = ""
         }

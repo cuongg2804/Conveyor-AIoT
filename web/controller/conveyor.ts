@@ -1,12 +1,13 @@
-import {Request, Response} from "express";
+﻿import {Request, Response} from "express";
 import Conveyor from "../model/conveyor.model";
 import ConveyorConfig from "../model/conveyorConfigSchema.model";
 import Camera from "../model/camera.model";
 import User from "../model/user.model";
+import Config_log from "../model/config_logs.model";
 
-// const gen_conveyor_id = () => {
-//     return "BT_" + Math.random().toString(36).substr(2, 9);
-// }
+const gen_conveyor_id = () => {
+    return "BT_" + Math.random().toString(36).substring(2, 9).toUpperCase();
+}
 
 const getCreateViewData = async (form: any = {}, error: string | null = null) => {
   const cameras = await Camera.find({ status: "AVAILABLE" }).lean();
@@ -27,14 +28,14 @@ const getCreateViewData = async (form: any = {}, error: string | null = null) =>
   ).lean();
 
   return {
-    title: "Tạo băng tải mới",
+    title: "Táº¡o bÄƒng táº£i má»›i",
     error,
     cameras,
     operators,
     form: {
       conveyor_id: "",
       name: "",
-      line_id: "",
+      /*line_id: "",*/
       status: "ONLINE",
       operator_id: "",
       description: "",
@@ -43,7 +44,6 @@ const getCreateViewData = async (form: any = {}, error: string | null = null) =>
       serial_port: "",
       baud_rate: 9600,
       ai_threshold: 30.436506,
-      mode: "AUTO",
       ...form,
     },
   };
@@ -82,31 +82,30 @@ export const index = async (req: Request, res: Response) => {
     }));
 
     return res.render("conveyors/index", {
-      title: "Quản lý băng tải",
+      title: "Quáº£n lÃ½ bÄƒng táº£i",
       conveyors: conveyorList,
-      success: req.query.created === "1" ? "Tạo băng tải thành công." : null,
+      success: req.query.created === "1" ? "Táº¡o bÄƒng táº£i thÃ nh cÃ´ng." : null,
 
     });
   } catch (error) {
     console.error("Load conveyors error:", error);
 
-    return res.status(500).send("Không thể tải danh sách băng tải.");
+    return res.status(500).send("KhÃ´ng thá»ƒ táº£i danh sÃ¡ch bÄƒng táº£i.");
   }
 };
 export const create = async (req: Request, res: Response) => {
   try {
     return res.render("conveyors/create", await getCreateViewData());
   } catch (error) {
-    console.error("Lỗi: ", error);
-    return res.status(500).send("Không thể tải form tạo băng tải.");
+    console.error("Lá»—i: ", error);
+    return res.status(500).send("KhÃ´ng thá»ƒ táº£i form táº¡o bÄƒng táº£i.");
   }
 };
 export const createPost = async (req: Request, res: Response) => {
   try {
     const {
-      conveyor_id,
       name,
-      line_id,
+      /*line_id,*/
       status,
       operator_id,
       description,
@@ -116,30 +115,33 @@ export const createPost = async (req: Request, res: Response) => {
       serial_port,
       baud_rate,
       ai_threshold,
-      mode,
     } = req.body;
+
+    const conveyor_id = gen_conveyor_id()
 
     const existingConveyor = await Conveyor.findOne({
       conveyor_id,
     }).lean();
 
-    if (!conveyor_id || !name || !line_id) {
+    if (!name) {
       return res.render(
         "conveyors/create",
-        await getCreateViewData(req.body, "Vui lòng nhập đầy đủ mã, tên băng tải và dây chuyền.")
+        await getCreateViewData(req.body, "Vui lÃ²ng nháº­p Ä‘áº§y Ä‘á»§ thÃ´ng tin bÄƒng táº£i")
       );
     }
     if (existingConveyor) {
       return res.render(
         "conveyors/create",
-        await getCreateViewData(req.body, "Mã băng tải đã tồn tại.")
+        await getCreateViewData(req.body, "MÃ£ bÄƒng táº£i Ä‘Ã£ tá»“n táº¡i.")
       );
     }
 
+
+
     await Conveyor.create({
-      conveyor_id: String(conveyor_id).trim().toUpperCase(),
+      conveyor_id,
       name: String(name).trim(),
-      line_id: String(line_id).trim(),
+      /*line_id: String(line_id).trim(),*/
       status: String(status || "ONLINE").toUpperCase(),
       operator_id: String(operator_id || "").trim(),
       description: String(description || "").trim(),
@@ -147,14 +149,27 @@ export const createPost = async (req: Request, res: Response) => {
     });
 
     await ConveyorConfig.create({
-      conveyor_id: String(conveyor_id).trim().toUpperCase(),
+      conveyor_id,
       camera_id: String(camera_id || "").trim().toUpperCase(),
       camera_trigger_delay: Number(camera_trigger_delay || 0),
       serial_port: String(serial_port || "").trim(),
       baud_rate: Number(baud_rate || 9600),
       ai_threshold: Number(ai_threshold || 30.436506),
-      mode: String(mode || "AUTO").toUpperCase(),
     });
+
+    await Config_log.create({
+      config_log_id: `CFG_${Date.now()}`,
+      conveyor_id,
+      user_id: res.locals.user?.user_id || "UNKNOW",
+      action: "CREATE_NEW",
+      changes: {
+        operator_id: {
+          old: "",
+          new: String(operator_id || "").trim(),
+        }
+      },
+      message: String(description || "").trim() || "PhÃ¢n cÃ´ng ngÆ°á»i váº­n hÃ nh bÄƒng táº£i"
+    })
 
     if (camera_id) {
       await Camera.updateOne(
@@ -172,12 +187,12 @@ export const createPost = async (req: Request, res: Response) => {
 
     return res.redirect("/conveyors?created=1");
   } catch (error) {
-    console.error("Lỗi khởi tạo:", error);
+    console.error("Lá»—i khá»Ÿi táº¡o:", error);
 
     return res.render(
       "conveyors/create",
-      await getCreateViewData(req.body, "Không thể tạo băng tải.")
-    );  
+      await getCreateViewData(req.body, "KhÃ´ng thá»ƒ táº¡o bÄƒng táº£i.")
+    );
   }
 };
 
@@ -218,8 +233,8 @@ export const deleteConveyor = async (
 
     return res.redirect("/conveyors");
   } catch (error) {
-    console.error("Lỗi xóa băng tải:", error);
+    console.error("Lá»—i xÃ³a bÄƒng táº£i:", error);
 
-    return res.status(500).send("Không thể xóa băng tải.");
+    return res.status(500).send("KhÃ´ng thá»ƒ xÃ³a bÄƒng táº£i.");
   }
 };

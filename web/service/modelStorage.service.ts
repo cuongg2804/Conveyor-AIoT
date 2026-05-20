@@ -1,6 +1,6 @@
 import path from "path";
 import minioClient, { MINIO_BUCKET } from "../config/minio";
-const ModelRegistry = require("../model/modelRegister.model");
+import ModelRegistry from "../model/modelRegister.model";
 
 export type ModelRegistryInput = {
   model_name: string;
@@ -11,7 +11,7 @@ export type ModelRegistryInput = {
   precision?: number | null;
   recall?: number | null;
   f1_score?: number | null;
-  status?: "testing" | "active" | "inactive" | "archived" | "failed";
+  status?: "testing" | "active" | "archived" | "failed";
 };
 
 export type StoredModel = ModelRegistryInput & {
@@ -31,7 +31,7 @@ export type ModelRegistryUpdate = {
   precision?: number | null;
   recall?: number | null;
   f1_score?: number | null;
-  status: "testing" | "active" | "inactive" | "archived" | "failed";
+  status: "testing" | "active" | "archived" | "failed";
 };
 
 const safeFileName = (fileName: string) =>
@@ -65,7 +65,7 @@ const optionalNumber = (value: any) => {
   return number;
 };
 
-const allowedStatuses = ["testing", "active", "inactive", "archived", "failed"];
+const allowedStatuses = ["testing", "active", "archived", "failed"];
 
 export const listModels = async () => {
   return ModelRegistry.find({}).sort({ created_at: -1 }).lean();

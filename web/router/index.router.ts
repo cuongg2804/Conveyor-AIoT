@@ -5,14 +5,14 @@ import historyRoute from "./history.router";
 import settingRoute from "./setting.router";
 import controlRoute from "./control.router";
 import loginRoute from "./login.router";
-import logoutRoute from "./logout.router"
+import logoutRoute from "./logout.router";
 import userRoute from "./user.router";
 import conveyorRoute from "./conveyor.router";
 import cameraRoute from "./camera.router";
 import modelRoute from "./model.router";
-
+import runtimeConfigRoute from "./runtimeConfig.router";
+import logRoute from "./log.router";
 import { requireAuth } from "../middleware/auth.middleware";
-
 
 const router = Router();
 
@@ -24,6 +24,8 @@ router.use("/control", requireAuth, controlRoute);
 router.use("/conveyors", requireAuth, conveyorRoute);
 router.use("/cameras", requireAuth, cameraRoute);
 router.use("/models", modelRoute);
+router.use("/logs", requireAuth, logRoute);
+router.use("/api/runtime-config", runtimeConfigRoute);
 router.use("/login", loginRoute);
 router.use("/logout", logoutRoute);
 router.use("/users", userRoute);

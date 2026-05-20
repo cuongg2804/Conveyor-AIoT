@@ -1,104 +1,132 @@
-extend ../layout/default.pug
+extends ../layout/default.pug
 
 block main
   .page
     .dashboard__header
       .dashboard__heading
-        h1.dashboard__title= title || "Cấu hình băng tải"
-        p.dashboard__subtitle Cập nhật thông tin băng tải và cấu hình vận hành
+        h1.dashboard__title= title || "Cau hinh bang tai"
+        p.dashboard__subtitle Cap nhat thong tin bang tai va cau hinh van hanh
 
       .dashboard-actions
-        a.btn.btn--secondary(href="/conveyors") Quay lại danh sách
+        a.btn.btn--secondary(href="/conveyors") Quay lai danh sach
         if monitorUrl
-          a.btn.btn--primary(href=monitorUrl) Giám sát
+          a.btn.btn--primary(href=monitorUrl) Giam sat
 
     if updated
-      .alert.alert--success Cập nhật cấu hình thành công.
+      .alert.alert--success Cap nhat cau hinh thanh cong.
 
     if configSynced
-      .alert.alert--success Đã đồng bộ cấu hình.
+      .alert.alert--success Da dong bo cau hinh.
 
     if configSyncFailed
-      .alert.alert--error Không thể đồng bộ cấu hình.
+      .alert.alert--error Khong the dong bo cau hinh.
 
     .card
       form.settings-form(method="POST" action=formAction)
-        h3.section-title Thông tin băng tải
+        h3.section-title Thong tin bang tai
 
-        .field
-          label.field__label(for="conveyor_id") Mã băng tải
-          input#conveyor_id.field__control(type="text" value=conveyor.conveyor_id disabled)
+        .settings-section-grid
+          .field
+            label.field__label(for="conveyor_id") Ma bang tai
+            input#conveyor_id.field__control(type="text" value=conveyor.conveyor_id disabled)
 
-        .field
-          label.field__label(for="name") Tên băng tải
-          input#name.field__control(type="text" name="name" value=conveyor.name required)
+          .field
+            label.field__label(for="name") Ten bang tai
+            input#name.field__control(type="text" name="name" value=conveyor.name required)
 
-        .field
-          label.field__label(for="line_id") Dây chuyền
-          input#line_id.field__control(type="text" name="line_id" value=conveyor.line_id required)
+          .field
+            label.field__label(for="line_id") Day chuyen
+            input#line_id.field__control(type="text" name="line_id" value=conveyor.line_id required)
 
-        .field
-          label.field__label(for="operator_id") Người vận hành
-          select#operator_id.field__control(name="operator_id")
-            option(value="" selected=!conveyor.operator_id) -- Chưa phân công --
-            each operator in operators
-              option(value=operator.user_id selected=conveyor.operator_id === operator.user_id)
-                | #{operator.fullname || operator.username || operator.user_id}
+          if user && user.role === "ADMIN"
+            .field
+              label.field__label(for="operator_id") Nguoi van hanh
+              select#operator_id.field__control(name="operator_id")
+                option(value="" selected=!conveyor.operator_id) -- Chua phan cong --
+                each operator in operators
+                  option(value=operator.user_id selected=conveyor.operator_id === operator.user_id)
+                    | #{operator.fullname || operator.username || operator.user_id}
 
-        .field
-          label.field__label(for="status") Trạng thái
-          select#status.field__control(name="status")
-            option(value="READY" selected=conveyor.status === "READY") READY
-            option(value="RUNNING" selected=conveyor.status === "RUNNING") RUNNING
-            option(value="STOPPED" selected=conveyor.status === "STOPPED") STOPPED
-            option(value="ERROR" selected=conveyor.status === "ERROR") ERROR
-            option(value="OFFLINE" selected=conveyor.status === "OFFLINE") OFFLINE
+          .field
+            label.field__label(for="status") Trang thai
+            select#status.field__control(name="status")
+              option(value="READY" selected=conveyor.status === "READY") READY
+              option(value="RUNNING" selected=conveyor.status === "RUNNING") RUNNING
+              option(value="STOPPED" selected=conveyor.status === "STOPPED") STOPPED
+              option(value="ERROR" selected=conveyor.status === "ERROR") ERROR
+              option(value="OFFLINE" selected=conveyor.status === "OFFLINE") OFFLINE
 
-        .field
-          label.field__label(for="description") Mô tả
+        .field.settings-section-full
+          label.field__label(for="description") Mo ta
           textarea#description.field__control(name="description")= conveyor.description || ""
 
         .divider
 
         h3.section-title Camera
 
-        .field
-          label.field__label(for="camera_id") Nguồn camera
-          select#camera_id.field__control(name="camera_id")
-            option(value="" selected=!config.camera_id) -- Chưa chọn camera --
-            each camera in cameras
-              option(value=camera.camera_id selected=config.camera_id === camera.camera_id)
-                | #{camera.camera_name} - #{camera.camera_id}
+        .settings-section-grid
+          .field
+            label.field__label(for="camera_id") Nguon camera
+            select#camera_id.field__control(name="camera_id")
+              option(value="" selected=!config.camera_id) -- Chua chon camera --
+              each camera in cameras
+                option(value=camera.camera_id selected=config.camera_id === camera.camera_id)
+                  | #{camera.camera_name} - #{camera.camera_id}
 
-        .field
-          label.field__label(for="camera_trigger_delay") Độ trễ kích hoạt
-          input#camera_trigger_delay.field__control(type="number" name="camera_trigger_delay" step="1" value=config.camera_trigger_delay || 0)
-
-        .divider
-
-        h3.section-title Bộ điều khiển
-
-        .field
-          label.field__label(for="serial_port") Cổng kết nối
-          input#serial_port.field__control(type="text" name="serial_port" value=config.serial_port || "" required)
-
-        .field
-          label.field__label(for="baud_rate") Tốc độ truyền
-          input#baud_rate.field__control(type="number" name="baud_rate" value=config.baud_rate || 9600 required)
+          .field
+            label.field__label(for="camera_trigger_delay_ms") Do tre kich hoat camera
+            input#camera_trigger_delay_ms.field__control(
+              type="number"
+              name="camera_trigger_delay_ms"
+              step="1"
+              value=config.camera_trigger_delay_ms || config.camera_trigger_delay || 0
+            )
 
         .divider
 
-        h3.section-title AI & Chế độ vận hành
+        h3.section-title Bo dieu khien
 
-        .field
-          label.field__label(for="ai_threshold") Ngưỡng đánh giá
-          input#ai_threshold.field__control(type="number" name="ai_threshold" step="0.000001" value=config.ai_threshold || 30.436506 required)
+        .settings-section-grid
+          .field
+            label.field__label(for="serial_port") Cong ket noi
+            input#serial_port.field__control(type="text" name="serial_port" value=config.serial_port || "" required)
 
-        .field
-          label.field__label(for="mode") Chế độ
-          select#mode.field__control(name="mode")
-            option(value="AUTO" selected=config.mode === "AUTO") AUTO
-            option(value="MANUAL" selected=config.mode === "MANUAL") MANUAL
+          .field
+            label.field__label(for="baud_rate") Toc do truyen
+            input#baud_rate.field__control(type="number" name="baud_rate" value=config.baud_rate || 9600 required)
+
+        .divider
+
+        h3.section-title AI & Che do van hanh
+
+        .settings-section-grid
+          .field
+            label.field__label(for="model_id") Model AI
+            select#model_id.field__control(name="model_id")
+              - const selectedModelId = config.model_id && config.model_id._id ? String(config.model_id._id) : String(config.model_id || "")
+              option(value="" selected=!selectedModelId) -- Chua chon model --
+              each model in ModelRegistryList
+                option(
+                  value=model._id
+                  selected=selectedModelId === String(model._id)
+                )
+                  | #{model.model_name} - v#{model.version} - #{model.product_code}
+
+          .field
+            label.field__label(for="threshold_override") Nguong ghi de
+            input#threshold_override.field__control(
+              type="number"
+              name="threshold_override"
+              step="0.000001"
+              value=config.threshold_override !== null && config.threshold_override !== undefined ? config.threshold_override : ""
+              placeholder="De trong de dung threshold cua model"
+            )
+
+          .field
+            label.field__label(for="mode") Che do
+            select#mode.field__control(name="mode")
+              option(value="AUTO" selected=config.mode === "AUTO") AUTO
+              option(value="MANUAL" selected=config.mode === "MANUAL") MANUAL
 
         .settings-actions
-          button.btn.btn--primary(type="submit") Lưu cấu hình
+          button.btn.btn--primary(type="submit") Luu cau hinh

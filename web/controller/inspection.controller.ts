@@ -3,17 +3,6 @@ import { Server } from "socket.io";
 import InspectionResult from "../model/inspection-result.model";
 import Conveyor from "../model/conveyor.model";
 
-type ConveyorConfigView = {
-  conveyor_id: string;
-  name: string;
-  status?: string;
-};
-
-type InspectionResultView = {
-  job_id: number;
-  [key: string]: any;
-};
-
 const normalizeConveyorCode = (value: any) => String(value || "").trim().toUpperCase();
 
 export const monitor = async (req: Request, res: Response) => {
@@ -21,7 +10,7 @@ export const monitor = async (req: Request, res: Response) => {
     const conveyorCode = normalizeConveyorCode(req.params.conveyorCode);
 
     if (!conveyorCode) {
-      return res.status(400).send("Thiếu mã băng tải.");
+      return res.status(400).send("Thieu ma bang tai.");
     }
 
     const conveyor = await Conveyor.findOne({ conveyor_id: conveyorCode })
@@ -29,15 +18,18 @@ export const monitor = async (req: Request, res: Response) => {
       .lean();
 
     if (!conveyor) {
-      return res.status(404).send("Không tìm thấy băng tải.");
+      return res.status(404).send("Khong tim thay bang tai.");
     }
 
-    const isRunning = ["STARTING", "RUNNING"].includes(String((conveyor as any).status || "").toUpperCase());
+    const isRunning = ["STARTING", "RUNNING"].includes(
+      String((conveyor as any).status || "").toUpperCase()
+    );
+
     const latestInspection = isRunning
       ? await InspectionResult.findOne({ conveyor_id: conveyorCode })
-        .select("-_id")
-        .sort({ timestamp: -1 })
-        .lean()
+          .select("-_id")
+          .sort({ timestamp: -1 })
+          .lean()
       : null;
 
     return res.render("dashboard/monitor", {
@@ -48,17 +40,21 @@ export const monitor = async (req: Request, res: Response) => {
       settingsUrl: `/settings/${conveyorCode}`,
     });
   } catch (error) {
-    console.error("Render monitor lỗi:", error);
+    console.error("Render monitor loi:", error);
     return res.status(500).send("Khong the tai trang giam sat.");
   }
 };
 
 export const handleInspectionResultMessage = async (payload: any, io: Server) => {
-  const jobId = Number(payload.job_id);
-  console.log(payload);
+  const jobId = Number(payload.job_id ?? payload.stt);
 
   if (!Number.isFinite(jobId)) {
-    console.warn("Số job không hợp lệ:", payload);
+    console.warn("So job khong hop le:", payload);
     return;
   }
+
+  io.emit("inspection_result", {
+    ...payload,
+    job_id: payload.job_id ?? payload.stt,
+  });
 };

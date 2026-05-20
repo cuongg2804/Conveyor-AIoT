@@ -1,20 +1,25 @@
-const mongoose = require("mongoose");
+// models/ModelRegistry.ts
+import mongoose from "mongoose";
 
-const ModelRegistrySchema = new mongoose.Schema(
+const modelRegistrySchema = new mongoose.Schema(
   {
     model_name: {
       type: String,
       required: true,
+      trim: true,
     },
 
     version: {
       type: String,
       required: true,
+      trim: true,
     },
 
     product_code: {
       type: String,
       required: true,
+      trim: true,
+      uppercase: true,
     },
 
     storage_type: {
@@ -26,11 +31,13 @@ const ModelRegistrySchema = new mongoose.Schema(
     bucket: {
       type: String,
       required: true,
+      trim: true,
     },
 
     object_key: {
       type: String,
       required: true,
+      trim: true,
     },
 
     threshold: {
@@ -60,30 +67,35 @@ const ModelRegistrySchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["testing", "active", "inactive", "archived", "failed"],
+      enum: ["testing", "active", "archived", "failed"],
       default: "testing",
       index: true,
     },
 
+    // Nếu có User thì bật lại phần này
     // created_by: {
     //   type: mongoose.Schema.Types.ObjectId,
     //   ref: "User",
     //   default: null,
     // },
-
-    created_at: {
-      type: Date,
-      default: Date.now,
-    },
   },
   {
     collection: "model_registry",
+    timestamps: {
+      createdAt: "created_at",
+      updatedAt: "updated_at",
+    },
+    versionKey: false,
   }
 );
 
-ModelRegistrySchema.index(
+modelRegistrySchema.index(
   { product_code: 1, model_name: 1, version: 1 },
   { unique: true }
 );
 
-module.exports = mongoose.model("ModelRegistry", ModelRegistrySchema);
+const ModelRegistry =
+  mongoose.models.ModelRegistry ||
+  mongoose.model("ModelRegistry", modelRegistrySchema);
+
+export default ModelRegistry;

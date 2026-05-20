@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+﻿import { Request, Response } from "express";
 import InspectionResult from "../model/inspection-result.model";
 
 const PAGE_SIZE = 10;
@@ -54,15 +54,18 @@ const url = (query: Record<string, string | number>) => `/history?${new URLSearc
 // Uu tien frame thu 2, neu khong co thi lay frame dau tien.
 const previewItem = (item: any) => ({
   ...item,
-  display_id: item.job_id || "-",
+  display_id: item.stt || "-",
   preview_frame: Array.isArray(item.frames) ? item.frames[1] || item.frames[0] : null,
 });
 
 export const index = async (req: Request, res: Response) => {
   try {
+    const clearFilter = req.query.clear === "1"
     // 1. Lay gia tri nguoi dung chon tren giao dien
     // label: loc ket qua OK/NG. Neu rong thi hien thi tat ca.
-    const selectedLabel = String(req.query.label || "");
+    const selectedLabel = clearFilter ? "" : String(req.query.label || "");
+
+    const selectedDateValue = clearFilter ? "" : String(req.query.statsDate || todayInputValue())
 
     // shift: loc ca sang/ca chieu. Neu khong hop le thi mac dinh la "all".
     const selectedShift = ["morning", "afternoon"].includes(String(req.query.shift))
@@ -73,7 +76,7 @@ export const index = async (req: Request, res: Response) => {
     const page = Math.max(Number(req.query.page || 1), 1);
 
     // selectedDay gom: ngay dang xem, moc bat dau ngay, 12h trua va cuoi ngay.
-    const selectedDay = dayRange(String(req.query.statsDate || ""));
+    const selectedDay = dayRange(selectedDateValue);
 // 2. Lay tat ca ket qua trong ngay de tinh thong ke
     // Filter nay khong loc theo ca va khong loc OK/NG,
     // vi phan thong ke phia tren can tinh tong ca ngay.
@@ -160,7 +163,7 @@ title: "Lich su kiem tra",
       // Gia tri filter hien tai de form giu lai lua chon cua nguoi dung.
       filters: {
         label: selectedLabel,
-        statsDate: selectedDay.date,
+        statsDate: selectedDateValue,
         shift: selectedShift,
       },
 
@@ -173,7 +176,7 @@ title: "Lich su kiem tra",
 
       // Du lieu thong ke o cac card phia tren.
       dailyStats: {
-        date: selectedDay.date,
+        date: clearFilter ? "" : selectedDay.date,
         total: summarize(allItemsInDay),
         morning: summarize(morningItems),
         afternoon: summarize(afternoonItems),
@@ -201,15 +204,15 @@ export const detail = async (req: Request, res: Response) => {
     const jobId = Number(req.params.jobId);
     if (!Number.isFinite(jobId)) return res.status(400).send("Ma luot kiem tra khong hop le.");
 
-    // Tim lan kiem tra theo job_id va chi lay ban ghi hop le.
-    const filter: any = { ...validInspectionFilter, job_id: jobId };
+    // Tim lan kiem tra theo stt va chi lay ban ghi hop le.
+    const filter: any = { ...validInspectionFilter, stt: jobId };
 
-    // Neu URL co conveyor_id thi loc them de tranh trung job_id giua cac bang tai.
+    // Neu URL co conveyor_id thi loc them de tranh trung stt giua cac bang tai.
     if (req.query.conveyor_id) {
       filter.conveyor_id = String(req.query.conveyor_id).trim().toUpperCase();
     }
 
-    // Lay ban ghi moi nhat neu co nhieu ban ghi cung job_id.
+    // Lay ban ghi moi nhat neu co nhieu ban ghi cung stt.
     const inspection: any = await InspectionResult.findOne(filter, { _id: 0 })
       .sort({ timestamp: -1 })
       .lean();
@@ -221,7 +224,7 @@ export const detail = async (req: Request, res: Response) => {
       title: `Chi tiet luot ${jobId}`,
       inspection: {
         ...inspection,
-        display_id: inspection.job_id || "-",
+        display_id: inspection.stt || "-",
         frames: Array.isArray(inspection.frames)
           ? inspection.frames.sort((a: any, b: any) => Number(a.frame_index) - Number(b.frame_index))
           : [],

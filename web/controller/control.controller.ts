@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import Conveyor from "../model/conveyor.model";
 import { publishControlCommand } from "../service/mqtt.service";
 
-const allowedCommands = ["START_SYSTEM", "STOP_SYSTEM", "GET_STATUS", "RELOAD_CONFIG"]; // Danh sách các lệnh điều khiển hợp lệ
+const allowedCommands = ["START_SYSTEM", "STOP_SYSTEM", "GET_STATUS", "RELOAD_CONFIG", "GET_SERIAL_PORT"]; // Danh sách các lệnh điều khiển hợp lệ
 // Hàm chuẩn hóa mã băng tải từ payload
 const normalizeConveyorCode = (value: any) => String(value || "").trim().toUpperCase();
 // Controller để xử lý yêu cầu điều khiển băng tải

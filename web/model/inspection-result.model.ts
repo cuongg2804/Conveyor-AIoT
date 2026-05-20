@@ -22,7 +22,7 @@ const inspectionResultSchema = new mongoose.Schema(
       sparse: true,
       trim: true,
     },
-    job_id: { // 
+    stt: { // số thứ tự lần kiểm tra trong ngày của băng tải
       type: Number,
       required: true,
       index: true, // 

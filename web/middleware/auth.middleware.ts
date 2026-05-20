@@ -1,5 +1,5 @@
-import { Request, Response, NextFunction } from "express";
-import User from "../model/user.model";
+﻿import { Request, Response, NextFunction } from "express";
+import User, { normalizeUserRole } from "../model/user.model";
 
 export const requireAuth = async (
     req: Request,
@@ -17,23 +17,26 @@ export const requireAuth = async (
             res.clearCookie("token");
             return res.redirect("/login");
         }
-        (res.locals as any).user = user;
-        (req as any).user = user;
+        const authUser = user.toObject();
+        (authUser as any).role = normalizeUserRole(authUser.role);
+        (res.locals as any).user = authUser;
+        (req as any).user = authUser;
         return next();
     }
     catch(error){
-        console.log("Lỗi xác thực: ", error);
+        console.log("Lá»—i xÃ¡c thá»±c: ", error);
         return res.redirect("/login");
     }
 }
 export const requireRole = (...role: string[]) => {
     return (req: Request, res: Response, next: NextFunction) => {
         const user = (req as any).user
+        const allowedRoles = role.map(normalizeUserRole).filter(Boolean);
+        const userRole = normalizeUserRole(user?.role);
 
-        if(!user || !role.includes(user.role)) {
+        if(!user || !allowedRoles.includes(userRole)) {
             return res.status(403).send("Access denied");
         }
         return next();
     }
 }
-   

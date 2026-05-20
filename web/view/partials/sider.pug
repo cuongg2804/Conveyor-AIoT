@@ -1,13 +1,15 @@
-.sider
+﻿.sider
   .inner-menu
     ul
       li
-        a(href="/dashboard") Tổng quan
+        a(href="/dashboard") Tá»•ng quan
       li
-        a(href="/history") Lịch sử kiểm tra
+        a(href="/history") Lá»‹ch sá»­ kiá»ƒm tra
+      li
+        a(href="/logs") Nháº­t kÃ½ há»‡ thá»‘ng
       if user && user.role === "ADMIN"
         li
-          a(href="/conveyors") Băng tải
+          a(href="/conveyors") BÄƒng táº£i
       if user && user.role === "ADMIN"
         li
           a(href="/cameras") Camera
@@ -16,4 +18,4 @@
           a(href="/models") Model AI
       if user && user.role === "ADMIN"
         li
-          a(href="/users") Quản lý tài khoản
+          a(href="/users") Quáº£n lÃ½ tÃ i khoáº£n

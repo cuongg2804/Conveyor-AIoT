@@ -21,7 +21,6 @@ block main
                         //th Loại camera
                         th Trạng thái
                         th Băng tải sử dụng
-                        th Mô tả
                         th Thao tác
                 tbody 
                     each item in camera
@@ -31,7 +30,6 @@ block main
                             td=item.camera_ip
                             td=item.status
                             td=item.conveyor_name
-                            td= item.description
                             td
                                 a.btn.btn--secondary(href=`/cameras/edit/${item.camera_id}`) Sửa
                                 form(method="POST" action=`/cameras/delete/${item.camera_id}` style="display:inline-block; margin-left: 8px;")
