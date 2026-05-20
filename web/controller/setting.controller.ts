@@ -57,7 +57,6 @@ export const settings = async (req: Request, res: Response) => {
       conveyor_id: { $ne: conveyorId },
       operator_id: { $ne: ""}
       }).distinct("operator_id");
-
       const operators = await User.find(
         {
           user_id: { $nin: usedOperatorIds },
@@ -108,7 +107,7 @@ export const updateSettings = async (req: Request, res: Response) => {
 
     const {
       name,
-      line_id,
+      /*line_id,*/
       status,
       operator_id,
       description,
@@ -181,7 +180,7 @@ export const updateSettings = async (req: Request, res: Response) => {
       {
         $set: {
           name: String(name || "").trim(),
-          line_id: String(line_id || "").trim(),
+          /*line_id: String(line_id || "").trim(),*/
           status: normalizeCode(status || "ONLINE"),
           operator_id: String(operator_id || "").trim(),
           description: String(description || "").trim(),
@@ -213,7 +212,7 @@ export const updateSettings = async (req: Request, res: Response) => {
     addChange("baud_rate", oldConfig.baud_rate, Number(baud_rate || 9600));
     addChange("ai_threshold", oldConfig.ai_threshold, Number(ai_threshold || 30.436506));
     addChange("name", conveyor.name, name);
-    addChange("line_id", conveyor.line_id, line_id);
+    /*addChange("line_id", conveyor.line_id, line_id);*/
     addChange("status", conveyor.status, normalizeCode(status || "ONLINE"));
     addChange("description", conveyor.description, description);
 

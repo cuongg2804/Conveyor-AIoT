@@ -386,21 +386,6 @@ textarea.field__control {
   font-weight: 850;
 }
 
-.settings-section-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-  grid-column: 1 / -1;
-}
-
-.settings-section-grid--three {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.settings-section-full {
-  grid-column: 1 / -1;
-}
-
 /* =========================================================
    DASHBOARD - CONVEYOR LIST
 ========================================================= */
@@ -1719,4 +1704,86 @@ img[src]:not([src=""]) + .image-placeholder {
   border: 1px solid #fecaca;
   font-size: 14px;
   font-weight: 800;
+}
+
+/* =========================================================
+   MODEL STORAGE
+========================================================= */
+.model-upload-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.8fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.model-upload-form {
+  display: grid;
+  gap: 16px;
+}
+
+.model-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.model-upload-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.model-upload-meta span {
+  padding: 8px 10px;
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.upload-result {
+  display: grid;
+  gap: 10px;
+}
+
+.upload-result__row {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.upload-result__row span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.upload-result__row strong {
+  color: var(--text);
+  font-size: 13px;
+  word-break: break-all;
+}
+
+.model-list-card {
+  margin-top: 18px;
+}
+
+.model-object-key {
+  display: inline-block;
+  max-width: 320px;
+  word-break: break-all;
+}
+
+@media (max-width: 900px) {
+  .model-upload-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .model-form-grid {
+    grid-template-columns: 1fr;
+  }
 }

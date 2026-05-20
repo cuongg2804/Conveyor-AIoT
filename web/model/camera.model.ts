@@ -35,11 +35,6 @@ const cameraSchema = new mongoose.Schema(
       trim: true,
       uppercase: true,
     },
-    description: {
-      type: String,
-      default: "",
-      trim: true,
-    },
   },
   {
     timestamps: {

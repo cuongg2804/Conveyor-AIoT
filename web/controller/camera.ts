@@ -21,7 +21,6 @@ type CameraView = {
   type?: string;
   status?: string;
   conveyor_id?: string;
-  description?: string;
 };
 const normalizeCode = (value: any) =>
     String(value || "").trim().toUpperCase()
@@ -96,7 +95,6 @@ export const create = async (req: Request, res: Response) => {
       camera_ip: "",
       //type: "GIGE",
       status: "AVAILABLE",
-      description: "",
     },
   });
 };
@@ -107,7 +105,6 @@ export const createPost = async (req: Request, res: Response) => {
       camera_name,
       camera_ip,
       /*type, */
-      description,
     } = req.body;
 
     const finalCameraId = camera_id
@@ -150,7 +147,6 @@ export const createPost = async (req: Request, res: Response) => {
         : "GIGE", */
       status: "AVAILABLE",
       conveyor_id: "",
-      description: String(description || "").trim(),
     });
 
     return res.redirect("/cameras");
