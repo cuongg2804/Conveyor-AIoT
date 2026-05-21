@@ -5,8 +5,9 @@
         a(href="/dashboard") Tổng quan
       li
         a(href="/history") Lịch sử kiểm tra
-      li
-        a(href="/logs") Nhật ký hệ thống
+      if user && user.role === "ADMIN"
+        li
+          a(href="/logs") Nhật ký hệ thống
       if user && user.role === "ADMIN"
         li
           a(href="/conveyors") Băng tải
