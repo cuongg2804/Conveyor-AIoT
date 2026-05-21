@@ -262,29 +262,15 @@ class SystemController:
             else:
                 bundle = {"roi_path": None, "overlay_path": None}
 
-            # frame_documents.append({
-            #     "frame_index": idx,
-            #     "predicted_label": frame_result.get("pred_label", "UNKNOWN"),
-            #     "predicted_score": float(frame_result.get("pred_score", 0.0)),
-            #     "roi_path": bundle.get("roi_path"),
-            #     "overlay_path": bundle.get("overlay_path"),
-            # })
-
             frame_documents.append({
                 "frame_index": idx,
                 "predicted_label": frame_result.get("pred_label", "UNKNOWN"),
                 "predicted_score": float(frame_result.get("pred_score", 0.0)),
-
-                # Local path cũ, nếu storage_service vẫn trả về path local
                 "roi_path": bundle.get("roi_path"),
                 "overlay_path": bundle.get("overlay_path"),
-
-                # MinIO object key mới, nếu storage_service upload lên MinIO
-                "roi_object_key": bundle.get("roi_object_key"),
-                "overlay_object_key": bundle.get("overlay_object_key"),
-                "bucket": bundle.get("bucket"),
-                "storage_type": bundle.get("storage_type", "minio" if bundle.get("roi_object_key") or bundle.get("overlay_object_key") else "local"),
             })
+
+            
 
         mongo_document = {
             "inspection_id": inspection_id,
