@@ -1,5 +1,7 @@
 import { Request, Response } from "express";
 import InspectionResult from "../model/inspection-result.model";
+import { resolveFrameImageUrls } from "../service/imageStorage.service";
+import Conveyor from "../model/conveyor.model";
 
 const PAGE_SIZE = 10;
 
@@ -14,6 +16,96 @@ const dayRange = (dateValue: string) => {
   const noon = new Date(`${date}T12:00:00`).getTime() / 1000;
   const end = new Date(`${date}T23:59:59.999`).getTime() / 1000;
   return { date, start, noon, end };
+};
+
+const currentMonthValue = () => new Date().toISOString().slice(0, 7);
+
+const currentYearValue = () => String(new Date().getFullYear());
+
+const monthRange = (monthValue: string) => {
+  const value = monthValue || currentMonthValue();
+  const [year, month] = value.split("-").map(Number);
+
+  const start = new Date(year, month - 1, 1, 0, 0, 0).getTime() / 1000;
+  const end = new Date(year, month, 0, 23, 59, 59, 999).getTime() / 1000;
+
+  return {
+    value,
+    start,
+    end,
+  };
+};
+
+const yearRange = (yearValue: string) => {
+  const value = yearValue || currentYearValue();
+  const year = Number(value);
+
+  const start = new Date(year, 0, 1, 0, 0, 0).getTime() / 1000;
+  const end = new Date(year, 11, 31, 23, 59, 59, 999).getTime() / 1000;
+
+  return {
+    value,
+    start,
+    end,
+  };
+};
+
+const MIN_STATS_YEAR = 2024;
+
+const isValidDateValue = (value: string) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+
+  const selectedDate = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(selectedDate.getTime())) return false;
+
+  const today = new Date();
+  today.setHours(23, 59, 59, 999);
+
+  return (
+    selectedDate.getFullYear() >= MIN_STATS_YEAR &&
+    selectedDate.getTime() <= today.getTime()
+  );
+};
+
+const isValidMonthValue = (value: string) => {
+  if (!/^\d{4}-\d{2}$/.test(value)) return false;
+
+  const [year, month] = value.split("-").map(Number);
+  if (year < MIN_STATS_YEAR) return false;
+  if (month < 1 || month > 12) return false;
+
+  const selectedMonth = new Date(year, month - 1, 1);
+  const currentMonth = new Date();
+  currentMonth.setDate(1);
+  currentMonth.setHours(0, 0, 0, 0);
+
+  return selectedMonth.getTime() <= currentMonth.getTime();
+};
+
+const isValidYearValue = (value: string) => {
+  if (!/^\d{4}$/.test(value)) return false;
+
+  const year = Number(value);
+  const currentYear = new Date().getFullYear();
+
+  return year >= MIN_STATS_YEAR && year <= currentYear;
+};
+
+const getStatsRange = (
+  mode: string,
+  statsDate: string,
+  statsMonth: string,
+  statsYear: string
+) => {
+  if (mode === "month") {
+    return monthRange(statsMonth);
+  }
+
+  if (mode === "year") {
+    return yearRange(statsYear);
+  }
+
+  return dayRange(statsDate);
 };
 
 // Dieu kien de chi lay cac lan kiem tra hop le:
@@ -52,21 +144,151 @@ const url = (query: Record<string, string | number>) => `/history?${new URLSearc
 
 // Moi dong trong bang history can them anh preview.
 // Uu tien frame thu 2, neu khong co thi lay frame dau tien.
-const previewItem = (item: any) => ({
-  ...item,
-  display_id: item.stt || "-",
-  preview_frame: Array.isArray(item.frames) ? item.frames[1] || item.frames[0] : null,
-});
+const previewItem = async (item: any) => {
+  const previewFrame = Array.isArray(item.frames)
+    ? item.frames[1] || item.frames[0]
+    : null;
+
+  return {
+    ...item,
+    display_id: item.stt || "-",
+    preview_frame: previewFrame
+      ? await resolveFrameImageUrls(previewFrame)
+      : null,
+  };
+};
 
 export const index = async (req: Request, res: Response) => {
   try {
-    const clearFilter = req.query.clear === "1"
-    // 1. Lay gia tri nguoi dung chon tren giao dien
-    // label: loc ket qua OK/NG. Neu rong thi hien thi tat ca.
+    const clearFilter = req.query.clear === "1";
+
+    const selectedMode = ["day", "month", "year"].includes(String(req.query.mode))
+      ? String(req.query.mode)
+      : "day";
+
     const selectedLabel = clearFilter ? "" : String(req.query.label || "");
 
-    const selectedDateValue = clearFilter ? "" : String(req.query.statsDate || todayInputValue())
- 
+    const selectedDateValue = clearFilter
+      ? ""
+      : String(req.query.statsDate || todayInputValue());
+
+    const selectedMonthValue = clearFilter
+      ? ""
+      : String(req.query.statsMonth || currentMonthValue());
+
+    const selectedYearValue = clearFilter
+      ? ""
+      : String(req.query.statsYear || currentYearValue());
+
+    const conveyors = await Conveyor.find(
+      { is_active: true },
+      {
+        _id: 0,
+        conveyor_id: 1,
+        name: 1,
+        created_at: 1,
+      }
+    )
+      .sort({ created_at: -1 })
+      .lean();
+    
+    const selectedConveyorId = clearFilter
+      ? ""
+      : String(req.query.conveyor_id || "").trim().toUpperCase();
+
+    const selectedConveyor = selectedConveyorId
+      ? conveyors.find((item: any) => item.conveyor_id === selectedConveyorId)
+      : null;
+
+    const getRangeStartDate = (mode: string, statsDate: string, statsMonth: string, statsYear: string) => {
+      if (mode === "month") {
+        const [year, month] = statsMonth.split("-").map(Number);
+        return new Date(year, month - 1, 1, 0, 0, 0);
+      }
+
+      if (mode === "year") {
+        return new Date(Number(statsYear), 0, 1, 0, 0, 0);
+      }
+
+      return new Date(`${statsDate}T00:00:00`);
+    };
+
+    let error: string | null = null;
+
+    if (!clearFilter) {
+      if (selectedMode === "day" && !isValidDateValue(selectedDateValue)) {
+        error = "Ngày thống kê không hợp lệ hoặc lớn hơn ngày hiện tại.";
+      }
+
+      if (selectedMode === "month" && !isValidMonthValue(selectedMonthValue)) {
+        error = "Tháng thống kê không hợp lệ hoặc lớn hơn tháng hiện tại.";
+      }
+
+      if (selectedMode === "year" && !isValidYearValue(selectedYearValue)) {
+        error = "Năm thống kê không hợp lệ hoặc lớn hơn năm hiện tại.";
+      }
+    }
+
+    if (!error && !clearFilter && selectedConveyor) {
+      const conveyorCreatedAt = new Date((selectedConveyor as any).created_at);
+
+      const selectedStartDate = getRangeStartDate(
+        selectedMode,
+        selectedDateValue,
+        selectedMonthValue,
+        selectedYearValue
+      );
+
+      if (selectedStartDate.getTime() < conveyorCreatedAt.getTime()) {
+        error = `Không thể thống kê trước ngày băng tải "${(selectedConveyor as any).name}" được khởi tạo.`;
+      }
+    }
+    // nếu có lỗi thì render lại trang và không query DB
+    if (error) {
+      return res.render("history/index", {
+        title: "Lịch sử kiểm tra",
+        error,
+        inspectionList: [],
+        conveyors,
+        selectedConveyor,
+
+        filters: {
+          mode: selectedMode,
+          label: selectedLabel,
+          conveyor_id: selectedConveyorId,
+          statsDate: selectedDateValue,
+          statsMonth: selectedMonthValue,
+          statsYear: selectedYearValue,
+          shift: "all",
+        },
+
+        shiftLinks: {
+          all: "/history",
+          morning: "/history",
+          afternoon: "/history",
+        },
+
+        dailyStats: {
+          mode: selectedMode,
+          date: "",
+          month: "",
+          year: "",
+          total: summarize([]),
+          morning: summarize([]),
+          afternoon: summarize([]),
+        },
+
+        pagination: {
+          page: 1,
+          totalPages: 1,
+          hasPrev: false,
+          hasNext: false,
+          prevUrl: "",
+          nextUrl: "",
+        },
+      });
+    }
+
     // shift: loc ca sang/ca chieu. Neu khong hop le thi mac dinh la "all".
     const selectedShift = ["morning", "afternoon"].includes(String(req.query.shift))
       ? String(req.query.shift)
@@ -75,8 +297,14 @@ export const index = async (req: Request, res: Response) => {
     // page: trang hien tai cua bang history. Gia tri nho nhat la 1.
     const page = Math.max(Number(req.query.page || 1), 1);
 
-    // selectedDay gom: ngay dang xem, moc bat dau ngay, 12h trua va cuoi ngay.
-    const selectedDay = dayRange(selectedDateValue);
+    const selectedRange = getStatsRange(
+      selectedMode,
+      selectedDateValue,
+      selectedMonthValue,
+      selectedYearValue
+    );
+
+    const selectedDay = dayRange(selectedDateValue || todayInputValue());
 // 2. Lay tat ca ket qua trong ngay de tinh thong ke
     // Filter nay khong loc theo ca va khong loc OK/NG,
     // vi phan thong ke phia tren can tinh tong ca ngay.
@@ -85,10 +313,17 @@ export const index = async (req: Request, res: Response) => {
       conveyor_id: validInspectionFilter.conveyor_id,
       "frames.2": validInspectionFilter["frames.2"],
       timestamp: {
-        $gte: selectedDay.start,
-        $lte: selectedDay.end,
+        $gte: selectedRange.start,
+        $lte: selectedRange.end,
       },
     };
+    if (selectedLabel) {
+      wholeDayFilter.label = selectedLabel;
+    }
+
+    if (selectedConveyorId) {
+      wholeDayFilter.conveyor_id = selectedConveyorId;
+    }
 
     // Danh sach nay dung cho cac the thong ke: ca ngay, ca sang, ca chieu.
     const allItemsInDay = await InspectionResult.find(wholeDayFilter, { _id: 0 })
@@ -102,13 +337,26 @@ export const index = async (req: Request, res: Response) => {
       conveyor_id: validInspectionFilter.conveyor_id,
       "frames.2": validInspectionFilter["frames.2"],
       timestamp: {
-        $gte: selectedDay.start,
-        $lte: selectedDay.end,
+        $gte: selectedRange.start,
+        $lte: selectedRange.end,
       },
     };
 
+    if (selectedLabel) {
+      listFilter.label = selectedLabel;
+    }
+
+    if (selectedConveyorId) {
+      listFilter.conveyor_id = selectedConveyorId;
+    }
+
+    if (selectedConveyorId) {
+      wholeDayFilter.conveyor_id = selectedConveyorId;
+      listFilter.conveyor_id = selectedConveyorId;
+    }
+
     // Neu nguoi dung chon ca sang thi chi lay tu 00:00 den truoc 12:00.
-    if (selectedShift === "morning") {
+    if (selectedShift === "morning" && selectedMode === "day") {
       listFilter.timestamp = {
         $gte: selectedDay.start,
         $lt: selectedDay.noon,
@@ -116,7 +364,7 @@ export const index = async (req: Request, res: Response) => {
     }
 
     // Neu nguoi dung chon ca chieu thi chi lay tu 12:00 den het ngay.
-    if (selectedShift === "afternoon") {
+    if (selectedShift === "afternoon" && selectedMode === "day") {
       listFilter.timestamp = {
         $gte: selectedDay.noon,
         $lte: selectedDay.end,
@@ -144,27 +392,37 @@ export const index = async (req: Request, res: Response) => {
     // 6. Tinh thong ke sang/chieu
     // allItemsInDay da co toan bo ket qua trong ngay,
     // nen chi can tach bang timestamp truoc/sau 12:00.
-    const morningItems = allItemsInDay.filter((item: any) => Number(item.timestamp) < selectedDay.noon);
-    const afternoonItems = allItemsInDay.filter((item: any) => Number(item.timestamp) >= selectedDay.noon);
+    const morningItems = selectedMode === "day" ? allItemsInDay.filter((item: any) => Number(item.timestamp) < selectedDay.noon) : [];
+    const afternoonItems = selectedMode === "day" ? allItemsInDay.filter((item: any) => Number(item.timestamp) >= selectedDay.noon) : [];
 
     // 7. Tao du lieu phan trang va link chuyen ca
     // commonQuery giu lai ngay va label hien tai khi bam chuyen ca hoac chuyen trang.
     const totalPages = Math.max(Math.ceil(total / PAGE_SIZE), 1);
-    const commonQuery = { statsDate: selectedDay.date, label: selectedLabel };
-
+    const commonQuery = { mode: selectedMode, statsDate: selectedDay.date, statsMonth: selectedMonthValue, statsYear: selectedYearValue, label: selectedLabel, conveyor_id: selectedConveyorId };
+    
+    const inspectionList = await Promise.all(
+      listItems.map((item: any) => previewItem(item))
+    );
     // 8. Dua du lieu ra giao dien
     // Cac ten bien o day phai khop voi file view/history/index.pug.
     return res.render("history/index", {
-title: "Lich su kiem tra",
+      title: "Lich su kiem tra",
 
       // Danh sach cac lan kiem tra hien thi trong bang.
-      inspectionList: listItems.map(previewItem),
+      inspectionList,
+
+      conveyors,
+      selectedConveyor,
 
       // Gia tri filter hien tai de form giu lai lua chon cua nguoi dung.
       filters: {
+        mode: selectedMode,
         label: selectedLabel,
+        conveyor_id: selectedConveyorId,
         statsDate: selectedDateValue,
-        shift: selectedShift,
+        statsMonth: selectedMonthValue,
+        statsYear: selectedYearValue,
+        shift: selectedMode === "day" ? selectedShift : "all",
       },
 
       // Link cho 3 tab: tat ca, ca sang, ca chieu.
@@ -176,7 +434,10 @@ title: "Lich su kiem tra",
 
       // Du lieu thong ke o cac card phia tren.
       dailyStats: {
-        date: clearFilter ? "" : selectedDay.date,
+        mode: selectedMode,
+        date: clearFilter ? "" : selectedDateValue,
+        month: clearFilter ? "" : selectedMonthValue,
+        year: clearFilter ? "" : selectedYearValue,
         total: summarize(allItemsInDay),
         morning: summarize(morningItems),
         afternoon: summarize(afternoonItems),
@@ -226,8 +487,12 @@ export const detail = async (req: Request, res: Response) => {
         ...inspection,
         display_id: inspection.stt || "-",
         frames: Array.isArray(inspection.frames)
-          ? inspection.frames.sort((a: any, b: any) => Number(a.frame_index) - Number(b.frame_index))
-          : [],
+        ? await Promise.all(
+            inspection.frames
+              .sort((a: any, b: any) => Number(a.frame_index) - Number(b.frame_index))
+              .map((frame: any) => resolveFrameImageUrls(frame))
+          )
+        : [],
       },
       backUrl: "/history",
     });

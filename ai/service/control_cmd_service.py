@@ -53,20 +53,20 @@ class ControlCommandService:
         if not isinstance(command_payload, dict):
             raise RuntimeError("Command payload must be an object")
 
-        conveyor_code = command_payload.get("conveyor_code")
-        if conveyor_code is not None:
-            command_payload["conveyor_code"] = str(conveyor_code).strip().upper()
+        conveyor_id = command_payload.get("conveyor_id")
+        if conveyor_id is not None:
+            command_payload["conveyor_id"] = str(conveyor_id).strip().upper()
         return command_payload
 
-    def require_conveyor_code(self, command_payload: dict) -> str:
-        conveyor_code = command_payload.get("conveyor_code")
-        if not conveyor_code:
-            raise RuntimeError("Thiếu conveyor_code trong MQTT payload")
-        conveyor_code = str(conveyor_code).strip().upper()
-        if not conveyor_code:
-            raise RuntimeError("conveyor_code không hợp lệ")
-        command_payload["conveyor_code"] = conveyor_code
-        return conveyor_code
+    def require_conveyor_id(self, command_payload: dict) -> str:
+        conveyor_id = command_payload.get("conveyor_id")
+        if not conveyor_id:
+            raise RuntimeError("Thiếu conveyor_id trong MQTT payload")
+        conveyor_id = str(conveyor_id).strip().upper()
+        if not conveyor_id:
+            raise RuntimeError("conveyor_id không hợp lệ")
+        command_payload["conveyor_id"] = conveyor_id
+        return conveyor_id
 
     def handle_mqtt_message(self, topic: str, payload: dict):
         if topic != MQTT_TOPIC_CONTROL_COMMAND:
@@ -80,7 +80,7 @@ class ControlCommandService:
             command_payload = self.normalize_command_payload(payload)
 
             if command == "START_SYSTEM":
-                self.require_conveyor_code(command_payload)
+                self.require_conveyor_id(command_payload)
                 data = self.start_handler(command_payload)
                 ack = self.success_ack(command_id, command, "Start command accepted", data)
 
@@ -93,7 +93,7 @@ class ControlCommandService:
                 ack = self.success_ack(command_id, command, "System status returned", data)
 
             elif command == "RELOAD_CONFIG":
-                self.require_conveyor_code(command_payload)
+                self.require_conveyor_id(command_payload)
                 if not callable(self.reload_config_handler):
                     raise RuntimeError("Reload config handler is not configured")
                 data = self.reload_config_handler(command_payload)
@@ -144,8 +144,8 @@ class ControlCommandService:
         try:
             if payload:
                 command_payload = payload.get("payload") or {}
-                if command_payload.get("conveyor_code"):
-                    error_payload["conveyor_code"] = str(command_payload.get("conveyor_code")).strip().upper()
+                if command_payload.get("conveyor_id"):
+                    error_payload["conveyor_id"] = str(command_payload.get("conveyor_id")).strip().upper()
         except Exception:
             pass
         self.mqtt.publish_json(MQTT_TOPIC_SYSTEM_ERROR, error_payload, qos=1)

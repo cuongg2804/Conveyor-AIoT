@@ -8,19 +8,19 @@ class ConveyorConfigService:
         self.db = self.client[db_name]
         self.collection = self.db["conveyor_configs"]
 
-    def get_config(self, conveyor_code: str):
-        if not conveyor_code:
-            raise RuntimeError("conveyor_code is required")
+    def get_config(self, conveyor_id: str):
+        if not conveyor_id:
+            raise RuntimeError("conveyor_id is required")
 
-        conveyor_code = str(conveyor_code).strip().upper()
+        conveyor_id = str(conveyor_id).strip().upper()
 
         config = self.collection.find_one(
-            {"conveyor_code": conveyor_code},
+            {"conveyor_id": conveyor_id},
             {"_id": 0},
         )
 
         if not config:
-            raise RuntimeError(f"Không tìm thấy cấu hình băng tải: {conveyor_code}")
+            raise RuntimeError(f"Không tìm thấy cấu hình băng tải: {conveyor_id}")
 
         self.validate_config(config)
 
@@ -28,7 +28,7 @@ class ConveyorConfigService:
 
     def validate_config(self, config: dict):
         required_fields = [
-            "conveyor_code",
+            "conveyor_id",
             "camera_source",
             "serial_port",
             "baud_rate",

@@ -21,11 +21,11 @@ class MongoService:
     def _ensure_indexes(self) -> None:
         indexes = self.collection.index_information()
 
-        if "job_id_1" not in indexes:
-            self.collection.create_index("job_id")
+        if "stt_1" not in indexes:
+            self.collection.create_index("stt")
 
-        if "conveyor_code_1" not in indexes:
-            self.collection.create_index("conveyor_code")
+        if "conveyor_id_1" not in indexes:
+            self.collection.create_index("conveyor_id")
 
         if "timestamp_-1" not in indexes and "timestamp_1" not in indexes:
             self.collection.create_index([("timestamp", DESCENDING)])
@@ -43,30 +43,30 @@ class MongoService:
             self.collection.update_one({"inspection_id": inspection_id}, {"$set": document}, upsert=True)
             return
 
-        job_id = document.get("job_id")
-        if job_id is None:
-            raise ValueError("Document must have field 'inspection_id' or 'job_id'.")
+        stt = document.get("stt")
+        if stt is None:
+            raise ValueError("Document must have field 'inspection_id' or 'stt'.")
 
-        self.collection.update_one({"job_id": job_id}, {"$set": document}, upsert=True)
+        self.collection.update_one({"stt": stt}, {"$set": document}, upsert=True)
 
-    def get_max_job_id(self) -> int:
-        latest = self.collection.find_one({}, {"job_id": 1}, sort=[("job_id", DESCENDING)])
+    def get_max_stt(self) -> int:
+        latest = self.collection.find_one({}, {"stt": 1}, sort=[("stt", DESCENDING)])
         if not latest:
             return 0
         try:
-            return int(latest.get("job_id") or 0)
+            return int(latest.get("stt") or 0)
         except Exception:
             return 0
 
-    def get_by_job_id(self, job_id: int) -> Optional[Dict[str, Any]]:
-        return self.collection.find_one({"job_id": job_id}, {"_id": 0})
+    def get_by_stt(self, stt: int) -> Optional[Dict[str, Any]]:
+        return self.collection.find_one({"stt": stt}, {"_id": 0})
 
-    def get_latest_result(self, conveyor_code: str = None) -> Optional[Dict[str, Any]]:
-        filter_query = {"conveyor_code": conveyor_code} if conveyor_code else {}
+    def get_latest_result(self, conveyor_id: str = None) -> Optional[Dict[str, Any]]:
+        filter_query = {"conveyor_id": conveyor_id} if conveyor_id else {}
         return self.collection.find_one(filter_query, {"_id": 0}, sort=[("timestamp", DESCENDING)])
 
-    def get_recent_results(self, limit: int = 20, conveyor_code: str = None) -> List[Dict[str, Any]]:
-        filter_query = {"conveyor_code": conveyor_code} if conveyor_code else {}
+    def get_recent_results(self, limit: int = 20, conveyor_id: str = None) -> List[Dict[str, Any]]:
+        filter_query = {"conveyor_id": conveyor_id} if conveyor_id else {}
         cursor = self.collection.find(filter_query, {"_id": 0}).sort("timestamp", DESCENDING).limit(limit)
         return list(cursor)
 
