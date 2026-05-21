@@ -2,7 +2,6 @@ import { Request, Response } from "express";
 import { Server } from "socket.io";
 import InspectionResult from "../model/inspection-result.model";
 import Conveyor from "../model/conveyor.model";
-import { resolveFrameImageUrls } from "../service/imageStorage.service";
 
 const normalizeConveyorCode = (value: any) =>
   String(value || "").trim().toUpperCase();
@@ -13,18 +12,17 @@ const normalizeFrame = (frame: any) => {
     predicted_label: String(frame.predicted_label || frame.pred_label || "UNKNOWN"),
     predicted_score: Number(frame.predicted_score || frame.pred_score || 0),
 
-    // Local path cũ
-    // roi_path: frame.roi_path || "",
-    // mask_path: frame.mask_path || "",
-    // overlay_path: frame.overlay_path || "",
+    roi_path: frame.roi_path || "",
+    mask_path: frame.mask_path || "",
+    overlay_path: frame.overlay_path || "",
 
     // MinIO object key mới
-    roi_object_key: frame.roi_object_key || "",
-    mask_object_key: frame.mask_object_key || "",
-    overlay_object_key: frame.overlay_object_key || "",
+    // roi_object_key: frame.roi_object_key || "",
+    // mask_object_key: frame.mask_object_key || "",
+    // overlay_object_key: frame.overlay_object_key || "",
 
-    bucket: frame.bucket || "",
-    storage_type: frame.storage_type || (frame.roi_object_key || frame.overlay_object_key ? "minio" : "local"),
+    // bucket: frame.bucket || "",
+    // storage_type: frame.storage_type || (frame.roi_object_key || frame.overlay_object_key ? "minio" : "local"),
   };
 };
 
@@ -59,9 +57,7 @@ export const monitor = async (req: Request, res: Response) => {
       latestInspection && Array.isArray(latestInspection.frames)
         ? {
             ...latestInspection,
-            frames: await Promise.all(
-              latestInspection.frames.map((frame: any) => resolveFrameImageUrls(frame))
-            ),
+            frames: latestInspection.frames,
           }
         : latestInspection;
 
@@ -124,9 +120,7 @@ export const handleInspectionResultMessage = async (payload: any, io: Server) =>
       { upsert: true }
     );
 
-    const framesForView = await Promise.all(
-      frames.map((frame: any) => resolveFrameImageUrls(frame))
-    );
+    const framesForView = frames;
 
     io.emit("inspection_result", {
       ...document,

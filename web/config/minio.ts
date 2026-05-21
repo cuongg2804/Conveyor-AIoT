@@ -15,19 +15,23 @@ if (envPath) {
 }
 
 const minioClient = new Minio.Client({
-  endPoint: process.env.MINIO_ENDPOINT || "127.0.0.1",
+  endPoint: process.env.MINIO_ENDPOINT || "localhost",
   port: Number(process.env.MINIO_PORT || 9000),
   useSSL: process.env.MINIO_USE_SSL === "true",
   accessKey: process.env.MINIO_ACCESS_KEY || "minioadmin",
   secretKey: process.env.MINIO_SECRET_KEY || "minioadmin",
 });
 
-export const MINIO_BUCKET = process.env.MINIO_BUCKET || "aiot-storage";
+export const MINIO_BUCKET =
+  process.env.MINIO_MODEL_BUCKET || process.env.MINIO_BUCKET || "ai-models";
 
-export const MINIO_MODEL_BUCKET =
-  process.env.MINIO_MODEL_BUCKET || "ai-models";
-
-export const MINIO_IMAGE_BUCKET =
-  process.env.MINIO_IMAGE_BUCKET || MINIO_BUCKET || "aiot-storage";
+  console.log("[MINIO_CONFIG]", {
+  endPoint: process.env.MINIO_ENDPOINT || "localhost",
+  port: Number(process.env.MINIO_PORT || 9000),
+  useSSL: process.env.MINIO_USE_SSL === "true",
+  accessKey: process.env.MINIO_ACCESS_KEY || "admin",
+  modelBucket: process.env.MINIO_MODEL_BUCKET || "ai-models",
+  imageBucket: process.env.MINIO_IMAGE_BUCKET || "inspection-images",
+});
 
 export default minioClient;

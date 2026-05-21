@@ -1,6 +1,5 @@
 import { Request, Response } from "express";
 import InspectionResult from "../model/inspection-result.model";
-import { resolveFrameImageUrls } from "../service/imageStorage.service";
 import Conveyor from "../model/conveyor.model";
 
 const PAGE_SIZE = 10;
@@ -153,8 +152,6 @@ const previewItem = async (item: any) => {
     ...item,
     display_id: item.stt || "-",
     preview_frame: previewFrame
-      ? await resolveFrameImageUrls(previewFrame)
-      : null,
   };
 };
 
@@ -487,12 +484,10 @@ export const detail = async (req: Request, res: Response) => {
         ...inspection,
         display_id: inspection.stt || "-",
         frames: Array.isArray(inspection.frames)
-        ? await Promise.all(
-            inspection.frames
-              .sort((a: any, b: any) => Number(a.frame_index) - Number(b.frame_index))
-              .map((frame: any) => resolveFrameImageUrls(frame))
-          )
-        : [],
+          ? inspection.frames.sort(
+              (a: any, b: any) => Number(a.frame_index) - Number(b.frame_index)
+            )
+          : [],
       },
       backUrl: "/history",
     });
