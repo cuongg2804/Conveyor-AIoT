@@ -4,7 +4,7 @@ import ConveyorConfig from "../model/conveyorConfigSchema.model";
 import Camera from "../model/camera.model";
 import User from "../model/user.model";
 import Config_log from "../model/config_logs.model";
-
+import { publishControlCommand } from "../service/mqtt.service";
 
 type ConveyorView = {
   conveyor_id: string;
@@ -86,6 +86,22 @@ export const settings = async (req: Request, res: Response) => {
     return res.status(500).send("Không thể tải trang cấu hình.");
   }
 };
+
+export const scanPorts = async (req: Request, res: Response) => {
+  try {
+    const command = publishControlCommand("GET_SERIAL_PORTS", {})
+     return res.json({
+      success: true,
+      command_id: command.command_id,
+      message: "Đã gửi yêu cầu scan"
+     })
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Không thể gửi yêu cầu scan",
+    })
+  }
+}
 
 export const updateSettings = async (req: Request, res: Response) => {
   try {

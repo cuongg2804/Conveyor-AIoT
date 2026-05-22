@@ -119,5 +119,56 @@ block main
 
         .settings-actions
           button.btn.btn--primary(type="submit") Lưu cấu hình
+  script(src="/socket.io/socket.io.js")
   script.
     window.CONVEYOR_ID = "#{conveyor.conveyor_id}";
+
+    document.addEventListener("DOMContentLoaded", function () {
+      const serialSelect = document.getElementById("serial_port");
+      const currentSerialPort = "#{config.serial_port || ''}";
+
+      function renderPorts(ports) {
+        if (!serialSelect) return;
+
+        serialSelect.innerHTML = "";
+
+        const emptyOption = document.createElement("option");
+        emptyOption.value = "";
+        emptyOption.textContent = "-- Chưa chọn cổng --";
+        serialSelect.appendChild(emptyOption);
+
+        ports.forEach(function (port) {
+          const option = document.createElement("option");
+          option.value = port.device;
+          option.textContent = port.description
+            ? `${port.device} - ${port.description}`
+            : port.device;
+
+          if (currentSerialPort === port.device) {
+            option.selected = true;
+          }
+
+          serialSelect.appendChild(option);
+        });
+
+        if (currentSerialPort && !ports.some(function (p) { return p.device === currentSerialPort; })) {
+          const currentOption = document.createElement("option");
+          currentOption.value = currentSerialPort;
+          currentOption.textContent = `${currentSerialPort} - Cổng đã lưu`;
+          currentOption.selected = true;
+          serialSelect.appendChild(currentOption);
+        }
+      }
+
+      const socket = io();
+
+      socket.on("serial_ports", function (ports) {
+        renderPorts(Array.isArray(ports) ? ports : []);
+      });
+
+      fetch("/settings/serial-ports")
+        .then(function (res) { return res.json(); })
+        .catch(function (err) {
+          console.error("Scan serial ports error:", err);
+        });
+    });
