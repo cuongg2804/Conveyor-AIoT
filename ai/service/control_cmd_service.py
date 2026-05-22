@@ -12,7 +12,7 @@ from config import (
     MQTT_TOPIC_SYSTEM_STATUS,
     MQTT_TOPIC_SYSTEM_ERROR,
 )
-from hardware.arduino_comm import ArduinoComm
+from devices.arduino_comm import ArduinoComm
 
 
 class ControlCommandService:
