@@ -47,44 +47,67 @@ const ipValid = (value: any) => {
 };
 
 export const index = async (req: Request, res: Response) => {
-    try {
-        const camera = await Camera.find({})
-        .sort({ created_at: -1 })
-        .lean();
+  try {
+    const status = String(req.query.status || "").trim().toUpperCase();
+    const keyword = String(req.query.keyword || "").trim();
 
-        const conveyorIds = camera
-        .map((item: any) => item.conveyor_id)
-        .filter(Boolean)
+    const filter: any = {};
 
-        const conveyors = await Conveyor.find({
-          conveyor_id: {$in: conveyorIds}
-        },{
-          _id: 0,
-          conveyor_id: 1,
-          name: 1
-        }).lean()
-
-        const conveyorMap = new Map(
-          conveyors.map((c: any) => [c.conveyor_id, c.name])
-        )
-
-        const cameraList = camera.map((item: any) => ({
-          ...item,
-          conveyor_name: item.conveyor_id
-          ? conveyorMap.get(item.conveyor_id || "")
-          :  "=",
-        }))
-
-        return res.render("cameras/index", {
-        title: "Quản lý camera",
-        camera: cameraList,
-        success: req.query.created === "1" ? "Tạo camera thành công" : null
-        });
-    } catch(error) {
-        console.log("Lỗi load camera: ", error);
-        return res.status(500).send("Không thể tải danh sách camera")
+    if (["AVAILABLE", "IN_USE"].includes(status)) {
+      filter.status = status;
     }
-}
+
+    if (keyword) {
+      filter.$or = [
+        { camera_id: { $regex: keyword, $options: "i" } },
+        { camera_name: { $regex: keyword, $options: "i" } },
+      ];
+    }
+
+    const cameras = await Camera.find(filter)
+      .sort({ created_at: -1 })
+      .lean();
+
+    const conveyorIds = cameras
+      .map((item: any) => item.conveyor_id)
+      .filter(Boolean);
+
+    const conveyors = await Conveyor.find(
+      {
+        conveyor_id: { $in: conveyorIds },
+      },
+      {
+        _id: 0,
+        conveyor_id: 1,
+        name: 1,
+      }
+    ).lean();
+
+    const conveyorMap = new Map(
+      conveyors.map((c: any) => [c.conveyor_id, c.name])
+    );
+
+    const cameraList = cameras.map((item: any) => ({
+      ...item,
+      conveyor_name: item.conveyor_id
+        ? conveyorMap.get(item.conveyor_id) || item.conveyor_id
+        : "-",
+    }));
+
+    return res.render("cameras/index", {
+      title: "Quản lý camera",
+      filters: {
+        status,
+        keyword,
+      },
+      camera: cameraList,
+      success: req.query.created === "1" ? "Tạo camera thành công" : null,
+    });
+  } catch (error) {
+    console.log("Lỗi load camera: ", error);
+    return res.status(500).send("Không thể tải danh sách camera");
+  }
+};
 export const create = async (req: Request, res: Response) => {
   return res.render("cameras/create", {
     title: "Thêm camera",

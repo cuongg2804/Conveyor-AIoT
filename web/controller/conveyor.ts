@@ -51,7 +51,25 @@ const getCreateViewData = async (form: any = {}, error: string | null = null) =>
 
 export const index = async (req: Request, res: Response) => {
   try {
-    const conveyors = await Conveyor.find({ is_active: true })
+    const status = String(req.query.status || "").trim().toUpperCase();
+    const keyword = String(req.query.keyword || "").trim();
+
+    const filter: any = {
+      is_active: true
+    };
+
+    if (["READY", "OFFLINE", "ERROR", "RUNNING", "STOP"].includes(status)) {
+      filter.status = status;
+    }
+
+    if (keyword) {
+      filter.$or = [
+        { conveyor_id: { $regex: keyword, $options: "i" } },
+        { name: { $regex: keyword, $options: "i" } },
+      ];
+    }
+
+    const conveyors = await Conveyor.find(filter)
       .sort({ created_at: -1 })
       .lean();
 
@@ -81,11 +99,15 @@ export const index = async (req: Request, res: Response) => {
         : "-",
     }));
 
+    
+
     return res.render("conveyors/index", {
       title: "Quản lý băng tải",
       conveyors: conveyorList,
-      success: req.query.created === "1" ? "Tạo băng tải thành công." : null,
-
+      // success: req.query.created === "1" ? "Tạo băng tải thành công." : null,
+      filters: {
+        status, keyword
+      }
     });
   } catch (error) {
     console.error("Load conveyors error:", error);

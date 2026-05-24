@@ -9,13 +9,36 @@ const gen_user_id = () => {
 }
 
 export const index = async (req: Request, res: Response) => {
-    const user = await User.find({}, {password: 0, token: 0})
-        .sort({created_at: -1})
-        .lean();
-    return res.render("users/index", {
-        title: "Quản lý người dùng",
-        users: user
-    })
+    try {
+        const keyword = String(req.query.keyword || "").trim()
+        const role = String(req.query.role || "").trim().toUpperCase()
+
+        const filter: any  = {}
+        if(["ADMIN", "USER"].includes(role)) {
+            filter.role = role
+        }
+
+        if(keyword) {
+            filter.$or = [
+                { username: { $regex: keyword, $options: "i" } },
+                { fullname: { $regex: keyword, $options: "i" } }
+            ]
+        }
+
+        const user = await User.find(filter, {password: 0, token: 0})
+            .sort({created_at: -1})
+            .lean();
+        return res.render("users/index", {
+            title: "Quản lý người dùng",
+            users: user,
+            filters: {
+                keyword, role
+            }
+        })
+    } catch (error) {
+        console.error("Lỗi: ", error)
+        return res.status(500).send("Không thể tải danh sách người dùng")
+    }
 }
 export const create = async (req: Request, res: Response) => {
     return res.render("users/create", {

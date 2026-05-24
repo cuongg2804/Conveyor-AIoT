@@ -9,7 +9,33 @@ block main
 
             .dashboard-actions
                 a.btn.btn-primary(href="/cameras/create") Thêm camera mới
-            
+
+    if error
+      .alert.alert--error
+        | #{error}
+
+    .card.history-filter-card
+        form.history-filters(method="GET" action="/cameras")
+            .field
+                label.field__label(for="keyword") Tìm kiếm camera
+                input#keyword.field__control(
+                    type="text"
+                    name="keyword"
+                    value=filters.keyword
+                    placeholder="Nhập mã hoặc tên camera..."
+                )
+            .field
+                label.field__label(for="status") Trạng thái camera 
+                select#status.field__control(name="status")
+                    option(value="" selected=!filters.status) Tất cả
+                    option(value="AVAILABLE" selected=filters.status === "AVAILABLE") Sẵn sàng
+                    option(value="IN_USE" selected=filters.status === "IN_USE") Đang sử dụng
+            .history-filters__actions
+                button.btn.btn--primary(type="submit") Lọc
+                a.btn.btn-secondary(href="/cameras") Xóa
+        
+
+
     .card
         .table-wrap 
             table.table
@@ -28,7 +54,13 @@ block main
                             td=item.camera_id
                             td=item.camera_name
                             td=item.camera_ip
-                            td=item.status
+                            td
+                                if item.status === "AVAILABLE" 
+                                    | Sẵn sàng
+                                else if item.status === "IN_USE" 
+                                    | Đang sử dụng
+                                else
+                                    | #{item.status || "-"}
                             td=item.conveyor_name
                             td
                                 a.btn.btn--secondary(href=`/cameras/edit/${item.camera_id}`) Sửa
