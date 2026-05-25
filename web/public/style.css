@@ -393,18 +393,27 @@ textarea.field__control {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
   gap: 16px;
+  align-items: stretch;
 }
 
 .conveyor-card {
   padding: 18px;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
 }
 
 .conveyor-card__head {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
   gap: 14px;
   margin-bottom: 16px;
+  min-height: 50px;
+  align-items: flex-start;
+}
+
+.conveyor-card__info {
+  min-width: 0;
 }
 
 .conveyor-card__info h2 {
@@ -418,7 +427,8 @@ textarea.field__control {
   margin: 7px 0 0 0;
   color: var(--muted);
   font-size: 13px;
-  line-height: 1.45;
+  min-height: 44px;
+  line-height: 1.25;
 }
 
 .conveyor-status {
@@ -458,6 +468,7 @@ textarea.field__control {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 10px;
+  margin-top: 0;
 }
 
 .conveyor-meta__item {
@@ -480,12 +491,14 @@ textarea.field__control {
   color: var(--text);
   font-size: 14px;
   font-weight: 950;
+  word-break: break-word;
 }
 
 .conveyor-actions {
   display: flex;
   gap: 10px;
-  margin-top: 16px;
+  margin-top: auto;
+  padding-top: 28px;
   flex-wrap: wrap;
 }
 
@@ -1847,7 +1860,6 @@ img[src]:not([src=""]) + .image-placeholder {
 }
 
 /* Card chứa bảng */
-.card + .card,
 .history-filter-card + .card {
   margin-top: 18px;
 }
@@ -2062,4 +2074,12 @@ img[src]:not([src=""]) + .image-placeholder {
   .settings-actions .btn {
     width: 100%;
   }
+}
+
+.conveyor-meta__item strong {
+  display: block;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 950;
+  min-height: 1.2em;
 }
