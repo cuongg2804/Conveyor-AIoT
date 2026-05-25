@@ -83,7 +83,7 @@ export const settings = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("Lỗi render:", error);
-    return res.status(500).send("Không thể tải trang cấu hình.");
+    return res.status(500).send("Không thể tải trang cấu hình. ");
   }
 };
 

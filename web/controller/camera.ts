@@ -105,7 +105,7 @@ export const index = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.log("Lỗi load camera: ", error);
-    return res.status(500).send("Không thể tải danh sách camera");
+    return res.status(500).send("Không thể tải danh sách camera.");
   }
 };
 export const create = async (req: Request, res: Response) => {

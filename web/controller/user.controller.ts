@@ -37,7 +37,7 @@ export const index = async (req: Request, res: Response) => {
         })
     } catch (error) {
         console.error("Lỗi: ", error)
-        return res.status(500).send("Không thể tải danh sách người dùng")
+        return res.status(500).send("Không thể tải danh sách người dùng.")
     }
 }
 export const create = async (req: Request, res: Response) => {

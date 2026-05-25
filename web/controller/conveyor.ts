@@ -104,7 +104,6 @@ export const index = async (req: Request, res: Response) => {
     return res.render("conveyors/index", {
       title: "Quản lý băng tải",
       conveyors: conveyorList,
-      // success: req.query.created === "1" ? "Tạo băng tải thành công." : null,
       filters: {
         status, keyword
       }
