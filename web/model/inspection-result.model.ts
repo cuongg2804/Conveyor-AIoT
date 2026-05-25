@@ -12,6 +12,29 @@ const inspectionFrameSchema = new mongoose.Schema(
   { _id: false }
 );
 
+// const inspectionFrameSchema = new mongoose.Schema(
+//   {
+//     frame_index: Number,
+//     predicted_label: String,
+//     predicted_score: Number,
+
+//     roi_path: String,
+//     mask_path: String,
+//     overlay_path: String,
+
+//     roi_object_key: String,
+//     mask_object_key: String,
+//     overlay_object_key: String,
+//     bucket: String,
+//     storage_type: {
+//       type: String,
+//       enum: ["minio", "local"],
+//       default: "minio",
+//     },
+//   },
+//   { _id: false }
+// );
+
 const inspectionResultSchema = new mongoose.Schema(
   {
     // mã phiên kiểm tra dùng để phân biệt sản phẩm khác nhau

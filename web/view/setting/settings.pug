@@ -1,132 +1,175 @@
-extends ../layout/default.pug
+extend ../layout/default.pug
 
 block main
   .page
     .dashboard__header
       .dashboard__heading
-        h1.dashboard__title= title || "Cau hinh bang tai"
-        p.dashboard__subtitle Cap nhat thong tin bang tai va cau hinh van hanh
+        h1.dashboard__title= title || "Cấu hình băng tải"
+        p.dashboard__subtitle Cập nhật thông tin băng tải và cấu hình vận hành
 
       .dashboard-actions
-        a.btn.btn--secondary(href="/conveyors") Quay lai danh sach
+        a.btn.btn--secondary(href="/dashboard") Quay lại danh sách
         if monitorUrl
-          a.btn.btn--primary(href=monitorUrl) Giam sat
+          a.btn.btn--primary(href=monitorUrl) Giám sát
 
     if updated
-      .alert.alert--success Cap nhat cau hinh thanh cong.
+      .alert.alert--success Cập nhật cấu hình thành công.
 
     if configSynced
-      .alert.alert--success Da dong bo cau hinh.
+      .alert.alert--success Đã đồng bộ cấu hình.
 
     if configSyncFailed
-      .alert.alert--error Khong the dong bo cau hinh.
+      .alert.alert--error Không thể đồng bộ cấu hình.
 
-    .card
+    .card.settings-card
       form.settings-form(method="POST" action=formAction)
-        h3.section-title Thong tin bang tai
+        .settings-section
+          .settings-section__head
+            h3.settings-section__title Thông tin băng tải
+            p.settings-section__desc Cập nhật tên, người vận hành, trạng thái và mô tả băng tải
 
-        .settings-section-grid
-          .field
-            label.field__label(for="conveyor_id") Ma bang tai
-            input#conveyor_id.field__control(type="text" value=conveyor.conveyor_id disabled)
-
-          .field
-            label.field__label(for="name") Ten bang tai
-            input#name.field__control(type="text" name="name" value=conveyor.name required)
-
-          .field
-            label.field__label(for="line_id") Day chuyen
-            input#line_id.field__control(type="text" name="line_id" value=conveyor.line_id required)
-
-          if user && user.role === "ADMIN"
+          .settings-section-grid.settings-section-grid--two
             .field
-              label.field__label(for="operator_id") Nguoi van hanh
-              select#operator_id.field__control(name="operator_id")
-                option(value="" selected=!conveyor.operator_id) -- Chua phan cong --
-                each operator in operators
-                  option(value=operator.user_id selected=conveyor.operator_id === operator.user_id)
-                    | #{operator.fullname || operator.username || operator.user_id}
+              label.field__label(for="name") Tên băng tải
+              input#name.field__control(type="text" name="name" value=conveyor.name required)
 
-          .field
-            label.field__label(for="status") Trang thai
-            select#status.field__control(name="status")
-              option(value="READY" selected=conveyor.status === "READY") READY
-              option(value="RUNNING" selected=conveyor.status === "RUNNING") RUNNING
-              option(value="STOPPED" selected=conveyor.status === "STOPPED") STOPPED
-              option(value="ERROR" selected=conveyor.status === "ERROR") ERROR
-              option(value="OFFLINE" selected=conveyor.status === "OFFLINE") OFFLINE
+            if user && user.role === "ADMIN"
+              .field
+                label.field__label(for="operator_id") Người vận hành
+                select#operator_id.field__control(name="operator_id")
+                  option(value="" selected=!conveyor.operator_id) -- Chưa phân công --
+                  each operator in operators
+                    option(value=operator.user_id selected=conveyor.operator_id === operator.user_id)
+                      | #{operator.fullname || operator.username || operator.user_id}
 
-        .field.settings-section-full
-          label.field__label(for="description") Mo ta
-          textarea#description.field__control(name="description")= conveyor.description || ""
+            .field
+              label.field__label(for="description") Mô tả
+              textarea#description.field__control(name="description")= conveyor.description || ""
 
-        .divider
+        .settings-section
+          .settings-section__head
+            h3.settings-section__title Camera
+            p.settings-section__desc Chọn camera và thiết lập độ trễ kích hoạt chụp ảnh
 
-        h3.section-title Camera
+          .settings-section-grid
+            .field
+              label.field__label(for="camera_id") Nguồn camera
+              select#camera_id.field__control(name="camera_id")
+                option(value="" selected=!config.camera_id) -- Chưa chọn camera --
+                each camera in cameras
+                  option(value=camera.camera_id selected=config.camera_id === camera.camera_id)
+                    | #{camera.camera_name} - #{camera.camera_id}
 
-        .settings-section-grid
-          .field
-            label.field__label(for="camera_id") Nguon camera
-            select#camera_id.field__control(name="camera_id")
-              option(value="" selected=!config.camera_id) -- Chua chon camera --
-              each camera in cameras
-                option(value=camera.camera_id selected=config.camera_id === camera.camera_id)
-                  | #{camera.camera_name} - #{camera.camera_id}
+            .field
+              label.field__label(for="camera_trigger_delay") Độ trễ kích hoạt
+              input#camera_trigger_delay.field__control(type="number" name="camera_trigger_delay" value=config.camera_trigger_delay || 0)
 
-          .field
-            label.field__label(for="camera_trigger_delay_ms") Do tre kich hoat camera
-            input#camera_trigger_delay_ms.field__control(
-              type="number"
-              name="camera_trigger_delay_ms"
-              step="1"
-              value=config.camera_trigger_delay_ms || config.camera_trigger_delay || 0
-            )
+        .settings-section
+          .settings-section__head
+            h3.settings-section__title Bộ điều khiển
+            p.settings-section__desc Cấu hình cổng serial và tốc độ truyền dữ liệu đến Arduino
 
-        .divider
+          .settings-section-grid.settings-section-grid--control
+            .field
+              label.field__label(for="serial_port") Cổng kết nối
+              select#serial_port.field__control(name="serial_port")
+                option(value=config.serial_port selected=config.serial_port)= config.serial_port || "-- Chưa chọn cổng --"
+              button#scan_serial_ports.btn.btn--secondary(type="button") Quét cổng
 
-        h3.section-title Bo dieu khien
+            .field
+              label.field__label(for="baud_rate") Tốc độ truyền
+              input#baud_rate.field__control(type="number" name="baud_rate" value=config.baud_rate || 9600 required)
 
-        .settings-section-grid
-          .field
-            label.field__label(for="serial_port") Cong ket noi
-            input#serial_port.field__control(type="text" name="serial_port" value=config.serial_port || "" required)
+        .settings-section
+          .settings-section__head
+            h3.settings-section__title AI
+            p.settings-section__desc Thiết lập ngưỡng đánh giá phục vụ phân loại sản phẩm đạt/không đạt
 
-          .field
-            label.field__label(for="baud_rate") Toc do truyen
-            input#baud_rate.field__control(type="number" name="baud_rate" value=config.baud_rate || 9600 required)
-
-        .divider
-
-        h3.section-title AI & Che do van hanh
-
-        .settings-section-grid
-          .field
-            label.field__label(for="model_id") Model AI
-            select#model_id.field__control(name="model_id")
-              - const selectedModelId = config.model_id && config.model_id._id ? String(config.model_id._id) : String(config.model_id || "")
-              option(value="" selected=!selectedModelId) -- Chua chon model --
-              each model in ModelRegistryList
-                option(
-                  value=model._id
-                  selected=selectedModelId === String(model._id)
-                )
-                  | #{model.model_name} - v#{model.version} - #{model.product_code}
-
-          .field
-            label.field__label(for="threshold_override") Nguong ghi de
-            input#threshold_override.field__control(
-              type="number"
-              name="threshold_override"
-              step="0.000001"
-              value=config.threshold_override !== null && config.threshold_override !== undefined ? config.threshold_override : ""
-              placeholder="De trong de dung threshold cua model"
-            )
-
-          .field
-            label.field__label(for="mode") Che do
-            select#mode.field__control(name="mode")
-              option(value="AUTO" selected=config.mode === "AUTO") AUTO
-              option(value="MANUAL" selected=config.mode === "MANUAL") MANUAL
+          .settings-section-column.settings-section-column--small
+            .field
+              label.field__label(for="ai_threshold") Ngưỡng đánh giá
+              input#ai_threshold.field__control(type="number" name="ai_threshold" step="0.000001" value=config.ai_threshold || 30.436506 required)
 
         .settings-actions
-          button.btn.btn--primary(type="submit") Luu cau hinh
+          button.btn.btn--primary(type="submit") Lưu cấu hình
+  script(src="/socket.io/socket.io.js")
+  script.
+    window.CONVEYOR_ID = "#{conveyor.conveyor_id}";
+
+    document.addEventListener("DOMContentLoaded", function () {
+      const serialSelect = document.getElementById("serial_port");
+      const scanButton = document.getElementById("scan_serial_ports");
+      const currentSerialPort = "#{config.serial_port || ''}";
+
+      function renderPorts(ports) {
+        if (!serialSelect) return;
+
+        serialSelect.innerHTML = "";
+
+        const emptyOption = document.createElement("option");
+        emptyOption.value = "";
+        emptyOption.textContent = "-- Chưa chọn cổng --";
+        serialSelect.appendChild(emptyOption);
+
+        ports.forEach(function (port) {
+          const option = document.createElement("option");
+          option.value = port.device;
+          option.textContent = port.description
+            ? `${port.device} - ${port.description}`
+            : port.device;
+
+          if (currentSerialPort === port.device) {
+            option.selected = true;
+          }
+
+          serialSelect.appendChild(option);
+        });
+
+        if (currentSerialPort && !ports.some(function (p) { return p.device === currentSerialPort; })) {
+          const currentOption = document.createElement("option");
+          currentOption.value = currentSerialPort;
+          currentOption.textContent = `${currentSerialPort} - Cổng đã lưu`;
+          currentOption.selected = true;
+          serialSelect.appendChild(currentOption);
+        }
+      }
+
+      const socket = io();
+
+      socket.on("serial_ports", function (ports) {
+        renderPorts(Array.isArray(ports) ? ports : []);
+        if (scanButton) {
+          scanButton.disabled = false;
+          scanButton.textContent = "Quét cổng";
+        }
+      });
+
+      function scanSerialPorts() {
+        if (scanButton) {
+          scanButton.disabled = true;
+          scanButton.textContent = "Đang quét...";
+        }
+
+        fetch("/settings/serial-ports")
+          .then(function (res) { return res.json(); })
+          .then(function (result) {
+            if (!result.success && scanButton) {
+              scanButton.disabled = false;
+              scanButton.textContent = "Quét cổng";
+            }
+          })
+          .catch(function (err) {
+            if (scanButton) {
+              scanButton.disabled = false;
+              scanButton.textContent = "Quét cổng";
+            }
+            console.error("Scan serial ports error:", err);
+          });
+      }
+
+      if (scanButton) {
+        scanButton.addEventListener("click", scanSerialPorts);
+      }
+
+      scanSerialPorts();
+    });

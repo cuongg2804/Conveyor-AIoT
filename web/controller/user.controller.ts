@@ -1,23 +1,44 @@
 import { Request, Response } from "express";
-import User, { normalizeUserRole } from "../model/user.model";
+import User from "../model/user.model";
 import bcrypt from "bcryptjs";
+import { error } from "node:console";
+import { readSync } from "node:fs";
 
 const gen_user_id = () => {
     return "U_" + Math.random().toString(36).substr(2, 9);
 }
 
 export const index = async (req: Request, res: Response) => {
-    const user = await User.find({}, {password: 0, token: 0})
-        .sort({created_at: -1})
-        .lean();
-    const users = user.map((item: any) => ({
-        ...item,
-        role: normalizeUserRole(item.role) || item.role,
-    }));
-    return res.render("users/index", {
-        title: "Quản lý người dùng",
-        users
-    })
+    try {
+        const keyword = String(req.query.keyword || "").trim()
+        const role = String(req.query.role || "").trim().toUpperCase()
+
+        const filter: any  = {}
+        if(["ADMIN", "USER"].includes(role)) {
+            filter.role = role
+        }
+
+        if(keyword) {
+            filter.$or = [
+                { username: { $regex: keyword, $options: "i" } },
+                { fullname: { $regex: keyword, $options: "i" } }
+            ]
+        }
+
+        const user = await User.find(filter, {password: 0, token: 0})
+            .sort({created_at: -1})
+            .lean();
+        return res.render("users/index", {
+            title: "Quản lý người dùng",
+            users: user,
+            filters: {
+                keyword, role
+            }
+        })
+    } catch (error) {
+        console.error("Lỗi: ", error)
+        return res.status(500).send("Không thể tải danh sách người dùng")
+    }
 }
 export const create = async (req: Request, res: Response) => {
     return res.render("users/create", {
@@ -51,7 +72,9 @@ export const createPost = async (req: Request, res: Response) => {
             });
         }
         const hashedPassword = await bcrypt.hash(String(password), 10);
-        const normalizedRole = normalizeUserRole(role) || "USER";
+        const normalizedRole = ["ADMIN", "USER"].includes(String(role).toUpperCase())
+        ? String(role).toUpperCase()
+        : "USER";
         await User.create({
             user_id: gen_user_id(),
             username: String(username).trim(),
@@ -75,25 +98,23 @@ export const edit = async (req: Request, res: Response) => {
     if(!user){
         return res.status(404).send("Không tìm thấy người dùng.");
     }
-    const viewUser = {
-        ...user,
-        role: normalizeUserRole((user as any).role) || (user as any).role,
-    };
     return res.render("users/edit", {
         title: "Cập nhật người dùng",
-        user: viewUser,
+        user,
         error: null
     })
 }
 export const editPost = async (req: Request, res: Response) => {
     try {
         const { username, password, fullname, role } = req.body;
-        const normalizedRole = normalizeUserRole(role) || "USER";
+        const normalizedRole = ["ADMIN", "USER"].includes(String(role).toUpperCase())
+        ? String(role).toUpperCase()
+        : "USER";
         const updateData: any = {
             fullname: String(fullname || "").trim(),
             role : normalizedRole
         }
-        if(String(password || "").trim()) {
+        if(password || String(password).trim()) {
             updateData.password = await bcrypt.hash(String(password), 10)
             updateData.token = ""
         }

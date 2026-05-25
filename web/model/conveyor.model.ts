@@ -10,14 +10,13 @@ const conveyor = new mongoose.Schema({
     name: {
         type: String,
         required: true,
-        unique: true,
         trim: true
     },
-    line_id: {
+    /*line_id: {
         type: String,
         required: true,
         trim: true
-    },
+    },*/
     status: {
         type: String,
         required: true,

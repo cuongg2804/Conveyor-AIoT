@@ -1,4 +1,3 @@
-// models/ModelRegistry.ts
 import mongoose from "mongoose";
 
 const modelRegistrySchema = new mongoose.Schema(
@@ -67,12 +66,11 @@ const modelRegistrySchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["testing", "active", "archived", "failed"],
+      enum: ["testing", "active", "inactive", "archived", "failed"],
       default: "testing",
       index: true,
     },
 
-    // Nếu có User thì bật lại phần này
     // created_by: {
     //   type: mongoose.Schema.Types.ObjectId,
     //   ref: "User",

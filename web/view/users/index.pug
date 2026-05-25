@@ -9,13 +9,37 @@ block main
 
             .dashboard-actions
                 a.btn.btn-primary(href="/users/create") Thêm tài khoản mới
+
+    if error
+      .alert.alert--error
+        | #{error}
+
+    .card.history-filter-card
+        form.history-filters(method="GET" action="/users")
+            .field
+                label.field__label(for="keyword") Tìm kiếm người dùng
+                input#keyword.field__control(
+                    type="text"
+                    name="keyword"
+                    value=filters.keyword
+                    placeholder="Nhập mã hoặc tên người dùng..."
+                )
+            .field
+                label.field__label(for="role") Quyền hạn
+                select#role.field__control(name="role")
+                    option(value="" selected=!filters.role) Tất cả
+                    option(value="ADMIN" selected=filters.role === "ADMIN") Admin
+                    option(value="USER" selected=filters.role === "USER") User
+            .history-filters__actions
+                button.btn.btn--primary(type="submit") Lọc
+                a.btn.btn-secondary(href="/users") Xóa
             
     .card
         .table-wrap 
             table.table
                 thead
                     tr 
-                        //th User ID 
+                        th User ID 
                         th Username
                         th Họ tên
                         th Role
@@ -23,7 +47,7 @@ block main
                 tbody 
                     each item in users
                         tr
-                            //td=item.user_id 
+                            td=item.user_id 
                             td=item.username
                             td=item.fullname
                             td=item.role 

@@ -5,6 +5,7 @@ import Camera from "../model/camera.model";
 import User from "../model/user.model";
 import ModelRegistry from "../model/modelRegister.model";
 import ConfigLog from "../model/config_logs.model";
+import { publishControlCommand } from "../service/mqtt.service";
 
 type ConveyorView = {
   conveyor_id: string;
@@ -96,6 +97,22 @@ export const settings = async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Loi render:", error);
     return res.status(500).send("Khong the tai trang cau hinh.");
+  }
+};
+
+export const scanPorts = async (_req: Request, res: Response) => {
+  try {
+    const command = publishControlCommand("GET_SERIAL_PORTS", {});
+    return res.json({
+      success: true,
+      command_id: command.command_id,
+      message: "Da gui yeu cau scan",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Khong the gui yeu cau scan",
+    });
   }
 };
 
@@ -201,7 +218,11 @@ export const updateSettings = async (req: Request, res: Response) => {
     addChange("operator_id", conveyor.operator_id, operator_id);
     addChange("description", conveyor.description, description);
     addChange("camera_id", oldConfig.camera_id, newCameraId);
-    addChange("camera_trigger_delay_ms", oldConfig.camera_trigger_delay_ms ?? oldConfig.camera_trigger_delay, cameraDelay);
+    addChange(
+      "camera_trigger_delay_ms",
+      oldConfig.camera_trigger_delay_ms ?? oldConfig.camera_trigger_delay,
+      cameraDelay
+    );
     addChange("serial_port", oldConfig.serial_port, serial_port);
     addChange("baud_rate", oldConfig.baud_rate, Number(baud_rate || 9600));
     addChange("threshold_override", oldConfig.threshold_override, thresholdOverride);
@@ -242,7 +263,7 @@ export const updateSettings = async (req: Request, res: Response) => {
       await ConfigLog.create({
         config_log_id: `CFG_${Date.now()}`,
         conveyor_id: conveyorId,
-        user_id: res.locals.user?.user_id || "UNKNOWN",
+        user_id: res.locals.user?.user_id || req.cookies?.user_id || "UNKNOWN",
         action: "UPDATE_CONFIG",
         changes,
         message: String(description || "").trim() || "Cap nhat cau hinh bang tai",
