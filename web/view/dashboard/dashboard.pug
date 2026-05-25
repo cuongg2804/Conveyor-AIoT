@@ -35,23 +35,22 @@ block main
 
               .conveyor-meta__item
                 span Nguồn camera
-                strong #{conveyor.camera_name}
+                strong #{conveyor.camera_name || "-"}
 
               .conveyor-meta__item
                 span Cổng điều khiển
-                strong #{conveyor.serial_port}
+                strong #{conveyor.serial_port || "-"}
 
               .conveyor-meta__item
                 span Tốc độ truyền
-                strong #{conveyor.baud_rate}
+                strong #{conveyor.baud_rate || "-"}
 
               .conveyor-meta__item
                 span Độ trễ camera
-                strong #{conveyor.camera_trigger_delay}
-
+                strong #{conveyor.camera_trigger_delay || "-"}
               .conveyor-meta__item
                 span Ngưỡng đánh giá
-                strong #{conveyor.ai_threshold}
+                strong #{conveyor.ai_threshold || "-"}
 
             .conveyor-actions
               a.btn.btn--primary(href=`/inspection/monitor/${conveyor.conveyor_id}`) Giám sát

@@ -67,7 +67,7 @@ const modelRegistrySchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["testing", "active", "archived", "failed"],
+      enum: ["testing", "active", "inactive", "archived", "failed"],
       default: "testing",
       index: true,
     },
