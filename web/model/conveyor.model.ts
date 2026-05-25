@@ -21,7 +21,7 @@ const conveyor = new mongoose.Schema({
         type: String,
         required: true,
         trim: true,
-        enum: ["READY", "RUNNING", "STOP", "ERROR", "OFFLINE"]
+        enum: ["READY", "STARTING", "RUNNING", "STOPPING", "STOP", "STOPPED", "ERROR", "OFFLINE"]
     },
     operator_id: {
       type: String,

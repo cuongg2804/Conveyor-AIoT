@@ -8,7 +8,7 @@ export const connectMqtt = (): MqttClient => {
   const mqttServer =
     process.env.mqtt_server ||
     process.env.MQTT_SERVER ||
-    `mqtt://${process.env.MQTT_BROKER || "127.0.0.1"}:${process.env.MQTT_PORT || "1883"}`;
+    `mqtt://${process.env.MQTT_BROKER || process.env.MQTT_HOST || "127.0.0.1"}:${process.env.MQTT_PORT || "1883"}`;
 
   const options: IClientOptions = {
     clientId: `web-backend-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,

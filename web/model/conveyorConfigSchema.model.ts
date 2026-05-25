@@ -9,33 +9,63 @@ const conveyorConfigSchema = new mongoose.Schema(
       trim: true,
       uppercase: true,
     },
-    camera_id: { // URL hoặc ID nguồn camera
+
+    camera_id: {
       type: String,
       trim: true,
+      default: null,
     },
-    camera_trigger_delay: { // thời gian trễ giữa lúc nhận được kết quả kiểm tra và lúc kích hoạt camera, tính bằng mili giây
+
+    model_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "ModelRegistry",
+      default: null,
+    },
+
+    camera_trigger_delay: {
       type: Number,
       default: 0,
     },
+
+    camera_trigger_delay_ms: {
+      type: Number,
+      default: 0,
+    },
+
     serial_port: {
       type: String,
       trim: true,
+      default: null,
     },
-    baud_rate: { // tốc độ truyền dữ liệu qua cổng nối tiếp, đơn vị là bit/giây
+
+    baud_rate: {
       type: Number,
       required: true,
       default: 9600,
     },
+
     ai_threshold: {
       type: Number,
       required: true,
       default: 30.436506,
     },
-    /*mode: {
+
+    threshold_override: {
+      type: Number,
+      default: null,
+    },
+
+    mode: {
       type: String,
       enum: ["AUTO", "MANUAL"],
       default: "AUTO",
-    }, */
+    },
+
+    status: {
+      type: String,
+      enum: ["ACTIVE", "INACTIVE", "MAINTENANCE"],
+      default: "ACTIVE",
+    },
   },
   {
     timestamps: {

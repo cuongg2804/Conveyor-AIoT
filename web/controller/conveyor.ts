@@ -1,4 +1,4 @@
-import {Request, Response} from "express";
+﻿import {Request, Response} from "express";
 import Conveyor from "../model/conveyor.model";
 import ConveyorConfig from "../model/conveyorConfigSchema.model";
 import Camera from "../model/camera.model";
@@ -158,8 +158,6 @@ export const createPost = async (req: Request, res: Response) => {
       );
     }
 
-    
-
     await Conveyor.create({
       conveyor_id,
       name: String(name).trim(),
@@ -214,7 +212,7 @@ export const createPost = async (req: Request, res: Response) => {
     return res.render(
       "conveyors/create",
       await getCreateViewData(req.body, "Không thể tạo băng tải.")
-    );  
+    );
   }
 };
 

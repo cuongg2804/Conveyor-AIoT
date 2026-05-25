@@ -1,6 +1,6 @@
 import path from "path";
 import minioClient, { MINIO_BUCKET } from "../config/minio";
-const ModelRegistry = require("../model/modelRegister.model");
+import ModelRegistry from "../model/modelRegister.model";
 
 export type ModelRegistryInput = {
   model_name: string;

@@ -1,7 +1,7 @@
 import os
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-CKPT_PATH = os.path.join(BASE_DIR, "models", "model (12).ckpt")
+CKPT_PATH = os.path.join(BASE_DIR, "models", "model (9).ckpt")
 CAMERA_USER_SET = os.getenv("CAMERA_USER_SET", "UserSet1")
 MULTI_FRAME_COUNT = int(os.getenv("MULTI_FRAME_COUNT", "3"))
 INSPECTION_DUPLICATE_WINDOW_SEC = float(os.getenv("INSPECTION_DUPLICATE_WINDOW_SEC", "5.0"))
@@ -19,7 +19,7 @@ MQTT_TOPIC_CONTROL_ACK = os.getenv("MQTT_TOPIC_CONTROL_ACK", "inspection/control
 MQTT_TOPIC_SYSTEM_STATUS = os.getenv("MQTT_TOPIC_SYSTEM_STATUS", "inspection/system/status")
 MQTT_TOPIC_SYSTEM_ERROR = os.getenv("MQTT_TOPIC_SYSTEM_ERROR", "inspection/system/error")
 
-MONGO_URI = os.getenv("MONGO_URI", "mongodb://127.0.0.1:27017/AIoT")
+MONGO_URI = os.getenv("MONGO_URI", "mongodb+srv://onething1102_db_user:uDgUfgJP8mUtdbNp@cluster0.sqret7u.mongodb.net/AIoT?appName=Cluster0")
 MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "AIoT")
 MONGO_COLLECTION_NAME = os.getenv("MONGO_COLLECTION_NAME", "inspection_results")
 MONGO_CONVEYOR_COLLECTION_NAME = os.getenv("MONGO_CONVEYOR_COLLECTION_NAME", "conveyor_configs")
