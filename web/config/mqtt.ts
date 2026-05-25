@@ -26,10 +26,10 @@ export const connectMqtt = (): MqttClient => {
 
   client = mqtt.connect(mqttServer, options);
 
-  client.on("connect", () => console.log("MQTT đã kết nối"));
-  client.on("error", (err) => console.error("MQTT lỗi:", err));
-  client.on("offline", () => console.warn("MQTT offline"));
-  client.on("reconnect", () => console.log("MQTT đang kết nối lại ..."));
+  client.on("connect", () => console.log("MQTT connected"));
+  client.on("error", (err) => console.error("MQTT Error:", err));
+  client.on("offline", () => console.warn("MQTT Offline"));
+  client.on("reconnect", () => console.log("MQTT Reconnecting..."));
 
   return client;
 };

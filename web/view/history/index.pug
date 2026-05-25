@@ -27,12 +27,12 @@ block main
 
         .history-filters__actions
           button.btn.btn--primary(type="submit") Xem thống kê
-          a.btn.btn--secondary(href="/history?clear=1") Xóa
+          a.btn.btn--secondary(href="/history") Hôm nay
 
     - const formatNumber = (value) => Number(value || 0).toLocaleString("vi-VN")
     - const formatPercent = (value) => `${Number(value || 0).toFixed(1)}%`
     - const formatScore = (value) => value === null || value === undefined ? "-" : Number(value).toFixed(3)
-    - const selectedDateText = dailyStats && dailyStats.date ? new Date(`${dailyStats.date}T00:00:00`).toLocaleDateString("vi-VN") : "--/--/----"
+    - const selectedDateText = dailyStats && dailyStats.date ? new Date(`${dailyStats.date}T00:00:00`).toLocaleDateString("vi-VN") : "-"
     - const shiftLabel = filters.shift === "morning" ? "Ca sáng" : filters.shift === "afternoon" ? "Ca chiều" : "Tất cả ca"
 
     if dailyStats
@@ -131,11 +131,11 @@ block main
                 - const shiftText = hour < 12 ? "Ca sáng" : "Ca chiều"
                 - const preview = item.preview_frame || {}
                 - const labelClass = item.label === "OK" ? "ok" : item.label === "NG" ? "ng" : ""
-                - const displayId = item.display_id || item.job_id || "-" 
+                - const displayId = item.display_id || item.job_id || "-"
                 - const labelText = item.label === "OK" ? "Đạt" : item.label === "NG" ? "Không đạt" : "-"
                 - const score = item.average_score !== undefined ? Number(item.average_score).toFixed(3) : "-"
                 - const frameScore = preview.predicted_score !== undefined ? Number(preview.predicted_score).toFixed(3) : "-"
-                - const detailUrl = `/history/${item.job_id}${item.conveyor_id ? `?conveyor_id=${encodeURIComponent(item.conveyor_id)}` : ""}`
+                - const detailUrl = `/history/${item.job_id}${item.conveyor_code ? `?conveyor_code=${encodeURIComponent(item.conveyor_code)}` : ""}`
 
                 tr
                   td

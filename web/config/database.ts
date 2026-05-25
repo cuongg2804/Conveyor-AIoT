@@ -3,10 +3,10 @@ import mongoose from "mongoose";
 export const connect = async () => {
   try {
     const uri = process.env.DATABASE || process.env.MONGO_URI;
-    if (!uri) throw new Error("Thiếu URI kết nối cơ sở dữ liệu trong biến môi trường.");
+    if (!uri) throw new Error("Missing DATABASE or MONGO_URI in .env");
     await mongoose.connect(uri);
-    console.log("Kết nối thành công đến cơ sở dữ liệu");
+    console.log("Connect successfully to database");
   } catch (error) {
-    console.error("Kết nối thất bại đến cơ sở dữ liệu:", error);
+    console.error("Connect fail to database:", error);
   }
 };

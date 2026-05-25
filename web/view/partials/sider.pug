@@ -5,12 +5,3 @@
         a(href="/dashboard") Tổng quan
       li
         a(href="/history") Lịch sử kiểm tra
-      if user && user.role === "ADMIN"
-        li
-          a(href="/conveyors") Băng tải
-      if user && user.role === "ADMIN"
-        li
-          a(href="/cameras") Camera
-      if user && user.role === "ADMIN"
-        li
-          a(href="/users") Quản lý tài khoản

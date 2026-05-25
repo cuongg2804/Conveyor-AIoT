@@ -1,200 +1,84 @@
 import { Request, Response } from "express";
-import Conveyor from "../model/conveyor.model";
 import ConveyorConfig from "../model/conveyorConfigSchema.model";
-import Camera from "../model/camera.model";
-import User from "../model/user.model";
-
-type ConveyorView = {
-  conveyor_id: string;
-  name: string;
-  line_id?: string;
-  status?: string;
-  operator_id?: string;
-  description?: string;
-  is_active?: boolean;
-};
+import { publishControlCommand } from "../service/mqtt.service";
 
 type ConveyorConfigView = {
-  conveyor_id: string;
-  camera_id?: string;
-  camera_trigger_delay?: number;
-  serial_port?: string;
-  baud_rate?: number;
-  ai_threshold?: number;
-  mode?: string;
-  conveyor_speed?: number;
-  goc_home?: number;
-  goc_gat?: number;
+  conveyor_code: string;
+  name: string;
 };
-
-const normalizeCode = (value: any) =>
-  String(value || "").trim().toUpperCase();
 
 export const settings = async (req: Request, res: Response) => {
   try {
-    const conveyorId = normalizeCode(req.params.conveyor_id || req.params.conveyorCode);
+    const conveyorCode = String(req.params.conveyorCode || "").trim().toUpperCase();
 
-    const conveyor = await Conveyor.findOne({ conveyor_id: conveyorId })
-      .lean<ConveyorView | null>();
+    const conveyor = await ConveyorConfig.findOne({ conveyor_code: conveyorCode })
+      .select("-_id")
+      .lean<ConveyorConfigView>();
 
-    const config = await ConveyorConfig.findOne({ conveyor_id: conveyorId })
-      .lean<ConveyorConfigView | null>();
-
-    if (!conveyor || !config) {
-      return res.status(404).send("Không tìm thấy băng tải hoặc cấu hình.");
+    if (!conveyor) {
+      return res.status(404).send("Không tìm thấy cấu hình băng tải.");
     }
 
-    const cameras = await Camera.find({
-      $or: [
-        { status: "AVAILABLE" },
-        ...(config.camera_id ? [{ camera_id: config.camera_id }] : []),
-      ],
-    }).lean();
-
-    const usedOperatorIds = await Conveyor.find({
-      operator_id: { $ne: "" },
-      }).distinct("operator_id");
-
-      const operators = await User.find(
-        {
-          user_id: { $nin: usedOperatorIds },
-        },
-        {
-          _id: 0,
-          user_id: 1,
-          fullname: 1,
-        }
-      ).lean();
-
     return res.render("setting/settings", {
-      title: `Cấu hình băng tải`,
+      title: `Cấu hình ${conveyor.name}`,
       conveyor,
-      config,
-      cameras,
-      operators,
       updated: req.query.updated === "1",
       configSynced: req.query.synced === "1",
       configSyncFailed: req.query.synced === "0",
-      monitorUrl: `/inspection/monitor/${conveyor.conveyor_id}`,
+      monitorUrl: `/inspection/monitor/${conveyor.conveyor_code}`,
       dashboardUrl: "/dashboard",
-      formAction: req.originalUrl.split("?")[0],
     });
   } catch (error) {
-    console.error("Lỗi render:", error);
+    console.error("Render settings error:", error);
     return res.status(500).send("Không thể tải trang cấu hình.");
   }
 };
 
 export const updateSettings = async (req: Request, res: Response) => {
   try {
-    const getConveyorId = (req: Request) =>
-  normalizeCode(req.params.conveyor_id || req.params.conveyorCode);
-    const conveyorId = getConveyorId(req);
-    const conveyor = await Conveyor.findOne({ conveyor_id: conveyorId }).lean<ConveyorView | null>();
+    const conveyorCode = String(req.params.conveyorCode || "").trim().toUpperCase();
+    const cameraDelay = Number(req.body.camera_trigger_delay);
+    const baudRate = Number(req.body.baud_rate);
+    const aiThreshold = Number(req.body.ai_threshold);
+
+    const updateData = {
+      name: String(req.body.name || "").trim(),
+      description: String(req.body.description || "").trim(),
+      camera_source: String(req.body.camera_source || "").trim(),
+      camera_trigger_delay: Number.isFinite(cameraDelay) ? cameraDelay : 0,
+      serial_port: String(req.body.serial_port || "").trim(),
+      baud_rate: Number.isFinite(baudRate) ? baudRate : 9600,
+      ai_threshold: Number.isFinite(aiThreshold) ? aiThreshold : 30.436506,
+      is_active: req.body.is_active === "on",
+    };
+
+    if (!updateData.name) return res.status(400).send("Tên băng tải không được để trống.");
+    if (!updateData.camera_source) return res.status(400).send("Nguồn camera không được để trống.");
+    if (!updateData.serial_port) return res.status(400).send("Cổng kết nối không được để trống.");
+
+    const conveyor = await ConveyorConfig.findOneAndUpdate(
+      { conveyor_code: conveyorCode },
+      updateData,
+      { new: true, runValidators: true }
+    ).lean();
 
     if (!conveyor) {
-      return res.status(404).send("Không tìm thấy băng tải.");
-    }
-
-    const oldConfig = await ConveyorConfig.findOne({ conveyor_id: conveyorId })
-      .lean<ConveyorConfigView | null>();
-
-    if (!oldConfig) {
       return res.status(404).send("Không tìm thấy cấu hình băng tải.");
     }
 
-    const {
-      name,
-      line_id,
-      status,
-      operator_id,
-      description,
-
-      camera_id,
-      camera_trigger_delay,
-      serial_port,
-      baud_rate,
-      ai_threshold,
-      mode,
-      speed,
-      goc_home,
-      goc_gat,
-    } = req.body;
-
-    const newCameraId = normalizeCode(camera_id);
-    const oldCameraId = normalizeCode(oldConfig.camera_id);
-
-    if (oldCameraId && oldCameraId !== newCameraId) {
-      await Camera.updateOne(
-        { camera_id: oldCameraId },
-        {
-          $set: {
-            status: "AVAILABLE",
-            conveyor_id: "",
-          },
-        }
-      );
+    let synced = "1";
+    try {
+      publishControlCommand("RELOAD_CONFIG", {
+        conveyor_code: conveyorCode,
+      });
+    } catch (syncError) {
+      synced = "0";
+      console.error("Publish reload config command error:", syncError);
     }
 
-    if (newCameraId) {
-      await Camera.updateOne(
-        { camera_id: newCameraId },
-        {
-          $set: {
-            status: "IN_USE",
-            conveyor_id: conveyorId,
-          },
-        }
-      );
-    }
-    if (newCameraId) {
-      const newCamera = await Camera.findOne({ camera_id: newCameraId }).lean<any>();
-
-      if (!newCamera) {
-        return res.status(400).send("Camera không tồn tại.");
-      }
-
-      if (
-        newCamera.status === "IN_USE" &&
-        normalizeCode(newCamera.conveyor_id) !== conveyorId
-      ) {
-        return res.status(400).send("Camera này đang được gán cho băng tải khác.");
-      }
-    }
-
-    await Conveyor.updateOne(
-      { conveyor_id: conveyorId },
-      {
-        $set: {
-          name: String(name || "").trim(),
-          line_id: String(line_id || "").trim(),
-          status: normalizeCode(status || "ONLINE"),
-          operator_id: String(operator_id || "").trim(),
-          description: String(description || "").trim(),
-        },
-      }
-    );
-
-    await ConveyorConfig.updateOne(
-      { conveyor_id: conveyorId },
-      {
-        $set: {
-          camera_id: newCameraId,
-          camera_trigger_delay: Number(camera_trigger_delay || 0),
-          serial_port: String(serial_port || "").trim(),
-          baud_rate: Number(baud_rate || 9600),
-          ai_threshold: Number(ai_threshold || 30.436506),
-          mode: normalizeCode(mode || "AUTO"),
-          speed: Number(speed || 150),
-          goc_home: Number(goc_home || 0),
-          goc_gat: Number(goc_gat || 120)
-        },
-      }
-    );
-
-    return res.redirect(`/settings/${conveyorId}?updated=1`);
+    return res.redirect(`/settings/${conveyorCode}?updated=1&synced=${synced}`);
   } catch (error) {
-    console.error("Update settings không thành công:", error);
+    console.error("Update settings error:", error);
     return res.status(500).send("Không thể cập nhật cấu hình.");
   }
 };

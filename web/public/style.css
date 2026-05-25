@@ -96,16 +96,6 @@ img {
   letter-spacing: 0.02em;
 }
 
-.btn-logout {
-  margin-left: auto;
-  padding: 8px 14px;
-  border-radius: 10px;
-  background: pink;
-  color: #ffffff;
-  text-decoration: none;
-  font-weight: 600;
-}
-
 /* =========================================================
    APP LAYOUT
 ========================================================= */
@@ -384,21 +374,6 @@ textarea.field__control {
   color: var(--text);
   font-size: 14px;
   font-weight: 850;
-}
-
-.settings-section-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-  grid-column: 1 / -1;
-}
-
-.settings-section-grid--three {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.settings-section-full {
-  grid-column: 1 / -1;
 }
 
 /* =========================================================
@@ -1658,65 +1633,4 @@ img[src]:not([src=""]) + .image-placeholder {
 .dashboard__status-pill.ERROR .status-dot,
 .dashboard__status-pill.STOPPED .status-dot {
   background: #ef4444;
-}
-/* =========================================================
-   LOGIN PAGE
-========================================================= */
-.login-page {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-  background:
-    radial-gradient(circle at top left, rgba(37, 99, 235, 0.16), transparent 34%),
-    linear-gradient(135deg, #0b1220 0%, #111827 46%, #1e293b 100%);
-}
-
-.login-card {
-  width: 100%;
-  max-width: 420px;
-  padding: 30px;
-  background: #ffffff;
-  border: 1px solid var(--line);
-  border-radius: 22px;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.22);
-}
-
-.login-card__title {
-  margin: 0 0 8px;
-  color: var(--text);
-  font-size: 28px;
-  font-weight: 950;
-  text-align: center;
-}
-
-.login-card__subtitle {
-  margin: 0 0 22px;
-  color: var(--muted);
-  font-size: 14px;
-  font-weight: 700;
-  text-align: center;
-}
-
-.login-form {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.login-form .btn {
-  width: 100%;
-  margin-top: 6px;
-}
-
-.login-error {
-  margin-bottom: 14px;
-  padding: 12px 14px;
-  border-radius: 12px;
-  background: var(--danger-bg);
-  color: var(--danger-text);
-  border: 1px solid #fecaca;
-  font-size: 14px;
-  font-weight: 800;
 }
