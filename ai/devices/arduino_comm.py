@@ -1,35 +1,16 @@
 import time
 
 import serial
-from serial.tools import list_ports
 
 
 class ArduinoComm:
-    def __init__(self, port=None, baudrate=9600, timeout=1):
+    def __init__(self, port="COM5", baudrate=9600, timeout=1):
         self.port = port
         self.baudrate = baudrate
         self.timeout = timeout
         self.ser = None
 
-    @staticmethod
-
-    # Hàm scan cổng COM
-    def scan_ports():
-        ports = list_ports.comports() # kiem tra xem latop dang co COM nao khong? 
-        # Neu co thi tra ve 1 list. Trong co moi port = 1 object -> chuyen sang Broker
-        return [
-            {
-                "device": port.device,
-                "description": port.description,
-            }
-            # lap qua tung cong scanned -> tra ve
-            for port in ports
-        ]
-    # connect Uno
-    def connect(self): # self la doi tuong Uno hien tai
-        if not self.port:
-            raise RuntimeError("Chưa chọn cổng Arduino")
-
+    def connect(self):
         try:
             self.close()
             self.ser = serial.Serial(

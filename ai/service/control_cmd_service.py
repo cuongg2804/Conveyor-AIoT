@@ -12,7 +12,6 @@ from config import (
     MQTT_TOPIC_SYSTEM_STATUS,
     MQTT_TOPIC_SYSTEM_ERROR,
 )
-from hardware.arduino_comm import ArduinoComm
 
 
 class ControlCommandService:
@@ -99,22 +98,8 @@ class ControlCommandService:
                 data = self.reload_config_handler(command_payload)
                 ack = self.success_ack(command_id, command, "Config reload accepted", data)
 
-            elif command == "GET_SERIAL_PORTS":
-                ports = ArduinoComm.scan_ports()
-
-                ack = self.success_ack(
-                    command_id,
-                    command,
-                    "Serial ports returned",
-                    {
-                        "ports": ports
-                    }
-                )
-
             else:
                 ack = self.error_ack(command_id, command, f"Unsupported command: {command}")
-
-            
 
             self.publish_ack(ack)
 
