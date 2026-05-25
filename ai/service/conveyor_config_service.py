@@ -14,13 +14,11 @@ class ConveyorConfigService:
 
         conveyor_code = str(conveyor_code).strip().upper()
 
-        
-
         config = self.collection.find_one(
             {"conveyor_code": conveyor_code},
             {"_id": 0},
         )
-        print(f"Loaded conveyor config for {conveyor_code}: {config}")
+
         if not config:
             raise RuntimeError(f"Không tìm thấy cấu hình băng tải: {conveyor_code}")
 
@@ -35,6 +33,10 @@ class ConveyorConfigService:
             "serial_port",
             "baud_rate",
             "ai_threshold",
+            "speed",
+            "goc_home",
+            "goc_gat"
+
         ]
 
         missing_fields = [
