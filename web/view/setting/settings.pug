@@ -74,6 +74,7 @@ block main
               label.field__label(for="serial_port") Cổng kết nối
               select#serial_port.field__control(name="serial_port")
                 option(value=config.serial_port selected=config.serial_port)= config.serial_port || "-- Chưa chọn cổng --"
+              button#scan_serial_ports.btn.btn--secondary(type="button") Quét cổng
 
             .field
               label.field__label(for="baud_rate") Tốc độ truyền
@@ -97,6 +98,7 @@ block main
 
     document.addEventListener("DOMContentLoaded", function () {
       const serialSelect = document.getElementById("serial_port");
+      const scanButton = document.getElementById("scan_serial_ports");
       const currentSerialPort = "#{config.serial_port || ''}";
 
       function renderPorts(ports) {
@@ -136,11 +138,38 @@ block main
 
       socket.on("serial_ports", function (ports) {
         renderPorts(Array.isArray(ports) ? ports : []);
+        if (scanButton) {
+          scanButton.disabled = false;
+          scanButton.textContent = "Quét cổng";
+        }
       });
 
-      fetch("/settings/serial-ports")
-        .then(function (res) { return res.json(); })
-        .catch(function (err) {
-          console.error("Scan serial ports error:", err);
-        });
+      function scanSerialPorts() {
+        if (scanButton) {
+          scanButton.disabled = true;
+          scanButton.textContent = "Đang quét...";
+        }
+
+        fetch("/settings/serial-ports")
+          .then(function (res) { return res.json(); })
+          .then(function (result) {
+            if (!result.success && scanButton) {
+              scanButton.disabled = false;
+              scanButton.textContent = "Quét cổng";
+            }
+          })
+          .catch(function (err) {
+            if (scanButton) {
+              scanButton.disabled = false;
+              scanButton.textContent = "Quét cổng";
+            }
+            console.error("Scan serial ports error:", err);
+          });
+      }
+
+      if (scanButton) {
+        scanButton.addEventListener("click", scanSerialPorts);
+      }
+
+      scanSerialPorts();
     });
