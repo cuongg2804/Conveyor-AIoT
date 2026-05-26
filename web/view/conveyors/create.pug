@@ -10,16 +10,22 @@ block main
         
         .card 
             form.setting-form(method="POST" action="/conveyors/create")
-                .field
+                //.field
                         label.field__label(for="conveyor_id") Mã băng tải
                         input#conveyor_id.field__control(type="text" name="conveyor_id" value=form.conveyor_id required)
                 .field
                     label.field__label(for="name") Tên băng tải
                     input#name.field__control(type="text" name="name" value=form.name required)
 
+                if user && user.role === "ADMIN"
                 .field
-                    label.field__label(for="line_id") Dây chuyền
-                    input#line_id.field__control(type="text" name="line_id" value=form.line_id required)
+                    label.field__label(for="operator_id") Người vận hành
+                    select#operator_id.field__control(name="operator_id")
+                        option(value="" selected=!form.operator_id) -- Chưa phân công --
+                        each operator in operators
+                            option(value=operator.user_id selected=form.operator_id === operator.user_id)
+                                | #{operator.fullname || operator.username || operator.user_id}
+
                 .field
                     label.field__label(for="status") Trạng thái
                     select#status.field__control(name="status" required)

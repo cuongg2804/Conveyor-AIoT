@@ -103,6 +103,13 @@ export const initMqttService = (client: MqttClient, io: Server): void => {
 
         case MQTT_TOPICS.CONTROL_ACK:
           io.emit("control_ack", payload);
+
+          if(
+            payload.command === "GET_SERIAL_PORTS" &&
+            payload.status === "SUCCESS"
+          ) {
+            io.emit("serial_ports", payload.data?.ports || [])
+          }
           return;
 
         case MQTT_TOPICS.SYSTEM_STATUS:

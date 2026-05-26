@@ -1,0 +1,126 @@
+extend ../layout/default.pug
+
+block main
+  .page
+    .dashboard__header
+      .dashboard__heading
+        h1.dashboard__title Quan ly model AI
+        p.dashboard__subtitle Upload file checkpoint .ckpt len MinIO de luu tru model
+
+    .model-upload-layout
+      .card
+        .card__head
+          h2.card__title Upload model package
+          p.card__desc Chon checkpoint .ckpt va model_info.json xuat tu Kaggle.
+
+        form.model-upload-form(method="POST" action="/models/upload" enctype="multipart/form-data")
+          .field
+            label.field__label(for="model") File checkpoint
+            input#model.field__control(type="file" name="model" accept=".ckpt" required)
+
+          .field
+            label.field__label(for="metadata") Metadata file
+            input#metadata.field__control(type="file" name="metadata" accept=".json,application/json" required)
+
+          .model-upload-meta
+            span Bucket: #{process.env.MINIO_MODEL_BUCKET || process.env.MINIO_BUCKET || "ai-models"}
+            span Gioi han: #{maxUploadMb} MB
+            span Status ban dau: testing
+
+          .btn-row
+            button.btn.btn--primary(type="submit") Upload model
+
+      .card
+        .card__head
+          h2.card__title Ket qua upload
+          p.card__desc Thong tin object sau khi upload thanh cong.
+
+        if uploadedModel
+          .upload-result
+            .upload-result__row
+              span Bucket
+              strong= uploadedModel.bucket
+            .upload-result__row
+              span Registry ID
+              strong= uploadedModel.registry_id
+            .upload-result__row
+              span Object key
+              strong= uploadedModel.object_key
+            .upload-result__row
+              span Model
+              strong #{uploadedModel.product_code} / #{uploadedModel.model_name} / #{uploadedModel.version}
+            .upload-result__row
+              span Threshold
+              strong= uploadedModel.threshold
+            .upload-result__row
+              span Status
+              strong= uploadedModel.status
+            .upload-result__row
+              span Ten file
+              strong= uploadedModel.originalName
+            .upload-result__row
+              span Dung luong
+              strong #{(uploadedModel.size / 1024 / 1024).toFixed(2)} MB
+        else
+          .empty-state
+            h3 Chua co model duoc upload
+            p Sau khi upload thanh cong, thong tin file se hien thi tai day.
+
+    .card.model-list-card
+      .card__head
+        h2.card__title Model Registry
+        p.card__desc Danh sach model da luu trong MongoDB va checkpoint tren MinIO.
+
+      if models && models.length > 0
+        .table-wrap
+          table.table
+            thead
+              tr
+                th Product
+                th Model
+                th Version
+                th Threshold
+                th Status
+                th Object key
+                th Thao tac
+            tbody
+              each item in models
+                tr
+                  td= item.product_code
+                  td= item.model_name
+                  td= item.version
+                  td= item.threshold
+                  td= item.status
+                  td
+                    span.model-object-key= item.object_key
+                  td
+                    a.btn.btn--secondary(href=`/models/${item._id}/edit`) Sua
+                    form(method="POST" action=`/models/${item._id}/delete` style="display:inline-block; margin-left: 8px;")
+                      button.btn.btn--danger(type="submit" onClick="return confirm('Xoa model nay khoi registry va MinIO?');") Xoa
+      else
+        .empty-state
+          h3 Chua co model trong registry
+          p Upload checkpoint va metadata de tao model dau tien.
+
+block scripts
+  if error
+    script.
+      Toastify({
+        text: "#{error}",
+        duration: 3000,
+        gravity: "top",
+        position: "right",
+        backgroundColor: "#ef4444",
+        close: true
+      }).showToast();
+
+  if success
+    script.
+      Toastify({
+        text: "#{success}",
+        duration: 3000,
+        gravity: "top",
+        position: "right",
+        backgroundColor: "#16a34a",
+        close: true
+      }).showToast();

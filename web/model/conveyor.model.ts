@@ -10,26 +10,25 @@ const conveyor = new mongoose.Schema({
     name: {
         type: String,
         required: true,
-        unique: true,
         trim: true
     },
-    line_id: {
+    /*line_id: {
         type: String,
         required: true,
         trim: true
-    },
+    },*/
     status: {
         type: String,
         required: true,
         trim: true,
-        enum: ["READY", "RUNNING", "STOP", "ERROR", "OFFLINE"]
+        enum: ["READY", "STARTING", "RUNNING", "STOPPING", "STOP", "STOPPED", "ERROR", "OFFLINE"]
     },
     operator_id: {
       type: String,
       default: "",
       trim: true,
     },
-    speed: {
+    /*speed: {
         type: Number,
         default: 150,
         required: true,
@@ -49,12 +48,14 @@ const conveyor = new mongoose.Schema({
         min: 0,
         max: 180,
         required: true
-    },
+    },*/
     is_active: {
       type: Boolean,
       default: true,
     },
-    
+    description: {
+        type: String
+    }
 },
     {
         timestamps: {

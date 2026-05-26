@@ -1,4 +1,4 @@
-const socket = io();
+﻿const socket = io();
 
 const COMMAND_LABELS = {
   START_SYSTEM: "Khởi động hệ thống",
@@ -232,12 +232,12 @@ function clearInspectionResult() {
 }
 
 async function sendControlCommand(command, payload = {}) {
-  if (pendingControlCommands.get(command)) {
-    showToast("Lệnh đang được xử lý, vui lòng chờ phản hồi từ AI", "info");
-    return;
-  }
+  // if (pendingControlCommands.get(command)) {
+  //   showToast("Lệnh đang được xử lý, vui lòng chờ phản hồi từ AI", "info");
+  //   return;
+  // }
 
-  pendingControlCommands.set(command, true);
+  // pendingControlCommands.set(command, true);
 
   try {
     const conveyorCode = getCurrentConveyorCode();
@@ -444,6 +444,4 @@ document.addEventListener("DOMContentLoaded", () => {
   if (document.querySelector("[data-conveyor-code]")) {
     setTimeout(() => sendControlCommand("GET_STATUS"), 600);
   }
-
-  showToast(`AI lỗi: ${error.message || "-"}`, "error");
 });

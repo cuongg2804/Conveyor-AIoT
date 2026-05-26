@@ -386,21 +386,6 @@ textarea.field__control {
   font-weight: 850;
 }
 
-.settings-section-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-  grid-column: 1 / -1;
-}
-
-.settings-section-grid--three {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.settings-section-full {
-  grid-column: 1 / -1;
-}
-
 /* =========================================================
    DASHBOARD - CONVEYOR LIST
 ========================================================= */
@@ -1719,4 +1704,362 @@ img[src]:not([src=""]) + .image-placeholder {
   border: 1px solid #fecaca;
   font-size: 14px;
   font-weight: 800;
+}
+
+/* =========================================================
+   MODEL STORAGE
+========================================================= */
+.model-upload-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.8fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.model-upload-form {
+  display: grid;
+  gap: 16px;
+}
+
+.model-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.model-upload-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.model-upload-meta span {
+  padding: 8px 10px;
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.upload-result {
+  display: grid;
+  gap: 10px;
+}
+
+.upload-result__row {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.upload-result__row span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.upload-result__row strong {
+  color: var(--text);
+  font-size: 13px;
+  word-break: break-all;
+}
+
+.model-list-card {
+  margin-top: 18px;
+}
+
+.model-object-key {
+  display: inline-block;
+  max-width: 320px;
+  word-break: break-all;
+}
+
+@media (max-width: 900px) {
+  .model-upload-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .model-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =========================================================
+   CRUD LIST PAGES - SPACING IMPROVEMENT
+========================================================= */
+
+/* Header trang quản lý */
+.dashboard_header,
+.dashboard__header {
+  margin-bottom: 22px;
+}
+
+.dashboard_heading,
+.dashboard__heading {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dashboard_title,
+.dashboard__title {
+  letter-spacing: -0.02em;
+}
+
+.dashboard_subtitle,
+.dashboard__subtitle {
+  line-height: 1.5;
+}
+
+/* Card lọc */
+.history-filter-card {
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+/* Form lọc dùng chung */
+.history-filters {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.2fr) minmax(190px, 0.8fr) auto;
+  gap: 16px;
+  align-items: end;
+}
+
+/* Nếu form có 3 field + action */
+.history-filters.history-filters--wide {
+  grid-template-columns: minmax(260px, 1.2fr) minmax(190px, 0.8fr) minmax(190px, 0.8fr) auto;
+}
+
+/* Nút lọc / xóa */
+.history-filters__actions {
+  display: flex;
+  align-items: end;
+  gap: 10px;
+  min-height: 42px;
+}
+
+.history-filters__actions .btn {
+  min-width: 82px;
+}
+
+/* Card chứa bảng */
+.card + .card,
+.history-filter-card + .card {
+  margin-top: 18px;
+}
+
+/* Bảng nhìn thoáng hơn */
+.table-wrap {
+  border-radius: 16px;
+  overflow-x: auto;
+}
+
+.table {
+  min-width: 900px;
+}
+
+.table thead th {
+  padding: 14px 16px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.035em;
+  color: #475569;
+}
+
+.table tbody td {
+  padding: 15px 16px;
+  vertical-align: middle;
+}
+
+.table tbody tr {
+  transition: background 0.15s ease;
+}
+
+.table tbody tr:hover {
+  background: #f8fafc;
+}
+
+/* Cột thao tác */
+.table td:last-child {
+  white-space: nowrap;
+}
+
+.table td:last-child .btn,
+.table td:last-child form {
+  margin-right: 6px;
+}
+
+/* Select/input đồng bộ chiều cao */
+.field__control {
+  min-height: 44px;
+}
+
+/* Empty row */
+.table tbody td[colspan] {
+  padding: 26px 16px;
+  text-align: center;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+/* Responsive cho form lọc */
+@media (max-width: 1100px) {
+  .history-filters,
+  .history-filters.history-filters--wide {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .history-filters__actions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 640px) {
+  .history-filters,
+  .history-filters.history-filters--wide {
+    grid-template-columns: 1fr;
+  }
+
+  .history-filters__actions {
+    justify-content: stretch;
+  }
+
+  .history-filters__actions .btn {
+    flex: 1;
+  }
+}
+
+/* =========================================================
+   CREATE / EDIT FORM SPACING
+========================================================= */
+
+.form-card,
+.create-form-card,
+.edit-form-card {
+  padding: 28px;
+}
+
+.form-card form,
+.create-form-card form,
+.edit-form-card form,
+.card form:not(.history-filters):not(.login-form):not(.model-upload-form) {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.form-card .field,
+.create-form-card .field,
+.edit-form-card .field {
+  margin-bottom: 0;
+}
+
+.dashboard-actions,
+.create-actions,
+.edit-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.card form:not(.history-filters):not(.login-form):not(.model-upload-form) > .btn,
+.card form:not(.history-filters):not(.login-form):not(.model-upload-form) > button[type="submit"] {
+  width: fit-content;
+  margin-top: 10px;
+}
+
+/* =========================================================
+   SETTINGS SECTION GROUPS
+========================================================= */
+
+.settings-grid {
+  max-width: 1040px;
+}
+
+.settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.settings-section {
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
+}
+
+.settings-section__head {
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.settings-section__title {
+  margin: 0;
+  color: var(--text);
+  font-size: 17px;
+  font-weight: 950;
+}
+
+.settings-section__desc {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.settings-section-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.settings-section-grid + .settings-section-grid {
+  margin-top: 14px;
+}
+
+.settings-section-grid--three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.settings-section-full {
+  margin-top: 16px;
+}
+
+.settings-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 4px;
+}
+
+.settings-actions .btn {
+  min-width: 140px;
+}
+
+@media (max-width: 900px) {
+  .settings-section-grid,
+  .settings-section-grid--three {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-section {
+    padding: 16px;
+  }
+
+  .settings-actions {
+    justify-content: stretch;
+  }
+
+  .settings-actions .btn {
+    width: 100%;
+  }
 }

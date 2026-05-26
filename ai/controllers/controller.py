@@ -25,7 +25,7 @@ class SystemController:
         storage=None,
         mqtt_topic_result=MQTT_TOPIC_INSPECTION_RESULT,
         callbacks=None,
-        conveyor_code=None,
+        conveyor_id=None,
     ):
         self.pipeline = pipeline
         self.queue = queue
@@ -38,10 +38,10 @@ class SystemController:
         self.storage = storage
         self.mqtt_topic_result = mqtt_topic_result
         self.callbacks = callbacks or {}
-        self.conveyor_code = str(conveyor_code).strip().upper() if conveyor_code else None
+        self.conveyor_id = str(conveyor_id).strip().upper() if conveyor_id else None
 
         self.running = False
-        self.job_id = 0
+        self.stt = 0
         self.batch_count = 0
         self.last_batch_signature = None
         self.last_batch_fingerprint = None
@@ -54,7 +54,7 @@ class SystemController:
 
     def _queue_item_to_text(self, item):
         try:
-            return f"job_id={item['job_id']} | label={item['label']} | score={float(item['score']):.6f}"
+            return f"stt={item['stt']} | label={item['label']} | score={float(item['score']):.6f}"
         except Exception:
             return str(item)
 
@@ -145,20 +145,28 @@ class SystemController:
 
     def start(self):
         if self.running:
-            self.cb("log", "System is already running.")
+            self.cb("log", "Hệ thống đang chạy.")
             return False
 
         self.running = True
-        if self.mongo is not None and hasattr(self.mongo, "get_max_job_id"):
+        if self.arduino is not None:
             try:
-                self.job_id = self.mongo.get_max_job_id()
-                self.cb("log", f"Continue job_id from database: next={self.job_id + 1}")
+                self.arduino.send_line("START")
+                self.cb("log", "Gửi lệnh Start tới Arduino")
             except Exception as e:
-                print("[Controller] Cannot initialize job_id from database:", e)
-                self.cb("log", f"Cannot initialize job_id from database: {e}")
+                self.cb("log", f"Lỗi: {e}")
+                self.running = False
+                return False
+        if self.mongo is not None and hasattr(self.mongo, "get_max_stt"):
+            try:
+                self.stt = self.mongo.get_max_stt()
+                self.cb("log", f"Continue stt from database: next={self.stt + 1}")
+            except Exception as e:
+                print("[Controller] Cannot initialize stt from database:", e)
+                self.cb("log", f"Cannot initialize stt from database: {e}")
 
         self.cb("set_status", "Dang chay")
-        self.cb("log", f"Start system conveyor={self.conveyor_code}...")
+        self.cb("log", f"Start system conveyor={self.conveyor_id}...")
 
         try:
             while self.running:
@@ -204,7 +212,7 @@ class SystemController:
             self.cb("log", "Duplicate batch skipped; history was not updated.")
             return
 
-        self.job_id += 1
+        self.stt += 1
         self.batch_count += 1
         inspection_id = f"INS-{time.strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:6]}"
 
@@ -215,13 +223,13 @@ class SystemController:
         if self.arduino is not None:
             try:
                 self.arduino.send_result(final_label)
-                self.cb("log", f"Sent Arduino: job_id={self.job_id} | label={final_label}")
+                self.cb("log", f"Sent Arduino: stt={self.stt} | label={final_label}")
             except Exception as e:
                 self.cb("log", f"Arduino send error: {e}")
 
         if self.queue is not None:
             try:
-                self.queue.push({"job_id": self.job_id, "label": final_label, "score": avg_score})
+                self.queue.push({"stt": self.stt, "label": final_label, "score": avg_score})
                 self._push_queue_debug()
             except Exception as e:
                 self.cb("log", f"Queue update error: {e}")
@@ -240,7 +248,7 @@ class SystemController:
             if self.storage is not None:
                 try:
                     bundle = self.storage.save_frame_bundle(
-                        job_id=inspection_id,
+                        stt=inspection_id,
                         frame_index=idx,
                         roi_image=roi_frame,
                         overlay_image=display_mask,
@@ -262,10 +270,12 @@ class SystemController:
                 "overlay_path": bundle.get("overlay_path"),
             })
 
+            
+
         mongo_document = {
             "inspection_id": inspection_id,
-            "job_id": self.job_id,
-            "conveyor_code": self.conveyor_code,
+            "stt": self.stt,
+            "conveyor_id": self.conveyor_id,
             "timestamp": timestamp,
             "label": final_label,
             "average_score": avg_score,
@@ -282,8 +292,8 @@ class SystemController:
         if self.mongo is not None:
             try:
                 self.mongo.upsert_result(mongo_document)
-                print(f"[Controller] MongoDB saved: job_id={self.job_id}, frames={len(frame_documents)}")
-                self.cb("log", f"MongoDB saved: job_id={self.job_id}, frames={len(frame_documents)}")
+                print(f"[Controller] MongoDB saved: stt={self.stt}, frames={len(frame_documents)}")
+                self.cb("log", f"MongoDB saved: stt={self.stt}, frames={len(frame_documents)}")
             except Exception as e:
                 print("[Controller] Mongo upsert failed:", e)
                 print(traceback.format_exc())
@@ -296,7 +306,7 @@ class SystemController:
             try:
                 mqtt_payload = mongo_document.copy()
                 self.mqtt.publish(self.mqtt_topic_result, mqtt_payload, qos=1)
-                self.cb("log", f"Published MQTT job_id={self.job_id}")
+                self.cb("log", f"Published MQTT stt={self.stt}")
             except Exception as e:
                 print("[Controller] MQTT publish failed:", e)
                 print(traceback.format_exc())
@@ -308,10 +318,17 @@ class SystemController:
 
     def stop(self):
         if not self.running:
-            self.cb("log", "System already stopped.")
+            self.cb("log", "Hệ thống đã dừng.")
             return
         self.running = False
-        self.cb("log", "Stop command received.")
+        self.cb("log", "Lệnh stopped đã được nhận.")
+
+        if self.arduino is not None:
+            try:
+                self.arduino.send_line("STOP")
+                self.cb("log", "Gửi lệnh dừng")
+            except Exception as e:
+                self.cb("log", f"Lỗi: {e}")
 
     def close(self):
         self.running = False

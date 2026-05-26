@@ -4,8 +4,12 @@ block main
   .history-page
     .dashboard__header
       .dashboard__heading
-        h1.dashboard__title Thống kê kiểm tra theo ngày
-        p.dashboard__subtitle Theo dõi sản lượng và kết quả kiểm tra theo ca sáng, ca chiều
+        h1.dashboard__title Thống kê kết quả kiểm tra
+        p.dashboard__subtitle Theo dõi sản lượng và kết quả kiểm tra theo ca, ngày, tháng, năm
+
+    if error
+      .alert.alert--error
+        | #{error}
 
     .card.history-filter-card
       .card__head
@@ -15,8 +19,23 @@ block main
       form.history-filters.history-filters--daily(method="GET" action="/history")
         input(type="hidden" name="shift" value=filters.shift)
         .field
+          label.field__label(for="mode") Kiểu thống kê
+          select#mode.field__control(name="mode")
+            option(value="day" selected=filters.mode === "day") Theo ngày
+            option(value="month" selected=filters.mode === "month") Theo tháng
+            option(value="year" selected=filters.mode === "year") Theo năm
+
+        .field.stats-date-field(data-mode-field="day")
           label.field__label(for="statsDate") Ngày thống kê
           input#statsDate.field__control(type="date" name="statsDate" value=filters.statsDate)
+
+        .field.stats-date-field(data-mode-field="month")
+          label.field__label(for="statsMonth") Tháng thống kê
+          input#statsMonth.field__control(type="month" name="statsMonth" value=filters.statsMonth)
+
+        .field.stats-date-field(data-mode-field="year")
+          label.field__label(for="statsYear") Năm thống kê
+          input#statsYear.field__control(type="number" name="statsYear" min="2020" max="2100" value=filters.statsYear)
 
         .field
           label.field__label(for="label") Kết quả
@@ -24,6 +43,14 @@ block main
             option(value="" selected=filters.label=="") Tất cả
             option(value="OK" selected=filters.label=="OK") Đạt
             option(value="NG" selected=filters.label=="NG") Không đạt
+        
+        .field
+          label.field__label(for="conveyor_id") Băng tải
+          select#conveyor_id.field__control(name="conveyor_id")
+            option(value="" selected=!filters.conveyor_id) Tất cả băng tải
+            each conveyor in conveyors
+              option(value=conveyor.conveyor_id selected=filters.conveyor_id === conveyor.conveyor_id)
+                | #{conveyor.name}
 
         .history-filters__actions
           button.btn.btn--primary(type="submit") Xem thống kê
@@ -33,14 +60,15 @@ block main
     - const formatPercent = (value) => `${Number(value || 0).toFixed(1)}%`
     - const formatScore = (value) => value === null || value === undefined ? "-" : Number(value).toFixed(3)
     - const selectedDateText = dailyStats && dailyStats.date ? new Date(`${dailyStats.date}T00:00:00`).toLocaleDateString("vi-VN") : "--/--/----"
+    - const selectedPeriodText = dailyStats.mode === "month" ? `tháng ${dailyStats.month || "--/----"}` : dailyStats.mode === "year" ? `năm ${dailyStats.year || "----"}` : `ngày ${selectedDateText}`
     - const shiftLabel = filters.shift === "morning" ? "Ca sáng" : filters.shift === "afternoon" ? "Ca chiều" : "Tất cả ca"
 
     if dailyStats
       .daily-stats
         .daily-stats__header
-          h2 Thống kê ngày #{selectedDateText}
-          p Tổng hợp toàn bộ lượt kiểm tra trong ngày đã chọn
-
+          h2 Thống kê #{selectedPeriodText}
+          p Tổng hợp toàn bộ lượt kiểm tra
+      if filters.mode === "day"
         .daily-stats-grid
           .daily-stat-card.daily-stat-card--total
             .daily-stat-card__head
@@ -97,11 +125,11 @@ block main
               .daily-stat-metric
                 span Điểm TB
                 strong #{formatScore(dailyStats.afternoon.avgScore)}
-
-    .history-shift-tabs
-      a.history-shift-tab(class=filters.shift === "all" ? "active" : "" href=shiftLinks.all) Tất cả
-      a.history-shift-tab(class=filters.shift === "morning" ? "active" : "" href=shiftLinks.morning) Ca sáng
-      a.history-shift-tab(class=filters.shift === "afternoon" ? "active" : "" href=shiftLinks.afternoon) Ca chiều
+    if filters.mode === "day"
+      .history-shift-tabs
+        a.history-shift-tab(class=filters.shift === "all" ? "active" : "" href=shiftLinks.all) Tất cả
+        a.history-shift-tab(class=filters.shift === "morning" ? "active" : "" href=shiftLinks.morning) Ca sáng
+        a.history-shift-tab(class=filters.shift === "afternoon" ? "active" : "" href=shiftLinks.afternoon) Ca chiều
 
     .card.history-table-card
       .card__head
@@ -131,11 +159,11 @@ block main
                 - const shiftText = hour < 12 ? "Ca sáng" : "Ca chiều"
                 - const preview = item.preview_frame || {}
                 - const labelClass = item.label === "OK" ? "ok" : item.label === "NG" ? "ng" : ""
-                - const displayId = item.display_id || item.job_id || "-" 
+                - const displayId = item.display_id || item.stt || "-" 
                 - const labelText = item.label === "OK" ? "Đạt" : item.label === "NG" ? "Không đạt" : "-"
                 - const score = item.average_score !== undefined ? Number(item.average_score).toFixed(3) : "-"
                 - const frameScore = preview.predicted_score !== undefined ? Number(preview.predicted_score).toFixed(3) : "-"
-                - const detailUrl = `/history/${item.job_id}${item.conveyor_id ? `?conveyor_id=${encodeURIComponent(item.conveyor_id)}` : ""}`
+                - const detailUrl = `/history/${item.stt}${item.conveyor_id ? `?conveyor_id=${encodeURIComponent(item.conveyor_id)}` : ""}`
 
                 tr
                   td
@@ -212,3 +240,32 @@ block main
             .history-image-modal__empty Không tải được ảnh
           .modal-footer
             button.btn.btn--primary(type="button" data-dismiss="modal") Đóng
+
+block scripts
+  script.
+    document.addEventListener("DOMContentLoaded", function () {
+      const modeSelect = document.getElementById("mode");
+      const dateFields = document.querySelectorAll(".stats-date-field");
+
+      function syncDateField() {
+        const mode = modeSelect ? modeSelect.value : "day";
+
+        dateFields.forEach(function (field) {
+          const fieldMode = field.dataset.modeField;
+          const input = field.querySelector("input");
+
+          if (fieldMode === mode) {
+            field.style.display = "";
+            if (input) input.disabled = false;
+          } else {
+            field.style.display = "none";
+            if (input) input.disabled = true;
+          }
+        });
+      }
+
+      if (modeSelect) {
+        modeSelect.addEventListener("change", syncDateField);
+        syncDateField();
+      }
+    });

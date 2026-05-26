@@ -7,18 +7,20 @@ import { initMqttService } from "./service/mqtt.service";
 import { Server } from "socket.io";
 import http from "http";
 import path from "path";
+import fs from "fs";
 import cookieParser from "cookie-parser";
 
-dotenv.config({ override: true });
+dotenv.config({ path: path.resolve(__dirname, "../.env"), override: true });
+dotenv.config({ override: false });
 
 const app = express();
-const server = http.createServer(app); 
-const io = new Server(server); 
+const server = http.createServer(app);
+const io = new Server(server);
 
 app.use(cookieParser());
 
-app.set("view engine", "pug"); // 
-app.set("views", path.join(__dirname, "view")); 
+app.set("view engine", "pug");
+app.set("views", path.join(__dirname, "view"));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -32,7 +34,7 @@ const resolveStoragePath = () => {
     path.resolve(__dirname, "../../app/storage"),
   ];
 
-  return candidates.find((candidate) => require("fs").existsSync(candidate)) || candidates[0];
+  return candidates.find((candidate) => fs.existsSync(candidate)) || candidates[0];
 };
 
 const storagePath = resolveStoragePath();
@@ -40,7 +42,7 @@ const storagePath = resolveStoragePath();
 app.use("/images", express.static(storagePath));
 app.use(express.static(path.join(__dirname, "public")));
 
-app.use(router); 
+app.use(router);
 
 database.connect();
 
