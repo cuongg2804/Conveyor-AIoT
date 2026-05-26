@@ -299,6 +299,15 @@ class AnomalyGUI:
                     self.set_arduino_status(f"Đã kết nối ({serial_port})")
 
             self.controller.conveyor_id = conveyor_id
+            self.controller.runtime_config = config
+
+            try:
+                hardware_result = self.controller.apply_hardware_config(config)
+                self.log(f"[CONFIG] Runtime hardware config updated: {hardware_result}")
+            except Exception as e:
+                self.log(f"[CONFIG] Apply hardware config error: {e}")
+                raise
+
             self.log(f"[CONFIG] Runtime config reload completed for {conveyor_id}")
             self.publish_runtime_status()
 
@@ -761,7 +770,8 @@ class AnomalyGUI:
             camera=camera,
             model=model,
         )
-
+        config_service = ConveyorConfigService()
+        self.startup_resources.append(("ConfigService", config_service, "close"))
         self.controller = SystemController(
             pipeline=pipeline,
             queue=queue,
@@ -775,6 +785,7 @@ class AnomalyGUI:
             mqtt_topic_result=MQTT_TOPIC_INSPECTION_RESULT,
             callbacks=self.callbacks,
             conveyor_id=conveyor_id,
+            config_service=config_service,
         )
 
         self.set_status("Đã khởi tạo")

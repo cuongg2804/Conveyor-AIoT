@@ -54,6 +54,29 @@ class ArduinoComm:
         self.ser.write(data)
         print(f"[TX] {message}")
 
+    def clamp_int(self, value, default_value, min_value, max_value):
+        try:
+            number = int(value)
+        except Exception:
+            number = default_value
+
+        return max(min_value, min(number, max_value))
+
+    def apply_config(self, speed=150, goc_home=0, goc_gat=120):
+        speed = self.clamp_int(speed, 150, 0, 255)
+        goc_home = self.clamp_int(goc_home, 0, 0, 180)
+        goc_gat = self.clamp_int(goc_gat, 120, 0, 180)
+
+        command = f"CFG:SPEED={speed};HOME={goc_home};PUSH={goc_gat}"
+        self.send_line(command)
+
+        return {
+            "speed": speed,
+            "goc_home": goc_home,
+            "goc_gat": goc_gat,
+            "command": command,
+        }
+
     def read_line(self):
         if not self.is_connected():
             return None

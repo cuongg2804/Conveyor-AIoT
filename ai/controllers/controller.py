@@ -26,6 +26,7 @@ class SystemController:
         mqtt_topic_result=MQTT_TOPIC_INSPECTION_RESULT,
         callbacks=None,
         conveyor_id=None,
+        config_service=None,
     ):
         self.pipeline = pipeline
         self.queue = queue
@@ -46,6 +47,8 @@ class SystemController:
         self.last_batch_signature = None
         self.last_batch_fingerprint = None
         self.last_batch_saved_at = 0.0
+        self.config_service = config_service
+        self.runtime_config = {}
 
     def cb(self, name, *args, **kwargs):
         func = self.callbacks.get(name)
@@ -142,13 +145,69 @@ class SystemController:
             return True
         except Exception:
             return False
+    def load_runtime_config(self):
+        if self.config_service is None:
+            self.cb("log", "Config service is not available; using current runtime config.")
+            return self.runtime_config or {}
+
+        if not self.conveyor_id:
+            raise RuntimeError("Thiếu conveyor_id để đọc cấu hình băng tải.")
+
+        config = self.config_service.get_config(self.conveyor_id)
+        self.runtime_config = config
+
+        self.cb(
+            "log",
+            "Loaded config: "
+            f"speed={config.get('speed')} | "
+            f"home={config.get('goc_home')} | "
+            f"push={config.get('goc_gat')}"
+        )
+
+        return config
+
+    def apply_hardware_config(self, config=None):
+        if self.arduino is None:
+            self.cb("log", "Arduino is not available; skip hardware config.")
+            return {}
+
+        config = config or self.runtime_config or {}
+
+        result = self.arduino.apply_config(
+            speed=config.get("speed", 150),
+            goc_home=config.get("goc_home", 0),
+            goc_gat=config.get("goc_gat", 120),
+        )
+
+        self.cb("log", f"Sent Arduino config: {result.get('command')}")
+        return result
+
+    def reload_config(self):
+        config = self.load_runtime_config()
+        arduino_result = self.apply_hardware_config(config)
+
+        return {
+            "conveyor_id": self.conveyor_id,
+            "speed": config.get("speed"),
+            "goc_home": config.get("goc_home"),
+            "goc_gat": config.get("goc_gat"),
+            "arduino": arduino_result,
+        }
 
     def start(self):
         if self.running:
-            self.cb("log", "Hệ thống đang chạy.")
+            self.cb("log", "Hệ thống đã đang chạy.")
+            return False
+        self.running = True
+
+        try:
+            config = self.load_runtime_config()
+            self.apply_hardware_config(config)
+        except Exception as e:
+            self.cb("log", f"Lỗi cấu hình phần cứng: {e}")
+            self.running = False
             return False
 
-        self.running = True
         if self.arduino is not None:
             try:
                 self.arduino.send_line("START")
@@ -356,6 +415,7 @@ class SystemController:
             ("MQTT", self.mqtt, "disconnect"),
             ("MongoDB", self.mongo, "close"),
             ("Camera", self.camera, "stop"),
+            ("ConfigService", self.config_service, "close"),
         ]:
             try:
                 if obj is not None:
@@ -372,4 +432,6 @@ class SystemController:
         self.pipeline = None
         self.queue = None
         self.logger = None
+        self.config_service = None
+        self.runtime_config = {}
         self.cb("reset_ui")
