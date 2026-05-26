@@ -171,17 +171,7 @@ export const updateSettings = async (req: Request, res: Response) => {
       );
     }
 
-    if (newCameraId) {
-      await Camera.updateOne(
-        { camera_id: newCameraId },
-        {
-          $set: {
-            status: "IN_USE",
-            conveyor_id: conveyorId,
-          },
-        }
-      );
-    }
+    
     if (newCameraId) {
       const newCamera = await Camera.findOne({ camera_id: newCameraId }).lean<any>();
 
@@ -196,7 +186,17 @@ export const updateSettings = async (req: Request, res: Response) => {
         return res.status(400).send("Camera này đang được gán cho băng tải khác.");
       }
     }
-
+    if (newCameraId) {
+      await Camera.updateOne(
+        { camera_id: newCameraId },
+        {
+          $set: {
+            status: "IN_USE",
+            conveyor_id: conveyorId,
+          },
+        }
+      );
+    }
     const changes: any = {};
 
     const addChange = (field: string, oldValue: any, newValue: any) => {
@@ -249,6 +249,8 @@ export const updateSettings = async (req: Request, res: Response) => {
     addChange("goc_gat", oldConfig.goc_gat, newGocGat);
     addChange("ai_threshold", oldConfig.ai_threshold, newAiThreshold);
 
+    
+
     if (Object.keys(changes).length > 0) {
       await Config_log.create({
         config_log_id: `CFG_${Date.now()}`,
@@ -258,6 +260,17 @@ export const updateSettings = async (req: Request, res: Response) => {
         changes,
         message:  String(description || "").trim() || "Cập nhật cấu hình băng tải",
       });
+    }
+
+    let synced = "1";
+
+    try {
+      publishControlCommand("RELOAD_CONFIG", {
+        conveyor_id: conveyorId,
+      });
+    } catch (mqttError) {
+      synced = "0";
+      console.error("[MQTT] RELOAD_CONFIG lỗi:", mqttError);
     }
 
     return res.redirect(`/settings/${conveyorId}?updated=1`);
