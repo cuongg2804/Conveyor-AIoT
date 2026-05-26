@@ -42,6 +42,42 @@ block main
                     option(value=operator.user_id selected=conveyor.operator_id === operator.user_id)
                       | #{operator.fullname || operator.username || operator.user_id}
 
+          .settings-section-grid.settings-section-grid--hardware
+            .field
+              label.field__label(for="speed") Tốc độ băng tải PWM
+              input#speed.field__control(
+                type="number"
+                name="speed"
+                min="0"
+                max="255"
+                step="1"
+                value=config.speed || 150
+                required
+              )
+
+            .field
+              label.field__label(for="goc_home") Góc home servo
+              input#goc_home.field__control(
+                type="number"
+                name="goc_home"
+                min="0"
+                max="180"
+                step="1"
+                value=config.goc_home || 0
+                required
+              )
+
+            .field
+              label.field__label(for="goc_gat") Góc gạt servo
+              input#goc_gat.field__control(
+                type="number"
+                name="goc_gat"
+                min="0"
+                max="180"
+                step="1"
+                value=config.goc_gat || 120
+                required
+              )
             .field
               label.field__label(for="description") Mô tả
               textarea#description.field__control(name="description")= conveyor.description || ""
@@ -64,20 +100,25 @@ block main
               label.field__label(for="camera_trigger_delay") Độ trễ kích hoạt
               input#camera_trigger_delay.field__control(type="number" name="camera_trigger_delay" value=config.camera_trigger_delay || 0)
 
-        .settings-section
-          .settings-section__head
-            h3.settings-section__title Bộ điều khiển
-            p.settings-section__desc Cấu hình cổng serial và tốc độ truyền dữ liệu đến Arduino
+        .settings-section-grid.settings-section-grid--control
+          .field
+            label.field__label(for="serial_port") Cổng kết nối
+            select#serial_port.field__control(name="serial_port")
+              option(value=config.serial_port selected=config.serial_port)= config.serial_port || "-- Chưa chọn cổng --"
 
-          .settings-section-grid.settings-section-grid--control
-            .field
-              label.field__label(for="serial_port") Cổng kết nối
-              select#serial_port.field__control(name="serial_port")
-                option(value=config.serial_port selected=config.serial_port)= config.serial_port || "-- Chưa chọn cổng --"
+          .field
+            label.field__label(for="baud_rate") Tốc độ truyền serial
+            input#baud_rate.field__control(
+              type="number"
+              name="baud_rate"
+              min="1200"
+              max="115200"
+              step="1"
+              value=config.baud_rate || 9600
+              required
+            )
 
-            .field
-              label.field__label(for="baud_rate") Tốc độ truyền
-              input#baud_rate.field__control(type="number" name="baud_rate" value=config.baud_rate || 9600 required)
+        
 
         .settings-section
           .settings-section__head

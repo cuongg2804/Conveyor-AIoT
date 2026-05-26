@@ -23,14 +23,26 @@ type ConveyorConfigView = {
   serial_port?: string;
   baud_rate?: number;
   ai_threshold?: number;
-  /*mode?: string;
-  conveyor_speed?: number;
+  speed?: number;
   goc_home?: number;
-  goc_gat?: number; */
+  goc_gat?: number;
 };
 
 const normalizeCode = (value: any) =>
   String(value || "").trim().toUpperCase();
+
+const toNumberInRange = (
+  value: any,
+  defaultValue: number,
+  min: number,
+  max: number
+) => {
+  const num = Number(value);
+
+  if (Number.isNaN(num)) return defaultValue;
+
+  return Math.min(Math.max(num, min), max);
+};
 
 export const settings = async (req: Request, res: Response) => {
   try {
@@ -133,14 +145,19 @@ export const updateSettings = async (req: Request, res: Response) => {
       serial_port,
       baud_rate,
       ai_threshold,
-      /*mode,
       speed,
       goc_home,
-      goc_gat, */
+      goc_gat,
     } = req.body;
 
     const newCameraId = normalizeCode(camera_id);
     const oldCameraId = normalizeCode(oldConfig.camera_id);
+    const newSpeed = toNumberInRange(speed, 150, 0, 255);
+    const newGocHome = toNumberInRange(goc_home, 0, 0, 180);
+    const newGocGat = toNumberInRange(goc_gat, 120, 0, 180);
+    const newBaudRate = toNumberInRange(baud_rate, 9600, 1200, 115200);
+    const newCameraTriggerDelay = toNumberInRange(camera_trigger_delay, 0, 0, 10000);
+    const newAiThreshold = Number(ai_threshold || 30.436506);
 
     if (oldCameraId && oldCameraId !== newCameraId) {
       await Camera.updateOne(
@@ -196,7 +213,6 @@ export const updateSettings = async (req: Request, res: Response) => {
       {
         $set: {
           name: String(name || "").trim(),
-          /*line_id: String(line_id || "").trim(),*/
           status: normalizeCode(status || "ONLINE"),
           operator_id: String(operator_id || "").trim(),
           description: String(description || "").trim(),
@@ -209,14 +225,13 @@ export const updateSettings = async (req: Request, res: Response) => {
       {
         $set: {
           camera_id: newCameraId,
-          camera_trigger_delay: Number(camera_trigger_delay || 0),
+          camera_trigger_delay: newCameraTriggerDelay,
           serial_port: String(serial_port || "").trim(),
-          baud_rate: Number(baud_rate || 9600),
-          ai_threshold: Number(ai_threshold || 30.436506),
-          /*mode: normalizeCode(mode || "AUTO"),
-          speed: Number(speed || 150),
-          goc_home: Number(goc_home || 0),
-          goc_gat: Number(goc_gat || 120) */
+          baud_rate: newBaudRate,
+          ai_threshold: newAiThreshold,
+          speed: newSpeed,
+          goc_home: newGocHome,
+          goc_gat: newGocGat,
         },
       }
     );
@@ -225,12 +240,14 @@ export const updateSettings = async (req: Request, res: Response) => {
     addChange("operator_id", conveyor.operator_id, operator_id);
     addChange("camera_id", oldConfig.camera_id, newCameraId);
     addChange("serial_port", oldConfig.serial_port, serial_port);
-    addChange("baud_rate", oldConfig.baud_rate, Number(baud_rate || 9600));
-    addChange("ai_threshold", oldConfig.ai_threshold, Number(ai_threshold || 30.436506));
     addChange("name", conveyor.name, name);
-    /*addChange("line_id", conveyor.line_id, line_id);*/
     addChange("status", conveyor.status, normalizeCode(status || "ONLINE"));
     addChange("description", conveyor.description, description);
+    addChange("baud_rate", oldConfig.baud_rate, newBaudRate);
+    addChange("speed", oldConfig.speed, newSpeed);
+    addChange("goc_home", oldConfig.goc_home, newGocHome);
+    addChange("goc_gat", oldConfig.goc_gat, newGocGat);
+    addChange("ai_threshold", oldConfig.ai_threshold, newAiThreshold);
 
     if (Object.keys(changes).length > 0) {
       await Config_log.create({

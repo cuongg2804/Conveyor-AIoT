@@ -31,11 +31,27 @@ const conveyorConfigSchema = new mongoose.Schema(
       required: true,
       default: 30.436506,
     },
-    /*mode: {
-      type: String,
-      enum: ["AUTO", "MANUAL"],
-      default: "AUTO",
-    }, */
+    speed: {
+        type: Number,
+        default: 150,
+        required: true,
+        min: 0,
+        max: 255
+    },
+    goc_home: {
+        type: Number,
+        default: 0,
+        required: true,
+        min: 0,
+        max: 180
+    },
+    goc_gat: {
+        type: Number,
+        default: 120,
+        min: 0,
+        max: 180,
+        required: true
+    },
   },
   {
     timestamps: {
