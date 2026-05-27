@@ -22,12 +22,14 @@ class ControlCommandService:
         stop_handler: Callable[[dict], dict],
         status_handler: Callable[[], dict],
         reload_config_handler: Optional[Callable[[dict], dict]] = None,
+        arduino_command_handler: Optional[Callable[[str, dict], dict]] = None,
         log_handler: Optional[Callable[[str], None]] = None,
     ):
         self.start_handler = start_handler
         self.stop_handler = stop_handler
         self.status_handler = status_handler
         self.reload_config_handler = reload_config_handler
+        self.arduino_command_handler = arduino_command_handler
         self.log_handler = log_handler or print
 
         self.mqtt = MQTTService(
@@ -111,6 +113,13 @@ class ControlCommandService:
                     }
                 )
 
+            elif command in ["APPLY_ARDUINO_CONFIG", "GET_ARDUINO_CONFIG", "LIGHT_CHECK", "RESET_ARDUINO_CONFIG_DEFAULT"]:
+                self.require_conveyor_id(command_payload)
+                if not callable(self.arduino_command_handler):
+                    raise RuntimeError("Arduino command handler is not configured")
+                data = self.arduino_command_handler(command, command_payload)
+                ack = self.success_ack(command_id, command, "Arduino command executed", data)
+
             else:
                 ack = self.error_ack(command_id, command, f"Unsupported command: {command}")
 
@@ -130,6 +139,7 @@ class ControlCommandService:
             self.publish_error("CONTROL_COMMAND", str(e), payload)
 
     def publish_ack(self, ack: dict):
+        print(f"[CONTROL] Publish ACK: {ack}")
         self.mqtt.publish_json(MQTT_TOPIC_CONTROL_ACK, ack, qos=1)
 
     def publish_status(self):

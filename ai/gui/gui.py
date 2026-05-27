@@ -37,6 +37,9 @@ class AnomalyGUI:
         self.controller_thread = None
         self.startup_resources = []
         self.conveyor_config = None
+        self.config_arduino = None
+        self.config_arduino_key = None
+        self.config_arduino_lock = threading.RLock()
         self.runtime_status = "STOPPED"
         self.current_conveyor_id = None
 
@@ -99,6 +102,7 @@ class AnomalyGUI:
             stop_handler=self.handle_web_stop_command,
             status_handler=self.get_web_status,
             reload_config_handler=self.handle_web_reload_config_command,
+            arduino_command_handler=self.handle_web_arduino_command,
             log_handler=self.log,
         )
 
@@ -120,6 +124,8 @@ class AnomalyGUI:
             pass
 
     def log(self, msg):
+        print(msg)
+
         def _():
             timestamp = time.strftime("%H:%M:%S")
             self.log_text.config(state="normal")
@@ -247,6 +253,144 @@ class AnomalyGUI:
             "message": "Reload config scheduled on GUI main thread",
         }
 
+    def _build_arduino_config_payload(self, payload: dict, db_config: dict) -> dict:
+        def read_int(name, fallback):
+            value = payload.get(name)
+            if value is None or value == "":
+                value = db_config.get(name, fallback)
+            return int(value)
+
+        return {
+            "speed_low_level": read_int("speed_low_level", db_config.get("arduino_speed_low_level", 2)),
+            "speed_high_level": read_int("speed_high_level", db_config.get("arduino_speed_high_level", 5)),
+            "servo_home_angle": read_int("servo_home_angle", db_config.get("arduino_servo_home_angle", 0)),
+            "servo_gate_angle": read_int("servo_gate_angle", db_config.get("arduino_servo_gate_angle", 130)),
+            "light_min_lux": read_int("light_min_lux", db_config.get("arduino_light_min_lux", 1000)),
+            "light_max_lux": read_int("light_max_lux", db_config.get("arduino_light_max_lux", 2000)),
+            "save_default": payload.get("save_default") in [True, "true", "1", 1, "on", "ON"],
+        }
+
+    def _open_arduino_for_command(self, db_config: dict):
+        serial_port = str(db_config.get("serial_port") or "").strip()
+        baud_rate = int(db_config.get("baud_rate") or 9600)
+
+        if not serial_port:
+            raise RuntimeError("Chua cau hinh serial_port cho bang tai")
+
+        if self.controller is not None and getattr(self.controller, "arduino", None) is not None:
+            arduino = self.controller.arduino
+            same_port = str(getattr(arduino, "port", "")).upper() == serial_port.upper()
+            same_baud = int(getattr(arduino, "baudrate", 0) or 0) == baud_rate
+            if same_port and same_baud and arduino.is_connected():
+                return arduino, False
+
+        key = (serial_port.upper(), baud_rate)
+        with self.config_arduino_lock:
+            if (
+                self.config_arduino is not None
+                and self.config_arduino_key == key
+                and self.config_arduino.is_connected()
+            ):
+                return self.config_arduino, False
+
+            self.close_config_arduino()
+            self.config_arduino = ArduinoComm(port=serial_port, baudrate=baud_rate, timeout=1)
+            self.config_arduino.connect()
+            self.config_arduino_key = key
+            self.log(f"[ARDUINO] Opened persistent config connection on {serial_port} @ {baud_rate}")
+            return self.config_arduino, False
+
+    def _get_arduino_command_config(self, command: str, payload: dict, conveyor_id: str) -> dict:
+        serial_port = str(payload.get("serial_port") or "").strip()
+        baud_rate = payload.get("baud_rate")
+
+        if serial_port:
+            config = {
+                "conveyor_id": conveyor_id,
+                "serial_port": serial_port,
+                "baud_rate": int(baud_rate or 9600),
+                "arduino_speed_low_level": payload.get("speed_low_level", 2),
+                "arduino_speed_high_level": payload.get("speed_high_level", 5),
+                "arduino_servo_home_angle": payload.get("servo_home_angle", 0),
+                "arduino_servo_gate_angle": payload.get("servo_gate_angle", 130),
+                "arduino_light_min_lux": payload.get("light_min_lux", 1000),
+                "arduino_light_max_lux": payload.get("light_max_lux", 2000),
+            }
+            self.log(f"[ARDUINO] Using command payload config for {command}; skipped DB lookup")
+            return config
+
+        return self.load_conveyor_config(conveyor_id)
+
+    def close_config_arduino(self):
+        with self.config_arduino_lock:
+            if self.config_arduino is not None:
+                try:
+                    self.config_arduino.close()
+                    self.log("[ARDUINO] Closed config connection.")
+                except Exception as e:
+                    self.log(f"[ARDUINO] Close config connection error: {e}")
+                finally:
+                    self.config_arduino = None
+                    self.config_arduino_key = None
+
+    def handle_web_arduino_command(self, command: str, payload: dict):
+        conveyor_id = payload.get("conveyor_id")
+        if not conveyor_id:
+            raise RuntimeError("Thieu conveyor_id trong MQTT payload")
+
+        conveyor_id = str(conveyor_id).strip().upper()
+        self.log(f"[WEB COMMAND] {command} received for {conveyor_id}")
+
+        controller_running = bool(
+            self.controller is not None and getattr(self.controller, "running", False)
+        )
+        if command in ["APPLY_ARDUINO_CONFIG", "LIGHT_CHECK", "RESET_ARDUINO_CONFIG_DEFAULT"] and controller_running:
+            raise RuntimeError("Chi duoc cau hinh/kiem tra Arduino khi he thong dang dung")
+
+        db_config = self._get_arduino_command_config(command, payload, conveyor_id)
+        arduino = None
+        should_close = False
+
+        try:
+            arduino, should_close = self._open_arduino_for_command(db_config)
+
+            if command == "GET_ARDUINO_CONFIG":
+                result = arduino.get_config()
+            elif command == "LIGHT_CHECK":
+                result = arduino.light_check()
+            elif command == "RESET_ARDUINO_CONFIG_DEFAULT":
+                result = arduino.reset_config_default()
+            elif command == "APPLY_ARDUINO_CONFIG":
+                config_payload = self._build_arduino_config_payload(payload, db_config)
+                result = arduino.apply_config(
+                    speed_low_level=config_payload["speed_low_level"],
+                    speed_high_level=config_payload["speed_high_level"],
+                    servo_home_angle=config_payload["servo_home_angle"],
+                    servo_gate_angle=config_payload["servo_gate_angle"],
+                    light_min_lux=config_payload["light_min_lux"],
+                    light_max_lux=config_payload["light_max_lux"],
+                    save_default=config_payload["save_default"],
+                )
+            else:
+                raise RuntimeError(f"Unsupported Arduino command: {command}")
+
+            self.log(f"[ARDUINO] {command} completed: {result}")
+            return {
+                "conveyor_id": conveyor_id,
+                "serial_port": str(db_config.get("serial_port") or ""),
+                "baud_rate": int(db_config.get("baud_rate") or 9600),
+                **result,
+            }
+
+        except Exception:
+            if arduino is not None and arduino is self.config_arduino:
+                self.close_config_arduino()
+            raise
+
+        finally:
+            if should_close and arduino is not None:
+                arduino.close()
+
     def reload_runtime_config(self, conveyor_id: str):
         conveyor_id = str(conveyor_id).strip().upper()
 
@@ -267,6 +411,10 @@ class AnomalyGUI:
             camera_trigger_delay = config.get("camera_trigger_delay")
             serial_port = str(config["serial_port"])
             baud_rate = int(config["baud_rate"])
+            config_key = (serial_port.upper(), baud_rate)
+
+            if self.config_arduino_key is not None and self.config_arduino_key != config_key:
+                self.close_config_arduino()
 
             self.threshold_var.set(str(image_threshold))
 
@@ -289,6 +437,7 @@ class AnomalyGUI:
                 current_baud = int(getattr(self.controller.arduino, "baudrate", 0))
                 if current_port.upper() != serial_port.upper() or current_baud != baud_rate:
                     self.log(f"[CONFIG] Reconnecting Arduino: {serial_port} @ {baud_rate}")
+                    self.close_config_arduino()
                     self.controller.arduino.close()
                     self.controller.arduino = ArduinoComm(
                         port=serial_port,
@@ -706,6 +855,7 @@ class AnomalyGUI:
         self.set_model_status("Đã tải")
 
         self.log("Kết nối Arduino...")
+        self.close_config_arduino()
         arduino = ArduinoComm(
             port=serial_port,
             baudrate=baud_rate,
@@ -1219,5 +1369,7 @@ class AnomalyGUI:
                 self.controller.cleanup()
         except Exception as e:
             self.log(f"Lỗi khi đóng ứng dụng: {e}")
+
+        self.close_config_arduino()
 
         self.root.destroy()
