@@ -2,4 +2,6 @@
   .inner-logo
     a(href="/dashboard") AI
   if user
+    .header-user
+      span.header-user__name Xin chào, #{user.fullname}!
       a.btn.btn--secondary.btn-logout(href="/logout") Logout

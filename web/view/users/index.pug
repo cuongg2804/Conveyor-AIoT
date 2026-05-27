@@ -43,6 +43,7 @@ block main
                         th Username
                         th Họ tên
                         th Role
+                        th Trạng thái
                         th Thao tác
                 tbody 
                     each item in users
@@ -51,6 +52,11 @@ block main
                             td=item.username
                             td=item.fullname
                             td=item.role 
+                            td 
+                                if item.status === "ONLINE"
+                                    span.badge.badge--success ONLINE
+                                else
+                                    span.badge.badge--muted OFFLINE
                             td
                                 a.btn.btn--secondary(href=`/users/edit/${item.user_id}`) Sửa
                                 form(method="POST" action=`/users/delete/${item.user_id}` style="display:inline-block; margin-left: 8px;")

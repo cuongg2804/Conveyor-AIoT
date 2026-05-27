@@ -407,6 +407,30 @@ document.addEventListener("DOMContentLoaded", () => {
   if (window.__LATEST_INSPECTION__) {
     renderInspectionResult(window.__LATEST_INSPECTION__);
   }
+  const fullnameInputs = document.querySelectorAll(".js-fullname-only");
+
+  fullnameInputs.forEach((input) => {
+    input.addEventListener("input", function () {
+      this.value = this.value.replace(/[^\p{L}\s]/gu, "");
+    });
+
+    input.addEventListener("paste", function (event) {
+      event.preventDefault();
+
+      const pastedText = (event.clipboardData || window.clipboardData).getData("text");
+      const cleanedText = pastedText.replace(/[^\p{L}\s]/gu, "");
+
+      const start = this.selectionStart;
+      const end = this.selectionEnd;
+
+      this.value =
+        this.value.substring(0, start) +
+        cleanedText +
+        this.value.substring(end);
+
+      this.setSelectionRange(start + cleanedText.length, start + cleanedText.length);
+    });
+  });
 
   const historyModal = document.getElementById("historyImageModal");
   if (historyModal && typeof $ === "function") {

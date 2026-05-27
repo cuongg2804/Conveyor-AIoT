@@ -36,10 +36,26 @@ export const loginPost = async (req: Request, res: Response) => {
                 error: "Mật khẩu không chính xác.",
             });
         }
+        if (user.status === "ONLINE") {
+            return res.render("auth/login", {
+                title: "Đăng nhập hệ thống",
+                error: "Tài khoản này đang được đăng nhập trên một thiết bị khác.",
+            });
+        }
+        
         const token = crypto.randomBytes(32).toString("hex");
         await User.updateOne(
             { user_id: user.user_id },
             { $set: { token } }
+        );
+        await User.updateOne(
+            { user_id: user.user_id },
+            {
+                $set: {
+                token,
+                status: "ONLINE",
+                },
+            }
         );
         res.cookie("token", token, {
             httpOnly: true, // chỉ cho phép cookie được truy cập qua HTTP(S)

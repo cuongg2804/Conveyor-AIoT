@@ -3,9 +3,27 @@ import User from "../model/user.model";
 import bcrypt from "bcryptjs";
 import { error } from "node:console";
 import { readSync } from "node:fs";
+import { title } from "node:process";
 
 const gen_user_id = () => {
     return "U_" + Math.random().toString(36).substr(2, 9);
+}
+
+const USERNAME_REGEX = /^[A-Za-z0-9_]{6,32}$/;
+
+const PASSWORD_REGEX =
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_\-+=\[\]{};':"\\|,.<>/?])(?!.*\s).{8,32}$/;
+
+const validateUsername = (username: string) => {
+    return USERNAME_REGEX.test(username);
+};
+
+const validatePassword = (password: string) => {
+    return PASSWORD_REGEX.test(password);
+};
+const validateFullname = (fullname: string) => {
+    const FULLNAME_REGEX = /^[A-Za-zÀ-ỹ\s]+$/;
+    return FULLNAME_REGEX.test(fullname);
 }
 
 export const index = async (req: Request, res: Response) => {
@@ -71,6 +89,39 @@ export const createPost = async (req: Request, res: Response) => {
                 form: req.body
             });
         }
+
+        const normalizedUsername = String(username || "").trim();
+        const normalizedPassword = String(password || "");
+        const normalizedFullname = String(fullname || "").trim();
+        if(!normalizedUsername || !normalizedPassword || !normalizedFullname) {
+            return res.render("users/create", {
+                title: "Tạo người dùng mới",
+                error: "Vui lòng điền đầy đủ thông tin",
+                form: req.body,
+            });
+        }
+        if(!validateUsername(normalizedUsername)) {
+            return res.render("users/create", {
+                title: "Tạo người dùng mới",
+                error: "Vui lòng đặt username từ 6-32 ký tự, chỉ bao gồm chữ cái, số và dấu gạch dưới",
+                form: req.body,
+            });
+        }
+        if(!validatePassword(normalizedPassword)) {
+            return res.render("users/create", {
+                title: "Tạo người dùng mới",
+                error: "Vui lòng đặt password từ 8-32 ký tự, bao gồm ít nhất 1 chữ hoa, 1 chữ thường, 1 số và 1 ký tự đặc biệt",
+                form: req.body,
+            });
+        }
+        if(!validateFullname(normalizedFullname)) {
+            return res.render("users/create", {
+                title: "Tạo người dùng mới",
+                error: "Vui lòng nhập họ tên hợp lệ (chỉ chứa chữ cái và khoảng trắng)",
+                form: req.body
+            });
+        }
+
         const hashedPassword = await bcrypt.hash(String(password), 10);
         const normalizedRole = ["ADMIN", "USER"].includes(String(role).toUpperCase())
         ? String(role).toUpperCase()
@@ -81,7 +132,8 @@ export const createPost = async (req: Request, res: Response) => {
             password: hashedPassword,
             fullname: String(fullname).trim(),
             role: normalizedRole,
-            token: ""
+            token: "",
+            status: "OFFLINE"
         })
         return res.redirect("/users");
     } catch (error) {
@@ -107,28 +159,80 @@ export const edit = async (req: Request, res: Response) => {
 export const editPost = async (req: Request, res: Response) => {
     try {
         const { username, password, fullname, role } = req.body;
+        const user_id = req.params.user_id;
+
+        const currentUser = await User.findOne({ user_id }).lean();
+
+        if (!currentUser) {
+            return res.status(404).send("Không tìm thấy người dùng.");
+        }
+
+        const normalizedUsername = String(username || "").trim();
+        const normalizedFullname = String(fullname || "").trim();
+        const newPassword = String(password || "");
         const normalizedRole = ["ADMIN", "USER"].includes(String(role).toUpperCase())
-        ? String(role).toUpperCase()
-        : "USER";
+            ? String(role).toUpperCase()
+            : "USER";
+
+        const renderEdit = (error: string) => {
+            return res.render("users/edit", {
+                title: "Cập nhật người dùng",
+                error,
+                user: {
+                    ...currentUser,
+                    username: normalizedUsername,
+                    fullname: normalizedFullname,
+                    role: normalizedRole,
+                },
+            });
+        };
+
+        if (!normalizedUsername || !normalizedFullname) {
+            return renderEdit("Vui lòng nhập đầy đủ username và họ tên.");
+        }
+
+        if (!validateUsername(normalizedUsername)) {
+            return renderEdit("Username phải từ 6-32 ký tự, chỉ gồm chữ cái không dấu, số hoặc dấu gạch dưới.");
+        }
+
+        if (!validateFullname(normalizedFullname)) {
+            return renderEdit("Họ tên chỉ được chứa chữ cái và khoảng trắng, không được chứa số hoặc ký tự đặc biệt.");
+        }
+
+        const existed = await User.findOne({
+            username: normalizedUsername,
+            user_id: { $ne: user_id },
+        }).lean();
+
+        if (existed) {
+            return renderEdit("Username đã tồn tại.");
+        }
+
         const updateData: any = {
-            fullname: String(fullname || "").trim(),
-            role : normalizedRole
+            username: normalizedUsername,
+            fullname: normalizedFullname,
+            role: normalizedRole,
+        };
+
+        if (newPassword.trim()) {
+            if (!validatePassword(newPassword)) {
+                return renderEdit("Password phải từ 8-32 ký tự, gồm chữ hoa, chữ thường, chữ số, ký tự đặc biệt và không chứa khoảng trắng.");
+            }
+
+            updateData.password = await bcrypt.hash(newPassword, 10);
         }
-        if(password || String(password).trim()) {
-            updateData.password = await bcrypt.hash(String(password), 10)
-            updateData.token = ""
-        }
-        await User.updateOne (
-            { user_id: req.params.user_id },
+
+        await User.updateOne(
+            { user_id },
             { $set: updateData }
-        )
+        );
+
         return res.redirect("/users");
-    }
-    catch (error) {
+    } catch (error) {
         console.log("Lỗi cập nhật người dùng: ", error);
         return res.status(500).send("Không thể cập nhật người dùng, đã có lỗi xảy ra.");
     }
-}
+};
 export const deleteUser = async (req: Request, res: Response) => {
     try{
         await User.deleteOne({user_id: req.params.user_id});

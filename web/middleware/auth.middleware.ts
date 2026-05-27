@@ -19,6 +19,7 @@ export const requireAuth = async (
         }
         (res.locals as any).user = user;
         (req as any).user = user;
+        res.locals.user = user;
         return next();
     }
     catch(error){

@@ -8,20 +8,52 @@ block main
             .dashboard_actions
                 a.btn.btn-secondary(href="/users") Quay lại
         if error
-            .alter.alter-danger = error
+            .alert.alert--error #{error}
         
         .card 
             form.setting-form(method="POST" action="/users/create")
                 .field
                     label.field__label(for="username") Tài khoản
-                    input#username.field__control(type="text" name="username" value=form.username required)
+                    input#username.field__control(
+                        type="text"
+                        name="username"
+                        value=form.username
+                        minlength="6"
+                        maxlength="32"
+                        pattern="[A-Za-z0-9_]+"
+                        title="Username phải từ 6-32 ký tự, chỉ gồm chữ không dấu, số hoặc dấu gạch dưới"
+                        required
+                    )
+                    ul.field__hint-list
+                        li Tài khoản đăng nhập phải chứa từ 6-32 ký tự.
+                        li Chỉ được sử dụng chữ cái không dấu, chữ số hoặc dấu gạch dưới.
+                        li Không được chứa khoảng trắng hoặc ký tự đặc biệt.
 
                 .field
                     label.field__label(for="password") Mật khẩu
-                    input#password.field__control(type="password" name="password" value=form.password required)
+                    input#password.field__control(
+                        type="password"
+                        name="password"
+                        value=form.password
+                        minlength="8"
+                        maxlength="32"
+                        title="Password phải từ 8-32 ký tự, gồm chữ hoa, chữ thường, chữ số, ký tự đặc biệt và không chứa khoảng trắng"
+                        required
+                    )
+                    ul.field__hint-list
+                        li Mật khẩu phải chứa từ 8-32 ký tự.
+                        li Phải bao gồm ít nhất một chữ hoa, một chữ thường, một chữ số và một ký tự đặc biệt.
+                        li Không được chứa khoảng trắng.
                 .field
                     label.field__label(for="fullname") Họ tên
-                    input#fullname.field__control(type="text" name="fullname" value=form.fullname required)
+                    input#fullname.field__control.js-fullname-only(
+                        type="text"
+                        name="fullname"
+                        value=form.fullname
+                        pattern="[A-Za-zÀ-ỹ\\s]+"
+                        title="Họ tên chỉ được chứa chữ cái và khoảng trắng"
+                        required
+                    )
                 .field
                     label.field__label(for="role") Phân quyền
                     select#role.field__control(name="role" required)

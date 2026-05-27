@@ -8,19 +8,35 @@ block main
             .dashboard_actions
                 a.btn.btn-secondary(href="/users") Quay lại
         if error
-            .alter.alter-danger = error
+            .alert.alert--error #{error}
         
         .card 
             form.setting-form(method="POST" action=`/users/edit/${user.user_id}`)
                 .field
                     label.field__label User ID
-                    input.field__control(type="text" value=user.user_id disabled)
+                    input.field__control(type="text" value=user.user_id name="user_id" disabled)
                 .field 
-                    label.field__label Tài khoản
-                    input.field__control(type="text" value=user.username required)
+                    label.field__label(for="username") Tài khoản
+                    input#username.field__control(
+                        type="text"
+                        name="username"
+                        value=user.username
+                        minlength="6"
+                        maxlength="32"
+                        pattern="[A-Za-z0-9_]+"
+                        title="Username phải từ 6-32 ký tự, chỉ gồm chữ cái không dấu, số hoặc dấu gạch dưới"
+                        required
+                    )
                 .field
                     label.field__label(for="fullname") Họ tên
-                    input#fullname.field__control(type="text" name= "fullname"  value=user.fullname required)
+                    input#fullname.field__control.js-fullname-only(
+                        type="text"
+                        name="fullname"
+                        value=user.fullname
+                        pattern="[A-Za-zÀ-ỹ\\s]+"
+                        title="Họ tên chỉ được chứa chữ cái và khoảng trắng"
+                        required
+                    )
                 .field
                     label.field__label(for="password") Mật khẩu
                     input#password.field__control(type="password" name="password" placeholder="Để trống nếu không muốn thay đổi mật khẩu")
@@ -29,5 +45,8 @@ block main
                     select#role.field__control(name="role" required)
                         option(value="USER" selected=user.role === "USER") USER
                         option(value="ADMIN" selected=user.role === "ADMIN") ADMIN
+                .field
+                    label.field__label Trạng thái
+                    input#status.field__control(type="text" value=user.status disabled)
                 .settings-actions
                     button.btn.btn--primary(type="submit") Cập nhật tài khoản

@@ -31,7 +31,12 @@ const userSchema = new mongoose.Schema({
         default: "",
         index: true
     },
-    
+    status: {
+        type: String,
+        enum: ["ONLINE", "OFFLINE"],
+        default: "OFFLINE",
+        required: true,
+    }
 },
     {
         timestamps: {

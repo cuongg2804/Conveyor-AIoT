@@ -8,14 +8,20 @@ export const logout = async (req: Request, res: Response) => {
     if (token) {
       await User.updateOne(
         { token },
-        { $set: { token: "" } }
+        {
+          $set: {
+            token: "",
+            status: "OFFLINE",
+          },
+        }
       );
     }
 
     res.clearCookie("token");
     return res.redirect("/login");
   } catch (error) {
-    console.log("Lỗi: ", error);
+    console.log("Lỗi logout: ", error);
+
     res.clearCookie("token");
     return res.redirect("/login");
   }
