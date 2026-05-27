@@ -4,6 +4,10 @@ const COMMAND_LABELS = {
   START_SYSTEM: "Khởi động hệ thống",
   STOP_SYSTEM: "Dừng hệ thống",
   GET_STATUS: "Kiểm tra trạng thái",
+  RESET_ARDUINO_CONFIG_DEFAULT: "Khôi phục cấu hình Arduino",
+  LIGHT_CHECK: "Kiểm tra ánh sáng",
+  GET_ARDUINO_CONFIG: "Đọc cấu hình Arduino",
+  APPLY_ARDUINO_CONFIG: "Áp dụng cấu hình Arduino",
 };
 
 const ACK_STATUS_LABELS = {
@@ -64,12 +68,23 @@ const userMessage = (message, fallback = "Có lỗi xảy ra") => {
   if (!raw) return fallback;
 
   const normalized = raw.toLowerCase();
+  if (
+    normalized.includes("mongodb.net") ||
+    normalized.includes("topologydescription") ||
+    normalized.includes("serverselection") ||
+    normalized.includes("replicasetnoprimary") ||
+    normalized.includes("networktimeout") ||
+    normalized.includes("timed out") ||
+    normalized.includes("sockettimeoutms") ||
+    normalized.includes("connecttimeoutms")
+  ) {
+    return "Không kết nối được MongoDB Atlas. Kiểm tra mạng, DNS/VPN hoặc IP whitelist rồi thử lại.";
+  }
   if (normalized.includes("command is required")) return "Thiếu thao tác điều khiển.";
   if (normalized.includes("invalid command")) return "Thao tác điều khiển không hợp lệ.";
   if (normalized.includes("conveyor_id is required")) return "Thiếu mã băng tải.";
   if (normalized.includes("mqtt client is not connected")) return "Chưa kết nối tới bộ điều khiển AI.";
   if (normalized.includes("publish command failed")) return "Không gửi được yêu cầu tới hệ thống AI.";
-
   return raw
     .replaceAll("START_SYSTEM", "Khởi động hệ thống")
     .replaceAll("STOP_SYSTEM", "Dừng hệ thống")
@@ -328,6 +343,7 @@ socket.on("inspection_result", (data) => {
 
 socket.on("control_ack", (ack) => {
   console.log("control_ack:", ack);
+
   updateControlAckBox(ack);
 
   if (ack.status === "SUCCESS") {

@@ -50,6 +50,48 @@ const conveyorConfigSchema = new mongoose.Schema(
       default: 30.436506,
     },
 
+    arduino_speed_low_level: {
+      type: Number,
+      min: 1,
+      max: 5,
+      default: 2,
+    },
+
+    arduino_speed_high_level: {
+      type: Number,
+      min: 1,
+      max: 5,
+      default: 5,
+    },
+
+    arduino_servo_home_angle: {
+      type: Number,
+      min: 0,
+      max: 180,
+      default: 0,
+    },
+
+    arduino_servo_gate_angle: {
+      type: Number,
+      min: 0,
+      max: 180,
+      default: 130,
+    },
+
+    arduino_light_min_lux: {
+      type: Number,
+      min: 0,
+      max: 3000,
+      default: 1000,
+    },
+
+    arduino_light_max_lux: {
+      type: Number,
+      min: 0,
+      max: 3000,
+      default: 2000,
+    },
+
     threshold_override: {
       type: Number,
       default: null,

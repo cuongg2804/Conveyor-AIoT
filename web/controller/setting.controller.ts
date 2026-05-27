@@ -25,6 +25,12 @@ type ConveyorConfigView = {
   serial_port?: string;
   baud_rate?: number;
   ai_threshold?: number;
+  arduino_speed_low_level?: number;
+  arduino_speed_high_level?: number;
+  arduino_servo_home_angle?: number;
+  arduino_servo_gate_angle?: number;
+  arduino_light_min_lux?: number;
+  arduino_light_max_lux?: number;
   threshold_override?: number | null;
   mode?: string;
   model_id?: any;
@@ -32,10 +38,73 @@ type ConveyorConfigView = {
 
 const normalizeCode = (value: any) => String(value || "").trim().toUpperCase();
 
+const speedPresets = [
+  { level: 1, key: "VERY_SLOW", label: "Very Slow", pwm: 153, rpm: 7.95 },
+  { level: 2, key: "SLOW", label: "Slow", pwm: 179, rpm: 9.07 },
+  { level: 3, key: "NORMAL", label: "Normal", pwm: 204, rpm: 9.88 },
+  { level: 4, key: "FAST", label: "Fast", pwm: 230, rpm: 10.54 },
+  { level: 5, key: "MAX", label: "Max", pwm: 255, rpm: 12.0 },
+];
+
+const defaultArduinoConfig = {
+  speed_low_level: 2,
+  speed_high_level: 5,
+  servo_home_angle: 0,
+  servo_gate_angle: 130,
+  light_min_lux: 1000,
+  light_max_lux: 2000,
+};
+
 const optionalNumber = (value: any) => {
   if (value === undefined || value === null || value === "") return null;
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
+};
+
+const readNumber = (value: any, fallback: number) => {
+  if (value === undefined || value === null || value === "") return fallback;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+};
+
+const buildArduinoConfig = (config?: ConveyorConfigView | null) => ({
+  speed_low_level: readNumber(config?.arduino_speed_low_level, defaultArduinoConfig.speed_low_level),
+  speed_high_level: readNumber(config?.arduino_speed_high_level, defaultArduinoConfig.speed_high_level),
+  servo_home_angle: readNumber(config?.arduino_servo_home_angle, defaultArduinoConfig.servo_home_angle),
+  servo_gate_angle: readNumber(config?.arduino_servo_gate_angle, defaultArduinoConfig.servo_gate_angle),
+  light_min_lux: readNumber(config?.arduino_light_min_lux, defaultArduinoConfig.light_min_lux),
+  light_max_lux: readNumber(config?.arduino_light_max_lux, defaultArduinoConfig.light_max_lux),
+});
+
+const validateArduinoConfig = (config: typeof defaultArduinoConfig) => {
+  if (
+    !Number.isInteger(config.speed_low_level) ||
+    !Number.isInteger(config.speed_high_level) ||
+    config.speed_low_level < 1 ||
+    config.speed_high_level > 5 ||
+    config.speed_low_level >= config.speed_high_level
+  ) {
+    return "Toc do LOW phai nho hon toc do HIGH va nam trong khoang level 1-5.";
+  }
+
+  if (
+    config.servo_home_angle < 0 ||
+    config.servo_home_angle > 180 ||
+    config.servo_gate_angle < 0 ||
+    config.servo_gate_angle > 180
+  ) {
+    return "Goc servo HOME/GAT phai nam trong khoang 0-180 do.";
+  }
+
+  if (
+    config.light_min_lux < 0 ||
+    config.light_max_lux > 3000 ||
+    config.light_min_lux >= config.light_max_lux
+  ) {
+    return "Nguong anh sang phai thoa 0 <= minLux < maxLux <= 3000.";
+  }
+
+  return null;
 };
 
 export const settings = async (req: Request, res: Response) => {
@@ -93,6 +162,8 @@ export const settings = async (req: Request, res: Response) => {
       dashboardUrl: "/dashboard",
       formAction: req.originalUrl.split("?")[0],
       ModelRegistryList: modelRegistryList,
+      speedPresets,
+      arduinoConfig: buildArduinoConfig(config),
     });
   } catch (error) {
     console.error("Loi render:", error);
@@ -147,7 +218,28 @@ export const updateSettings = async (req: Request, res: Response) => {
       threshold_override,
       mode,
       model_id,
+      arduino_speed_low_level,
+      arduino_speed_high_level,
+      arduino_servo_home_angle,
+      arduino_servo_gate_angle,
+      arduino_light_min_lux,
+      arduino_light_max_lux,
+      save_arduino_default,
     } = req.body;
+
+    const arduinoConfig = {
+      speed_low_level: readNumber(arduino_speed_low_level, defaultArduinoConfig.speed_low_level),
+      speed_high_level: readNumber(arduino_speed_high_level, defaultArduinoConfig.speed_high_level),
+      servo_home_angle: readNumber(arduino_servo_home_angle, defaultArduinoConfig.servo_home_angle),
+      servo_gate_angle: readNumber(arduino_servo_gate_angle, defaultArduinoConfig.servo_gate_angle),
+      light_min_lux: readNumber(arduino_light_min_lux, defaultArduinoConfig.light_min_lux),
+      light_max_lux: readNumber(arduino_light_max_lux, defaultArduinoConfig.light_max_lux),
+    };
+
+    const arduinoConfigError = validateArduinoConfig(arduinoConfig);
+    if (arduinoConfigError) {
+      return res.status(400).send(arduinoConfigError);
+    }
 
     const selectedModelId = String(model_id || "").trim();
     if (selectedModelId) {
@@ -225,6 +317,12 @@ export const updateSettings = async (req: Request, res: Response) => {
     );
     addChange("serial_port", oldConfig.serial_port, serial_port);
     addChange("baud_rate", oldConfig.baud_rate, Number(baud_rate || 9600));
+    addChange("arduino_speed_low_level", oldConfig.arduino_speed_low_level, arduinoConfig.speed_low_level);
+    addChange("arduino_speed_high_level", oldConfig.arduino_speed_high_level, arduinoConfig.speed_high_level);
+    addChange("arduino_servo_home_angle", oldConfig.arduino_servo_home_angle, arduinoConfig.servo_home_angle);
+    addChange("arduino_servo_gate_angle", oldConfig.arduino_servo_gate_angle, arduinoConfig.servo_gate_angle);
+    addChange("arduino_light_min_lux", oldConfig.arduino_light_min_lux, arduinoConfig.light_min_lux);
+    addChange("arduino_light_max_lux", oldConfig.arduino_light_max_lux, arduinoConfig.light_max_lux);
     addChange("threshold_override", oldConfig.threshold_override, thresholdOverride);
     addChange("mode", oldConfig.mode, normalizeCode(mode || "AUTO"));
     addChange("model_id", oldConfig.model_id, selectedModelId);
@@ -251,6 +349,12 @@ export const updateSettings = async (req: Request, res: Response) => {
           camera_trigger_delay_ms: cameraDelay,
           serial_port: String(serial_port || "").trim(),
           baud_rate: Number(baud_rate || 9600),
+          arduino_speed_low_level: arduinoConfig.speed_low_level,
+          arduino_speed_high_level: arduinoConfig.speed_high_level,
+          arduino_servo_home_angle: arduinoConfig.servo_home_angle,
+          arduino_servo_gate_angle: arduinoConfig.servo_gate_angle,
+          arduino_light_min_lux: arduinoConfig.light_min_lux,
+          arduino_light_max_lux: arduinoConfig.light_max_lux,
           ai_threshold: legacyThreshold,
           threshold_override: thresholdOverride,
           mode: normalizeCode(mode || "AUTO"),
@@ -268,6 +372,23 @@ export const updateSettings = async (req: Request, res: Response) => {
         changes,
         message: String(description || "").trim() || "Cap nhat cau hinh bang tai",
       });
+    }
+
+    try {
+      publishControlCommand("APPLY_ARDUINO_CONFIG", {
+        conveyor_id: conveyorId,
+        conveyor_code: conveyorId,
+        speed_low_level: arduinoConfig.speed_low_level,
+        speed_high_level: arduinoConfig.speed_high_level,
+        servo_home_angle: arduinoConfig.servo_home_angle,
+        servo_gate_angle: arduinoConfig.servo_gate_angle,
+        light_min_lux: arduinoConfig.light_min_lux,
+        light_max_lux: arduinoConfig.light_max_lux,
+        save_default: save_arduino_default === "1" || save_arduino_default === "on" || save_arduino_default === true,
+      });
+    } catch (error) {
+      console.error("Publish APPLY_ARDUINO_CONFIG failed:", error);
+      return res.redirect(`/settings/${conveyorId}?updated=1&synced=0`);
     }
 
     return res.redirect(`/settings/${conveyorId}?updated=1`);

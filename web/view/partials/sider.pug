@@ -5,8 +5,6 @@
         a(href="/dashboard") Tổng quan
       li
         a(href="/history") Lịch sử kiểm tra
-      li
-        a(href="/logs") Nhật ký hệ thống
       if user && user.role === "ADMIN"
         li
           a(href="/logs") Nhật ký hệ thống
@@ -16,9 +14,6 @@
       if user && user.role === "ADMIN"
         li
           a(href="/cameras") Camera
-      if user && user.role === "ADMIN"
-        li 
-          a(href="/models") Model AI
       if user && user.role === "ADMIN"
         li
           a(href="/models") Model AI
