@@ -1,0 +1,211 @@
+extends ../layout/default.pug
+
+block main
+  .page
+    .dashboard__header
+      .dashboard__heading
+        h1.dashboard__title Cài đặt kiểm thử
+        p.dashboard__subtitle Thiết lập model AI và cấu hình vận hành để chạy thử trước khi đưa vào hoạt động thật.
+
+    if error
+      .alert.alert--error= error
+
+    if success
+      .alert.alert--success= success
+
+    .card.form-card
+      form(method="POST" action="/test-mode/settings/start")
+        .settings-section
+          .settings-section__head
+            h2.settings-section__title Thông tin kiểm thử
+            p.settings-section__desc Chọn băng tải, model AI đang chờ test và thời gian chạy kiểm thử.
+
+          .settings-section-grid
+            .field
+              label.field__label(for="conveyor_id") Băng tải kiểm thử
+              select#conveyor_id.field__control(name="conveyor_id" required)
+                option(value="") -- Chọn băng tải --
+                each conveyor in conveyors
+                  option(
+                    value=conveyor.conveyor_id
+                    selected=(form.conveyor_id === conveyor.conveyor_id)
+                  ) #{conveyor.conveyor_id} - #{conveyor.name || "Không có tên"}
+
+            .field
+              label.field__label(for="model_id") Model AI chờ test
+              select#model_id.field__control(name="model_id" required)
+                option(value="") -- Chọn model AI --
+                each model in models
+                  option(
+                    value=model._id
+                    selected=(String(form.model_id || "") === String(model._id))
+                  ) #{model.model_name} - #{model.version} - #{model.product_code}
+
+          .settings-section-grid
+            .field
+              label.field__label(for="duration_minutes") Thời gian kiểm thử phút
+              input#duration_minutes.field__control(
+                type="number"
+                name="duration_minutes"
+                min="1"
+                max="240"
+                value=form.duration_minutes || 10
+                required
+              )
+
+            .field
+              label.field__label(for="ai_threshold") Ngưỡng AI
+              input#ai_threshold.field__control(
+                type="number"
+                name="ai_threshold"
+                min="0"
+                max="1"
+                step="0.01"
+                value=form.ai_threshold
+                placeholder="VD: 0.8"
+              )
+
+        .settings-section
+          .settings-section__head
+            h2.settings-section__title Cấu hình vận hành băng tải
+            p.settings-section__desc Các giá trị này chỉ dùng cho lượt kiểm thử, không ghi đè trực tiếp vào cấu hình vận hành thật.
+
+          .settings-section-grid.settings-section-grid--three
+            .field
+              label.field__label(for="speed") Tốc độ băng tải
+              input#speed.field__control(
+                type="number"
+                name="speed"
+                min="0"
+                max="255"
+                value=form.speed || 150
+                required
+              )
+
+            .field
+                label.field__label(for="serial_port") Cổng kết nối
+                select#serial_port.field__control(name="serial_port")
+                  option(value=form.serial_port selected=form.serial_port)= form.serial_port || "-- Chưa chọn cổng --"
+
+            .field
+              label.field__label(for="baud_rate") Baud rate
+              input#baud_rate.field__control(
+                type="number"
+                name="baud_rate"
+                min="1200"
+                max="115200"
+                value=form.baud_rate || 9600
+                required
+              )
+
+          .settings-section-grid.settings-section-grid--three
+            .field
+              label.field__label(for="camera_id") Nguồn camera
+              select#camera_id.field__control(name="camera_id")
+                option(value="" selected=!form.camera_id) -- Chưa chọn camera --
+                each camera in cameras
+                  option(value=camera.camera_id selected=form.camera_id === camera.camera_id)
+                    | #{camera.camera_name} - #{camera.camera_id}
+
+            .field
+              label.field__label(for="camera_trigger_delay") Delay trigger camera ms
+              input#camera_trigger_delay.field__control(
+                type="number"
+                name="camera_trigger_delay"
+                min="0"
+                max="10000"
+                value=form.camera_trigger_delay || 0
+              )
+
+            .field
+              label.field__label(for="goc_home") Góc servo home
+              input#goc_home.field__control(
+                type="number"
+                name="goc_home"
+                min="0"
+                max="180"
+                value=form.goc_home || 0
+              )
+
+          .settings-section-grid
+            .field
+              label.field__label(for="goc_gat") Góc servo gạt
+              input#goc_gat.field__control(
+                type="number"
+                name="goc_gat"
+                min="0"
+                max="180"
+                value=form.goc_gat || 120
+              )
+
+        .settings-actions
+          button.btn.btn--primary(type="submit") Bắt đầu quá trình kiểm thử
+  script.
+    document.addEventListener("DOMContentLoaded", function () {
+      const serialSelect = document.getElementById("serial_port");
+      const currentSerialPort = "#{form.serial_port || ''}";
+
+      function renderPorts(ports) {
+        if (!serialSelect) return;
+
+        serialSelect.innerHTML = "";
+
+        const emptyOption = document.createElement("option");
+        emptyOption.value = "";
+        emptyOption.textContent = "-- Chọn cổng Serial --";
+        serialSelect.appendChild(emptyOption);
+
+        ports.forEach(function (port) {
+          const device = port.device || port.path || port.name || String(port);
+
+          const option = document.createElement("option");
+          option.value = device;
+          option.textContent = port.description
+            ? `${device} - ${port.description}`
+            : device;
+
+          if (currentSerialPort === device) {
+            option.selected = true;
+          }
+
+          serialSelect.appendChild(option);
+        });
+
+        if (currentSerialPort && !ports.some(function (p) {
+          const device = p.device || p.path || p.name || String(p);
+          return device === currentSerialPort;
+        })) {
+          const currentOption = document.createElement("option");
+          currentOption.value = currentSerialPort;
+          currentOption.textContent = `${currentSerialPort} - Cổng đã lưu`;
+          currentOption.selected = true;
+          serialSelect.appendChild(currentOption);
+        }
+
+        if (!ports.length) {
+          const noPortOption = document.createElement("option");
+          noPortOption.value = "";
+          noPortOption.textContent = "-- Không tìm thấy cổng Serial --";
+          serialSelect.appendChild(noPortOption);
+        }
+      }
+
+      const socket = window.appSocket;
+
+      socket.on("serial_ports", function (ports) {
+        renderPorts(Array.isArray(ports) ? ports : []);
+      });
+
+      fetch("/test-mode/settings/serial-ports")
+        .then(function (res) {
+          return res.json();
+        })
+        .then(function (data) {
+          if (!data.success) {
+            console.error(data.message || "Không thể scan serial port.");
+          }
+        })
+        .catch(function (err) {
+          console.error("Scan serial ports lỗi:", err);
+        });
+    });

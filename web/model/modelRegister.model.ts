@@ -86,4 +86,6 @@ ModelRegistrySchema.index(
   { unique: true }
 );
 
-module.exports = mongoose.model("ModelRegistry", ModelRegistrySchema);
+const ModelRegistry = mongoose.model("ModelRegistry", ModelRegistrySchema);
+
+export default ModelRegistry;

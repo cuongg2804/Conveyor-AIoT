@@ -1,0 +1,74 @@
+extends ../layout/default.pug
+
+block main
+  .page
+    .dashboard__header
+      .dashboard__heading
+        h1.dashboard__title Lịch sử kiểm thử
+        p.dashboard__subtitle Danh sách các lượt kiểm thử model/config trước khi đưa vào vận hành thật.
+
+      .dashboard-actions
+        a.btn.btn--primary(href="/test-mode/settings") Tạo lượt kiểm thử
+
+    if success
+      .alert.alert--success= success
+
+    .card
+      .table-wrap
+        table.table
+          thead
+            tr
+              th STT
+              th Mã lượt kiểm thử
+              th Băng tải
+              th Model
+              th Thời gian diễn ra
+              th Tổng sản phẩm
+              th OK
+              th NG
+              th Avg score
+              th Trạng thái
+              th Thao tác
+
+          tbody
+            if testList && testList.length
+              each item in testList
+                tr
+                  td= item.stt
+                  td
+                    strong= item.test_session_id
+                  td= item.conveyor_id || "-"
+                  td #{item.model_name || "-"} #{item.model_version ? "- " + item.model_version : ""}
+                  td
+                    if item.started_at
+                      span= new Date(item.started_at).toLocaleString("vi-VN")
+                    else
+                      span -
+                    br
+                    if item.ended_at
+                      small đến #{new Date(item.ended_at).toLocaleString("vi-VN")}
+                    else
+                      small Đang chạy / chưa kết thúc
+                  td= item.total_products || 0
+                  td= item.ok_count || 0
+                  td= item.ng_count || 0
+                  td
+                    if item.avg_score !== null && item.avg_score !== undefined
+                      | #{Number(item.avg_score).toFixed(3)}
+                    else
+                      | -
+                  td
+                    span.conveyor-status(class=item.status)= item.status || "-"
+                  td
+                    a.btn.btn--secondary(href=`/test-mode/history/detail/${item.test_session_id}`) Chi tiết
+            else
+              tr
+                td(colspan="11") Chưa có lượt kiểm thử nào.
+
+    if pagination
+      .pagination
+        if pagination.hasPrev
+          a.pagination__btn(href=pagination.prevUrl) Trước
+        span.pagination__info Trang #{pagination.page} / #{pagination.totalPages}
+        if pagination.hasNext
+          a.pagination__btn(href=pagination.nextUrl) Sau

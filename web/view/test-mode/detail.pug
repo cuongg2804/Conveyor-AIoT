@@ -1,0 +1,125 @@
+extends ../layout/default.pug
+
+block main
+  .page.product-detail-page
+    .dashboard__header
+      .dashboard__heading
+        h1.dashboard__title Chi tiết lượt kiểm thử
+        p.dashboard__subtitle Mã lượt kiểm thử: #{session.test_session_id}
+
+      .dashboard-actions
+        a.btn.btn--secondary(href="/test-mode/history") Quay lại lịch sử
+
+    .card.product-detail-summary
+      .card__head
+        h2.card__title Thông tin tổng quan
+
+      .product-detail-fields.product-detail-fields--grid
+        .summary-row
+          span.summary-label Băng tải
+          strong.summary-value= session.conveyor_id || "-"
+
+        .summary-row
+          span.summary-label Model
+          strong.summary-value #{session.model_name || "-"} #{session.model_version ? "- " + session.model_version : ""}
+
+        .summary-row
+          span.summary-label Trạng thái
+          strong.summary-value= session.status || "-"
+
+        .summary-row
+          span.summary-label Thời gian bắt đầu
+          strong.summary-value
+            if session.started_at
+              | #{new Date(session.started_at).toLocaleString("vi-VN")}
+            else
+              | -
+
+        .summary-row
+          span.summary-label Thời gian kết thúc
+          strong.summary-value
+            if session.ended_at
+              | #{new Date(session.ended_at).toLocaleString("vi-VN")}
+            else
+              | -
+
+        .summary-row
+          span.summary-label Thời lượng cài đặt
+          strong.summary-value #{session.duration_minutes || "-"} phút
+
+        .summary-row
+          span.summary-label Tổng sản phẩm
+          strong.summary-value= summary.total_products || 0
+
+        .summary-row
+          span.summary-label OK
+          strong.summary-value= summary.ok_count || 0
+
+        .summary-row
+          span.summary-label NG
+          strong.summary-value= summary.ng_count || 0
+
+        .summary-row
+          span.summary-label Avg score
+          strong.summary-value
+            if summary.avg_score !== null && summary.avg_score !== undefined
+              | #{Number(summary.avg_score).toFixed(3)}
+            else
+              | -
+
+    .card
+      .card__head
+        h2.card__title Cấu hình đã dùng trong lượt kiểm thử
+        p.card__desc Đây là snapshot cấu hình tại thời điểm bắt đầu kiểm thử.
+
+      if session.config_snapshot
+        .product-detail-fields.product-detail-fields--grid
+          each val, key in session.config_snapshot
+            .summary-row
+              span.summary-label= key
+              strong.summary-value= val
+      else
+        .empty-state Không có dữ liệu cấu hình.
+
+    .card
+      .card__head
+        h2.card__title Danh sách sản phẩm trong lượt kiểm thử
+
+      .table-wrap
+        table.table
+          thead
+            tr
+              th STT
+              th Mã kiểm tra
+              th Thời gian
+              th Kết quả
+              th Score
+              th Ảnh xem trước
+          tbody
+            if inspectionList && inspectionList.length
+              each item in inspectionList
+                tr
+                  td= item.stt
+                  td= item.display_id || "-"
+                  td
+                    if item.timestamp
+                      | #{new Date(Number(item.timestamp) > 1000000000000 ? Number(item.timestamp) : Number(item.timestamp) * 1000).toLocaleString("vi-VN")}
+                    else
+                      | -
+                  td
+                    span.history-label-badge(class=String(item.label || "").toLowerCase())= item.label || "-"
+                  td
+                    if item.average_score !== null && item.average_score !== undefined
+                      | #{Number(item.average_score).toFixed(3)}
+                    else
+                      | -
+                  td
+                    if item.preview_frame && item.preview_frame.roi_path
+                      .history-thumb
+                        img(src=item.preview_frame.roi_path alt="Ảnh kiểm thử")
+                    else
+                      .history-thumb
+                        .history-thumb__empty Không có ảnh
+            else
+              tr
+                td(colspan="6") Chưa có sản phẩm nào trong lượt kiểm thử này.

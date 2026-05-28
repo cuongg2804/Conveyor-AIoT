@@ -1,4 +1,30 @@
-const socket = io();
+const getOrCreateTabId = () => {
+  let tabId = sessionStorage.getItem("tab_id");
+
+  if (!tabId) {
+    tabId =
+      "TAB_" +
+      Date.now().toString(36) +
+      "_" +
+      Math.random().toString(36).slice(2, 10);
+
+    sessionStorage.setItem("tab_id", tabId);
+  }
+
+  return tabId;
+};
+
+window.__TAB_ID__ = getOrCreateTabId();
+
+window.appSocket =
+  window.appSocket ||
+  io({
+    auth: {
+      tab_id: window.__TAB_ID__,
+    },
+  });
+
+var socket = window.appSocket;
 
 const COMMAND_LABELS = {
   START_SYSTEM: "Khởi động hệ thống",
@@ -469,7 +495,7 @@ document.addEventListener("DOMContentLoaded", () => {
     setTimeout(() => sendControlCommand("GET_STATUS"), 600);
   }
 
-  showToast(`AI lỗi: ${error.message || "-"}`, "error");
+  
 });
 socket.on("session_rejected", (payload) => {
   alert(payload.message || "Phiên đăng nhập không hợp lệ.");

@@ -1,44 +1,54 @@
 import express from "express";
+import path from "path";
+import http from "http";
+import { Server } from "socket.io";
 import dotenv from "dotenv";
+import cookieParser from "cookie-parser";
+
 import router from "./router/index.router";
 import * as database from "./config/database";
 import { connectMqtt, getClient } from "./config/mqtt";
 import { initMqttService } from "./service/mqtt.service";
-import { Server } from "socket.io";
-import http from "http";
-import path from "path";
-import cookieParser from "cookie-parser";
 import User from "./model/user.model";
 
-dotenv.config({ override: true });
+dotenv.config();
 
 const app = express();
-const server = http.createServer(app); 
-const io = new Server(server); 
+const server = http.createServer(app);
 
-app.use(cookieParser());
+const io = new Server(server, {
+  cors: {
+    origin: true,
+    credentials: true,
+  },
+});
 
-app.set("view engine", "pug"); // 
-app.set("views", path.join(__dirname, "view")); 
+app.set("view engine", "pug");
+app.set("views", path.join(__dirname, "view"));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 const resolveStoragePath = () => {
-  if (process.env.AI_STORAGE_PATH) return path.resolve(process.env.AI_STORAGE_PATH);
+  if (process.env.STORAGE_PATH) {
+    return path.resolve(process.env.STORAGE_PATH);
+  }
 
-  const candidates = [
-    path.resolve(process.cwd(), "../app/storage"),
-    path.resolve(__dirname, "../app/storage"),
-    path.resolve(__dirname, "../../app/storage"),
-  ];
-
-  return candidates.find((candidate) => require("fs").existsSync(candidate)) || candidates[0];
+  return path.join(__dirname, "storage");
 };
 
+const storagePath = resolveStoragePath();
+
+app.use("/images", express.static(storagePath));
+app.use(express.static(path.join(__dirname, "public")));
+
+app.use(router);
+
 const parseCookies = (cookieHeader: string = "") => {
-  return cookieHeader.split(";").reduce((cookies: any, item) => {
+  return cookieHeader.split(";").reduce((cookies: Record<string, string>, item) => {
     const [key, ...values] = item.trim().split("=");
+
     if (!key) return cookies;
 
     cookies[key] = decodeURIComponent(values.join("="));
@@ -46,16 +56,13 @@ const parseCookies = (cookieHeader: string = "") => {
   }, {});
 };
 
-const activeUserSockets = new Map<string, string>();
+type ActiveUserSession = {
+  socket_id: string;
+  tab_id: string;
+};
+
+const activeUserSockets = new Map<string, ActiveUserSession>();
 const offlineTimers = new Map<string, NodeJS.Timeout>();
-
-const storagePath = resolveStoragePath();
-
-app.use("/images", express.static(storagePath));
-app.use(express.static(path.join(__dirname, "public")));
-
-
-app.use(router);
 
 io.on("connection", async (socket) => {
   try {
@@ -63,7 +70,18 @@ io.on("connection", async (socket) => {
     const token = cookies.token;
 
     if (!token) {
-      socket.disconnect();
+      socket.disconnect(true);
+      return;
+    }
+
+    const tabId = String(socket.handshake.auth?.tab_id || "").trim();
+
+    if (!tabId) {
+      socket.emit("session_rejected", {
+        message: "Không xác định được phiên tab trình duyệt.",
+      });
+
+      socket.disconnect(true);
       return;
     }
 
@@ -73,35 +91,64 @@ io.on("connection", async (socket) => {
     ).lean();
 
     if (!user) {
-      socket.disconnect();
-      return;
-    }
-
-    const userId = user.user_id;
-
-    // Nếu user đã có 1 socket active khác thì chặn tab/thiết bị mới
-    const existingSocketId = activeUserSockets.get(userId);
-
-    if (existingSocketId && existingSocketId !== socket.id) {
-      socket.emit("session_rejected", {
-        message: "Tài khoản này đang được sử dụng trên một tab hoặc thiết bị khác.",
-      });
-
       socket.disconnect(true);
       return;
     }
 
-    socket.data.user_id = userId;
-    activeUserSockets.set(userId, socket.id);
+    const userId = String(user.user_id || "").trim();
+
+    if (!userId) {
+      socket.disconnect(true);
+      return;
+    }
+
+    const existingSession = activeUserSockets.get(userId);
+
+    if (existingSession) {
+      const existingSession = activeUserSockets.get(userId);
+
+      if (existingSession) {
+        const existingSocket = io.sockets.sockets.get(existingSession.socket_id);
+        const existingSocketStillConnected = existingSocket?.connected === true;
+        const isSameTab = existingSession.tab_id === tabId;
+
+        if (existingSocketStillConnected && !isSameTab) {
+          socket.emit("session_rejected", {
+            message: "Tài khoản này đang được sử dụng trên một tab hoặc thiết bị khác.",
+          });
+
+          socket.disconnect(true);
+          return;
+        }
+
+        if (existingSocket?.connected && isSameTab) {
+          existingSocket.disconnect(true);
+        }
+
+        activeUserSockets.delete(userId);
+      }
+    }
 
     if (offlineTimers.has(userId)) {
       clearTimeout(offlineTimers.get(userId));
       offlineTimers.delete(userId);
     }
 
+    socket.data.user_id = userId;
+    socket.data.tab_id = tabId;
+
+    activeUserSockets.set(userId, {
+      socket_id: socket.id,
+      tab_id: tabId,
+    });
+
     await User.updateOne(
       { user_id: userId },
-      { $set: { status: "ONLINE" } }
+      {
+        $set: {
+          status: "ONLINE",
+        },
+      }
     );
 
     const mqttClient = getClient();
@@ -117,20 +164,22 @@ io.on("connection", async (socket) => {
 
     socket.on("disconnect", () => {
       const disconnectedUserId = socket.data.user_id;
+
       if (!disconnectedUserId) return;
 
-      const currentSocketId = activeUserSockets.get(disconnectedUserId);
+      const currentSession = activeUserSockets.get(disconnectedUserId);
 
-      // Chỉ xử lý OFFLINE nếu socket bị ngắt đúng là socket active hiện tại
-      if (currentSocketId !== socket.id) return;
+      if (!currentSession || currentSession.socket_id !== socket.id) {
+        return;
+      }
 
       activeUserSockets.delete(disconnectedUserId);
 
       const timer = setTimeout(async () => {
         try {
-          const stillActiveSocket = activeUserSockets.get(disconnectedUserId);
+          const stillActiveSession = activeUserSockets.get(disconnectedUserId);
 
-          if (!stillActiveSocket) {
+          if (!stillActiveSession) {
             await User.updateOne(
               { user_id: disconnectedUserId },
               {
@@ -157,7 +206,7 @@ io.on("connection", async (socket) => {
     });
   } catch (error) {
     console.log("Socket auth error:", error);
-    socket.disconnect();
+    socket.disconnect(true);
   }
 });
 
@@ -167,7 +216,12 @@ const startServer = async () => {
 
     await User.updateMany(
       { status: "ONLINE" },
-      { $set: { status: "OFFLINE", token: "" } }
+      {
+        $set: {
+          status: "OFFLINE",
+          token: "",
+        },
+      }
     );
 
     console.log("Đã reset trạng thái ONLINE về OFFLINE khi khởi động server.");
@@ -188,3 +242,5 @@ const startServer = async () => {
 };
 
 startServer();
+
+export { io };

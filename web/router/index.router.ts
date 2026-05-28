@@ -11,6 +11,7 @@ import conveyorRoute from "./conveyor.router";
 import cameraRoute from "./camera.router";
 import logRoute from "./log.router"
 import modelRoute from "./model.router";
+import testRoute from "./test.router";
 
 import { requireAuth } from "../middleware/auth.middleware";
 
@@ -29,6 +30,7 @@ router.use("/logout", logoutRoute);
 router.use("/users", userRoute);
 router.use("/logs", requireAuth, logRoute);
 router.use("/models", modelRoute);
+router.use("/test-mode", testRoute);
 
 
 router.get("/", (_req, res) => res.redirect("/dashboard"));
