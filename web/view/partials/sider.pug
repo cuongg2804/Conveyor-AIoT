@@ -20,3 +20,12 @@
       if user && user.role === "ADMIN"
         li
           a(href="/users") Quản lý tài khoản
+      if user && user.role === "ADMIN"
+        li.has-submenu
+          a(href="/#") Chế độ kiểm thử
+          ul.submenu 
+            li 
+              a(href="/test-mode/settings") Cài đặt
+            li
+              a(href="/test-mode/history") Lịch sử kiểm thử
+

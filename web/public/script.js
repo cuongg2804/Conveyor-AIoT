@@ -471,3 +471,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   showToast(`AI lỗi: ${error.message || "-"}`, "error");
 });
+socket.on("session_rejected", (payload) => {
+  alert(payload.message || "Phiên đăng nhập không hợp lệ.");
+  window.location.href = "/login";
+});

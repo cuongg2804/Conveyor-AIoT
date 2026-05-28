@@ -2097,3 +2097,15 @@ img[src]:not([src=""]) + .image-placeholder {
   font-weight: 950;
   min-height: 1.2em;
 }
+
+.sider .inner-menu ul li.has-submenu .submenu {
+  margin: 4px 0 4px 18px;
+  padding: 0;
+  list-style: none;
+}
+
+.sider .inner-menu ul li.has-submenu .submenu li a {
+  font-size: 13px;
+  padding: 9px 14px;
+  opacity: 0.88;
+}
