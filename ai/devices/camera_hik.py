@@ -1,9 +1,15 @@
+import os
+
+SDK_BIN = r"C:\Program Files\IRayple\MVP\Application\win64"
+SDK_CTI = r"C:\Program Files\IRayple\MVP\Application\win64\CameraProcol\Cti"
+CTI_PATH = r"C:\Program Files\IRayple\MVP\Application\win64\CameraProcol\Cti\MVProducerGEV.cti"
+
+os.environ["PATH"] = SDK_BIN + os.pathsep + SDK_CTI + os.pathsep + os.environ.get("PATH", "")
+
 import cv2
 import time
 from harvesters.core import Harvester
 from genicam.gentl import TimeoutException
-
-CTI_PATH = r"C:\Program Files\IRayple\MVP\Application\win64\CameraProcol\Cti\MVProducerGEV.cti"
 
 
 class HikCamera:

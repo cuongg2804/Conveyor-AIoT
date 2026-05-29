@@ -50,7 +50,7 @@ class PatchCoreEngine:
         print(f"👉 torch.cuda.is_available: {torch.cuda.is_available()}")
         print(f"👉 resolved device        : {self.device}")
 
-        checkpoint = torch.load(ckpt_path, map_location="cpu")
+        checkpoint = torch.load(ckpt_path, map_location="cpu", weights_only=False)
         hparams = checkpoint.get("hyper_parameters", {})
         if hasattr(hparams, "__dict__"):
             hparams = vars(hparams)
