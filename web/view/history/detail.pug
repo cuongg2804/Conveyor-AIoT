@@ -18,6 +18,7 @@ block main
 
       .dashboard-actions
         a.btn.btn--secondary(href=backUrl) Quay lại
+        a.btn.btn--primary(href=`/history/${inspection.stt}/export/pdf?conveyor_id=${inspection.conveyor_id || ""}`) Xuất PDF
 
     .card.product-detail-summary
       .card__head

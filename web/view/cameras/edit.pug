@@ -14,7 +14,7 @@ block main
             form.setting-form(method="POST" action=`/cameras/edit/${camera.camera_id}`)
                 .field
                     label.field__label Mã camera
-                    input.field__control(type="text" value=camera.camera_id required )
+                    input.field__control(type="text" value=camera.camera_id disabled)
                 .field 
                     label.field__label Tên camera
                     input.field__control(type="text" name="camera_name" value=camera.camera_name required)
@@ -29,6 +29,6 @@ block main
                         option(value="ERROR" selected=camera.status === "ERROR") Lỗi
                 .field
                     label.field__label(for="description") Mô tả
-                    input#description.field__control(type="text" name="description" value=camera.description required)
+                    input#description.field__control(type="text" name="description" value=camera.description)
                 .settings-actions
                     button.btn.btn--primary(type="submit") Cập nhật băng tải

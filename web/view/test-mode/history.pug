@@ -12,13 +12,15 @@ block main
 
     if success
       .alert.alert--success= success
+    if error
+      .alert.alert--error= error
 
     .card
       .table-wrap
         table.table
           thead
             tr
-              th STT
+              //th STT
               th Mã lượt kiểm thử
               th Băng tải
               th Model
@@ -34,7 +36,7 @@ block main
             if testList && testList.length
               each item in testList
                 tr
-                  td= item.stt
+                  //td= item.stt
                   td
                     strong= item.test_session_id
                   td= item.conveyor_id || "-"
@@ -58,9 +60,20 @@ block main
                     else
                       | -
                   td
-                    span.conveyor-status(class=item.status)= item.status || "-"
+                    if item.status === "RUNNING"
+                        span.conveyor-status.RUNNING Đang chạy
+                    else if item.status === "COMPLETED"
+                        span.conveyor-status.COMPLETED Hoàn tất
+                    else if item.status === "CANCELLED"
+                        span.conveyor-status.CANCELLED Đã hủy
+                    else
+                        span.conveyor-status= item.status || "-"
                   td
-                    a.btn.btn--secondary(href=`/test-mode/history/detail/${item.test_session_id}`) Chi tiết
+                    if item.status === "RUNNING"
+                      a.btn.btn--primary(href=`/test-mode/monitor/${item.test_session_id}`) Giám sát
+                      a.btn.btn--secondary(href=`/test-mode/history/detail/${item.test_session_id}` style="margin-left: 8px;") Chi tiết
+                    else
+                      a.btn.btn--secondary(href=`/test-mode/history/detail/${item.test_session_id}`) Chi tiết
             else
               tr
                 td(colspan="11") Chưa có lượt kiểm thử nào.

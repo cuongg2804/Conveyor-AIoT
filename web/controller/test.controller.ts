@@ -255,6 +255,77 @@ const summarizeResults = (items: any[]) => {
   };
 };
 
+const testTimers = new Map<string, NodeJS.Timeout>();
+
+type FinishTestStatus = "COMPLETED" | "CANCELLED";
+type FinishTestReason = "TIMEOUT" | "CANCELLED";
+
+const finishTestSession = async (
+  testSessionId: string,
+  finalStatus: FinishTestStatus,
+  reason: FinishTestReason
+) => {
+  const session: any = await TestSession.findOne({
+    test_session_id: testSessionId,
+  }).lean();
+
+  if (!session) {
+    console.log(`[TEST] Không tìm thấy lượt kiểm thử ${testSessionId}`);
+    return;
+  }
+
+  if (session.status !== "RUNNING") {
+    console.log(`[TEST] Lượt kiểm thử ${testSessionId} không còn RUNNING, bỏ qua.`);
+    return;
+  }
+
+  publishControlCommand("STOP_TEST", {
+    run_mode: "TEST",
+    test_session_id: testSessionId,
+    conveyor_id: session.conveyor_id,
+    reason,
+  });
+
+  const items: any[] = await InspectionResult.find(
+    {
+      run_mode: "TEST",
+      test_session_id: testSessionId,
+    },
+    { _id: 0, label: 1, average_score: 1 }
+  ).lean();
+
+  const summary = summarizeResults(items);
+
+  await TestSession.updateOne(
+    { test_session_id: testSessionId },
+    {
+      $set: {
+        status: finalStatus,
+        ended_at: new Date(),
+        total_products: summary.total_products,
+        ok_count: summary.ok_count,
+        ng_count: summary.ng_count,
+        avg_score: summary.avg_score,
+      },
+    }
+  );
+
+  await Conveyor.updateOne(
+    { conveyor_id: session.conveyor_id },
+    { $set: { status: "READY" } }
+  );
+
+  const timer = testTimers.get(testSessionId);
+  if (timer) {
+    clearTimeout(timer);
+    testTimers.delete(testSessionId);
+  }
+
+  console.log(
+    `[TEST] Đã kết thúc lượt kiểm thử ${testSessionId}. Status=${finalStatus}, reason=${reason}`
+  );
+};
+
 export const settings = async (req: Request, res: Response) => {
   try {
     const viewData = await getTestSettingsData();
@@ -455,7 +526,19 @@ export const startTest = async (req: Request, res: Response) => {
       model: modelSnapshot,
     });
 
-    return res.redirect("/test-mode/history?started=1");
+    const durationMs = durationMinutes * 60 * 1000;
+
+    const timer = setTimeout(async () => {
+    try {
+        await finishTestSession(testSessionId, "COMPLETED", "TIMEOUT");
+    } catch (error) {
+        console.log(`Lỗi tự động hoàn tất lượt kiểm thử ${testSessionId}:`, error);
+    }
+    }, durationMs);
+
+    testTimers.set(testSessionId, timer);
+
+    return res.redirect(`/test-mode/monitor/${testSessionId}`);
   } catch (error) {
     console.log("Lỗi bắt đầu kiểm thử:", error);
     return res.status(500).send("Không thể bắt đầu quá trình kiểm thử.");
@@ -525,20 +608,26 @@ export const history = async (req: Request, res: Response) => {
     const totalPages = Math.max(Math.ceil(total / PAGE_SIZE), 1);
 
     return res.render("test-mode/history", {
-      title: "Lịch sử kiểm thử",
-      testList,
-      success:
-        req.query.started === "1"
-          ? "Đã bắt đầu quá trình kiểm thử."
-          : null,
-      pagination: {
-        page,
-        totalPages,
-        hasPrev: page > 1,
-        hasNext: page < totalPages,
-        prevUrl: `/test-mode/history?page=${page - 1}`,
-        nextUrl: `/test-mode/history?page=${page + 1}`,
-      },
+        title: "Lịch sử kiểm thử",
+        testList,
+        success:
+            req.query.started === "1"
+            ? "Đã bắt đầu quá trình kiểm thử."
+            : req.query.cancelled === "1"
+                ? "Đã hủy lượt kiểm thử."
+                : null,
+        error:
+            req.query.error
+            ? "Không thể thực hiện thao tác với lượt kiểm thử."
+            : null,
+        pagination: {
+            page,
+            totalPages,
+            hasPrev: page > 1,
+            hasNext: page < totalPages,
+            prevUrl: `/test-mode/history?page=${page - 1}`,
+            nextUrl: `/test-mode/history?page=${page + 1}`,
+        },
     });
   } catch (error) {
     console.log("Lỗi tải lịch sử kiểm thử:", error);
@@ -602,36 +691,35 @@ export const stopTest = async (req: Request, res: Response) => {
       String(req.body.test_session_id || "").trim();
 
     if (!testSessionId) {
-      return res.status(400).json({
-        success: false,
-        message: "Thiếu mã lượt kiểm thử.",
-      });
+      return res.redirect("/test-mode/history?error=missing_test_session");
     }
 
-    const session = await TestSession.findOne({
+    const session: any = await TestSession.findOne({
       test_session_id: testSessionId,
     }).lean();
 
     if (!session) {
-      return res.status(404).json({
-        success: false,
-        message: "Không tìm thấy lượt kiểm thử.",
-      });
+      return res.redirect("/test-mode/history?error=test_session_not_found");
+    }
+
+    if (session.status !== "RUNNING") {
+      return res.redirect(`/test-mode/monitor/${testSessionId}?error=not_running`);
     }
 
     publishControlCommand("STOP_TEST", {
       run_mode: "TEST",
       test_session_id: testSessionId,
       conveyor_id: session.conveyor_id,
+      reason: "CANCELLED",
     });
 
-    const items = await InspectionResult.find(
+    const items: any[] = await InspectionResult.find(
       {
         run_mode: "TEST",
         test_session_id: testSessionId,
       },
       { _id: 0, label: 1, average_score: 1 }
-    ).lean<any[]>();
+    ).lean();
 
     const summary = summarizeResults(items);
 
@@ -639,7 +727,7 @@ export const stopTest = async (req: Request, res: Response) => {
       { test_session_id: testSessionId },
       {
         $set: {
-          status: "COMPLETED",
+          status: "CANCELLED",
           ended_at: new Date(),
           total_products: summary.total_products,
           ok_count: summary.ok_count,
@@ -654,15 +742,116 @@ export const stopTest = async (req: Request, res: Response) => {
       { $set: { status: "READY" } }
     );
 
-    return res.json({
-      success: true,
-      message: "Đã gửi yêu cầu dừng kiểm thử.",
-    });
+    return res.redirect(`/test-mode/monitor/${testSessionId}?cancelled=1`);
   } catch (error) {
     console.log("Lỗi dừng kiểm thử:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Không thể dừng quá trình kiểm thử.",
+    return res.redirect("/test-mode/history?error=cancel_failed");
+  }
+};
+export const restoreRunningTestTimers = async () => {
+  const sessions: any[] = await TestSession.find({
+    status: "RUNNING",
+  }).lean();
+
+  for (const session of sessions) {
+    const startedAt = new Date(session.started_at).getTime();
+    const durationMs = Number(session.duration_minutes || 0) * 60 * 1000;
+    const endAt = startedAt + durationMs;
+    const remainingMs = endAt - Date.now();
+
+    if (remainingMs <= 0) {
+      await finishTestSession(session.test_session_id, "COMPLETED", "TIMEOUT");
+      continue;
+    }
+
+    if (testTimers.has(session.test_session_id)) {
+      clearTimeout(testTimers.get(session.test_session_id));
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        await finishTestSession(session.test_session_id, "COMPLETED", "TIMEOUT");
+      } catch (error) {
+        console.log(`Lỗi tự động hoàn tất lượt kiểm thử ${session.test_session_id}:`, error);
+      }
+    }, remainingMs);
+
+    testTimers.set(session.test_session_id, timer);
+  }
+};
+export const monitor = async (req: Request, res: Response) => {
+  try {
+    const testSessionId = String(req.params.test_session_id || "").trim();
+
+    const session: any = await TestSession.findOne({
+      test_session_id: testSessionId,
+    }).lean();
+
+    if (!session) {
+      return res.status(404).send("Không tìm thấy lượt kiểm thử.");
+    }
+
+    const conveyor: any = await Conveyor.findOne(
+      {
+        conveyor_id: session.conveyor_id,
+      },
+      {
+        _id: 0,
+        conveyor_id: 1,
+        name: 1,
+        status: 1,
+      }
+    ).lean();
+
+    const latestInspection: any = await InspectionResult.findOne(
+      {
+        run_mode: "TEST",
+        test_session_id: testSessionId,
+      },
+      { _id: 0 }
+    )
+      .sort({ timestamp: -1 })
+      .lean();
+
+    const items: any[] = await InspectionResult.find(
+      {
+        run_mode: "TEST",
+        test_session_id: testSessionId,
+      },
+      { _id: 0, label: 1, average_score: 1 }
+    ).lean();
+
+    const summary = summarizeResults(items);
+
+    const startedAtMs = session.started_at
+      ? new Date(session.started_at).getTime()
+      : Date.now();
+
+    const durationMs = Number(session.duration_minutes || 0) * 60 * 1000;
+    const endAtMs = startedAtMs + durationMs;
+    const remainingMs =
+      session.status === "RUNNING" ? Math.max(endAtMs - Date.now(), 0) : 0;
+
+    return res.render("test-mode/monitor", {
+      title: `Giám sát kiểm thử ${testSessionId}`,
+      session,
+      conveyor: conveyor || {
+        conveyor_id: session.conveyor_id,
+        name: session.conveyor_id,
+        status: session.status,
+      },
+      latestInspection,
+      summary,
+      dashboardUrl: "/test-mode/history",
+      settingsUrl: "/test-mode/settings",
+      stopUrl: `/test-mode/settings/stop/${testSessionId}`,
+      startedAtMs,
+      endAtMs,
+      remainingMs,
+      query: req.query,
     });
+  } catch (error) {
+    console.log("Lỗi tải màn hình giám sát kiểm thử:", error);
+    return res.status(500).send("Không thể tải màn hình giám sát kiểm thử.");
   }
 };

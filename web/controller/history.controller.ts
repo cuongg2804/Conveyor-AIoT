@@ -1,3 +1,7 @@
+import fs from "fs";
+import path from "path";
+
+const PDFDocument = require("pdfkit");
 import { Request, Response } from "express";
 import InspectionResult from "../model/inspection-result.model";
 import Conveyor from "../model/conveyor.model";
@@ -153,6 +157,450 @@ const previewItem = async (item: any) => {
     display_id: item.stt || "-",
     preview_frame: previewFrame
   };
+};
+
+const FONT_REGULAR = "C:/Windows/Fonts/arial.ttf";
+const FONT_BOLD = "C:/Windows/Fonts/arialbd.ttf";
+
+const formatDateTime = (timestamp: any) => {
+  const ts = Number(timestamp);
+  if (!Number.isFinite(ts)) return "-";
+
+  const date = ts > 1000000000000 ? new Date(ts) : new Date(ts * 1000);
+  return date.toLocaleString("vi-VN");
+};
+
+const formatScore = (value: any, digits = 3) => {
+  const num = Number(value);
+  return Number.isFinite(num) ? num.toFixed(digits) : "-";
+};
+
+const safeText = (value: any) => {
+  if (value === null || value === undefined || value === "") return "-";
+  return String(value);
+};
+
+const getStorageRoot = () => {
+  if (process.env.STORAGE_PATH) {
+    return path.resolve(process.env.STORAGE_PATH);
+  }
+
+  return path.join(process.cwd(), "storage");
+};
+
+const imageUrlToLocalPath = (imageUrl: string) => {
+  if (!imageUrl) return null;
+
+  const cleanUrl = String(imageUrl).split("?")[0];
+
+  if (!cleanUrl.startsWith("/images/")) {
+    return null;
+  }
+
+  const relativePath = cleanUrl.replace("/images/", "");
+  return path.join(getStorageRoot(), relativePath);
+};
+
+const setupPdfResponse = (res: Response, filename: string) => {
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader(
+    "Content-Disposition",
+    `attachment; filename="${encodeURIComponent(filename)}"`
+  );
+};
+
+const setupDocFonts = (doc: any) => {
+  if (fs.existsSync(FONT_REGULAR)) {
+    doc.registerFont("regular", FONT_REGULAR);
+    doc.font("regular");
+  }
+
+  if (fs.existsSync(FONT_BOLD)) {
+    doc.registerFont("bold", FONT_BOLD);
+  }
+};
+
+const drawTitle = (doc: any, title: string, subtitle?: string) => {
+  doc.font("bold").fontSize(18).text(title, { align: "center" });
+  doc.moveDown(0.4);
+
+  if (subtitle) {
+    doc.font("regular").fontSize(10).text(subtitle, { align: "center" });
+    doc.moveDown(1);
+  }
+};
+
+const drawKeyValue = (doc: any, label: string, value: any) => {
+  doc.font("bold").fontSize(10).text(`${label}: `, { continued: true });
+  doc.font("regular").text(safeText(value));
+};
+
+const buildHistoryExportFilter = async (query: any) => {
+  const clearFilter = query.clear === "1";
+
+  if (clearFilter) {
+    return {
+      filter: { ...validInspectionFilter },
+      filterText: "Tất cả dữ liệu hợp lệ",
+    };
+  }
+
+  const selectedMode = ["day", "month", "year"].includes(String(query.mode))
+    ? String(query.mode)
+    : "day";
+
+  const selectedLabel = String(query.label || "");
+  const selectedShift = ["morning", "afternoon"].includes(String(query.shift))
+    ? String(query.shift)
+    : "all";
+
+  const selectedDateValue = String(query.statsDate || todayInputValue());
+  const selectedMonthValue = String(query.statsMonth || currentMonthValue());
+  const selectedYearValue = String(query.statsYear || currentYearValue());
+  const selectedConveyorId = String(query.conveyor_id || "").trim().toUpperCase();
+
+  if (selectedMode === "day" && !isValidDateValue(selectedDateValue)) {
+    throw new Error("Ngày thống kê không hợp lệ.");
+  }
+
+  if (selectedMode === "month" && !isValidMonthValue(selectedMonthValue)) {
+    throw new Error("Tháng thống kê không hợp lệ.");
+  }
+
+  if (selectedMode === "year" && !isValidYearValue(selectedYearValue)) {
+    throw new Error("Năm thống kê không hợp lệ.");
+  }
+
+  const selectedRange = getStatsRange(
+    selectedMode,
+    selectedDateValue,
+    selectedMonthValue,
+    selectedYearValue
+  );
+
+  const selectedDay = dayRange(selectedDateValue || todayInputValue());
+
+  const filter: any = {
+    ...validInspectionFilter,
+    timestamp: {
+      $gte: selectedRange.start,
+      $lte: selectedRange.end,
+    },
+  };
+
+  if (selectedConveyorId) {
+    filter.conveyor_id = selectedConveyorId;
+  }
+
+  if (selectedLabel === "OK" || selectedLabel === "NG") {
+    filter.label = selectedLabel;
+  }
+
+  if (selectedMode === "day" && selectedShift === "morning") {
+    filter.timestamp = {
+      $gte: selectedDay.start,
+      $lt: selectedDay.noon,
+    };
+  }
+
+  if (selectedMode === "day" && selectedShift === "afternoon") {
+    filter.timestamp = {
+      $gte: selectedDay.noon,
+      $lte: selectedDay.end,
+    };
+  }
+
+  const modeText =
+    selectedMode === "day"
+      ? `Ngày ${selectedDateValue}`
+      : selectedMode === "month"
+        ? `Tháng ${selectedMonthValue}`
+        : `Năm ${selectedYearValue}`;
+
+  const shiftText =
+    selectedMode !== "day"
+      ? "Tất cả"
+      : selectedShift === "morning"
+        ? "Ca sáng"
+        : selectedShift === "afternoon"
+          ? "Ca chiều"
+          : "Tất cả ca";
+
+  const labelText = selectedLabel || "Tất cả kết quả";
+  const conveyorText = selectedConveyorId || "Tất cả băng tải";
+
+  return {
+    filter,
+    filterText: `${modeText} | ${shiftText} | ${labelText} | ${conveyorText}`,
+  };
+};
+
+export const exportPdf = async (req: Request, res: Response) => {
+  try {
+    const { filter, filterText } = await buildHistoryExportFilter(req.query);
+
+    const items = await InspectionResult.find(filter, { _id: 0 })
+      .sort({ timestamp: -1 })
+      .lean();
+
+    const summary = summarize(items);
+
+    const filename = `lich-su-kiem-tra-${Date.now()}.pdf`;
+    setupPdfResponse(res, filename);
+
+    const doc = new PDFDocument({
+      size: "A4",
+      margin: 36,
+      bufferPages: true,
+    });
+
+    doc.pipe(res);
+    setupDocFonts(doc);
+
+    drawTitle(
+      doc,
+      "BÁO CÁO LỊCH SỬ KIỂM TRA SẢN PHẨM",
+      `Điều kiện xuất: ${filterText}`
+    );
+
+    doc.font("bold").fontSize(12).text("1. Thống kê tổng quan");
+    doc.moveDown(0.4);
+
+    drawKeyValue(doc, "Tổng số sản phẩm", summary.total);
+    drawKeyValue(doc, "Số sản phẩm OK", summary.ok);
+    drawKeyValue(doc, "Số sản phẩm NG", summary.ng);
+    drawKeyValue(doc, "Tỉ lệ OK", `${summary.okRate.toFixed(2)}%`);
+    drawKeyValue(doc, "Tỉ lệ NG", `${summary.ngRate.toFixed(2)}%`);
+    drawKeyValue(
+      doc,
+      "Điểm trung bình",
+      summary.avgScore !== null ? summary.avgScore.toFixed(3) : "-"
+    );
+
+    doc.moveDown(1);
+    doc.font("bold").fontSize(12).text("2. Danh sách lượt kiểm tra");
+    doc.moveDown(0.5);
+
+    const startX = doc.x;
+    let y = doc.y;
+
+    const columns = [
+      { title: "STT", width: 36 },
+      { title: "Inspection ID", width: 120 },
+      { title: "Băng tải", width: 80 },
+      { title: "Thời gian", width: 115 },
+      { title: "KQ", width: 40 },
+      { title: "Score", width: 55 },
+      { title: "Threshold", width: 65 },
+    ];
+
+    const drawHeader = () => {
+      doc.font("bold").fontSize(9);
+      let x = startX;
+
+      columns.forEach((col) => {
+        doc.text(col.title, x, y, {
+          width: col.width,
+          align: "left",
+        });
+        x += col.width;
+      });
+
+      y += 20;
+      doc.moveTo(startX, y - 6).lineTo(560, y - 6).stroke();
+    };
+
+    const drawRow = (item: any, index: number) => {
+      if (y > 760) {
+        doc.addPage();
+        y = 50;
+        drawHeader();
+      }
+
+      doc.font("regular").fontSize(8);
+
+      const row = [
+        String(index + 1),
+        safeText(item.inspection_id),
+        safeText(item.conveyor_id),
+        formatDateTime(item.timestamp),
+        safeText(item.label),
+        formatScore(item.average_score, 3),
+        formatScore(item.threshold, 3),
+      ];
+
+      let x = startX;
+
+      row.forEach((value, idx) => {
+        doc.text(value, x, y, {
+          width: columns[idx].width,
+          align: "left",
+        });
+        x += columns[idx].width;
+      });
+
+      y += 22;
+    };
+
+    drawHeader();
+
+    if (!items.length) {
+      doc.font("regular").fontSize(10).text("Không có dữ liệu phù hợp.", startX, y);
+    } else {
+      items.forEach((item, index) => drawRow(item, index));
+    }
+
+    const range = doc.bufferedPageRange();
+
+    for (let i = range.start; i < range.start + range.count; i++) {
+      doc.switchToPage(i);
+      doc.font("regular").fontSize(8);
+      doc.text(
+        `Trang ${i + 1} / ${range.count}`,
+        36,
+        805,
+        { align: "center", width: 520 }
+      );
+    }
+
+    doc.end();
+  } catch (error) {
+    console.error("Export history PDF error:", error);
+    return res.status(500).send("Không thể xuất file PDF lịch sử kiểm tra.");
+  }
+};
+
+export const exportDetailPdf = async (req: Request, res: Response) => {
+  try {
+    const stt = Number(req.params.stt);
+
+    if (!Number.isFinite(stt)) {
+      return res.status(400).send("Mã lượt kiểm tra không hợp lệ.");
+    }
+
+    const filter: any = {
+      ...validInspectionFilter,
+      stt: stt,
+    };
+
+    if (req.query.conveyor_id) {
+      filter.conveyor_id = String(req.query.conveyor_id).trim().toUpperCase();
+    }
+
+    const inspection: any = await InspectionResult.findOne(filter, { _id: 0 })
+      .sort({ timestamp: -1 })
+      .lean();
+
+    if (!inspection) {
+      return res.status(404).send("Không tìm thấy lượt kiểm tra.");
+    }
+
+    const frames = Array.isArray(inspection.frames)
+      ? inspection.frames.sort(
+          (a: any, b: any) => Number(a.frame_index) - Number(b.frame_index)
+        )
+      : [];
+
+    const filename = `chi-tiet-kiem-tra-${inspection.stt || stt}.pdf`;
+    setupPdfResponse(res, filename);
+
+    const doc = new PDFDocument({
+      size: "A4",
+      margin: 36,
+      bufferPages: true,
+    });
+
+    doc.pipe(res);
+    setupDocFonts(doc);
+
+    drawTitle(
+      doc,
+      `BÁO CÁO CHI TIẾT LƯỢT KIỂM TRA ${inspection.stt || stt}`,
+      `Inspection ID: ${inspection.inspection_id || "-"}`
+    );
+
+    doc.font("bold").fontSize(12).text("1. Thông tin lượt kiểm tra");
+    doc.moveDown(0.5);
+
+    drawKeyValue(doc, "Job ID", inspection.stt);
+    drawKeyValue(doc, "Inspection ID", inspection.inspection_id);
+    drawKeyValue(doc, "Băng tải", inspection.conveyor_id);
+    drawKeyValue(doc, "Thời gian", formatDateTime(inspection.timestamp));
+    drawKeyValue(doc, "Kết quả", inspection.label);
+    drawKeyValue(doc, "Điểm trung bình", formatScore(inspection.average_score, 6));
+    drawKeyValue(doc, "Ngưỡng đánh giá", formatScore(inspection.threshold, 6));
+    drawKeyValue(doc, "Số frame", frames.length);
+
+    doc.moveDown(1);
+    doc.font("bold").fontSize(12).text("2. Chi tiết từng frame");
+    doc.moveDown(0.5);
+
+    for (const frame of frames) {
+      if (doc.y > 620) {
+        doc.addPage();
+      }
+
+      doc.font("bold").fontSize(11).text(`Frame ${frame.frame_index || "-"}`);
+      doc.font("regular").fontSize(10);
+
+      drawKeyValue(doc, "Predicted label", frame.predicted_label);
+      drawKeyValue(doc, "Predicted score", formatScore(frame.predicted_score, 6));
+
+      doc.moveDown(0.4);
+
+      const roiLocalPath = imageUrlToLocalPath(frame.roi_path);
+      const overlayLocalPath = imageUrlToLocalPath(frame.overlay_path);
+
+      const imageY = doc.y;
+      const imageWidth = 240;
+      const imageHeight = 160;
+
+      doc.font("bold").fontSize(9).text("Ảnh sản phẩm", 36, imageY);
+
+      if (roiLocalPath && fs.existsSync(roiLocalPath)) {
+        doc.image(roiLocalPath, 36, imageY + 16, {
+          fit: [imageWidth, imageHeight],
+        });
+      } else {
+        doc.font("regular").text("Không có ảnh", 36, imageY + 40, {
+          width: imageWidth,
+        });
+      }
+
+      doc.font("bold").fontSize(9).text("Ảnh khoanh lỗi", 310, imageY);
+
+      if (overlayLocalPath && fs.existsSync(overlayLocalPath)) {
+        doc.image(overlayLocalPath, 310, imageY + 16, {
+          fit: [imageWidth, imageHeight],
+        });
+      } else {
+        doc.font("regular").text("Không có ảnh", 310, imageY + 40, {
+          width: imageWidth,
+        });
+      }
+
+      doc.y = imageY + imageHeight + 34;
+      doc.moveDown(0.5);
+    }
+
+    const range = doc.bufferedPageRange();
+
+    for (let i = range.start; i < range.start + range.count; i++) {
+      doc.switchToPage(i);
+      doc.font("regular").fontSize(8);
+      doc.text(
+        `Trang ${i + 1} / ${range.count}`,
+        36,
+        805,
+        { align: "center", width: 520 }
+      );
+    }
+
+    doc.end();
+  } catch (error) {
+    console.error("Export history detail PDF error:", error);
+    return res.status(500).send("Không thể xuất file PDF chi tiết lượt kiểm tra.");
+  }
 };
 
 export const index = async (req: Request, res: Response) => {
@@ -458,12 +906,12 @@ export const index = async (req: Request, res: Response) => {
 
 export const detail = async (req: Request, res: Response) => {
   try {
-    // Lay jobId tu URL /history/:jobId.
-    const jobId = Number(req.params.jobId);
-    if (!Number.isFinite(jobId)) return res.status(400).send("Ma luot kiem tra khong hop le.");
+    // Lay stt tu URL /history/:stt.
+    const stt = Number(req.params.stt);
+    if (!Number.isFinite(stt)) return res.status(400).send("Ma luot kiem tra khong hop le.");
 
     // Tim lan kiem tra theo stt va chi lay ban ghi hop le.
-    const filter: any = { ...validInspectionFilter, stt: jobId };
+    const filter: any = { ...validInspectionFilter, stt: stt };
 
     // Neu URL co conveyor_id thi loc them de tranh trung stt giua cac bang tai.
     if (req.query.conveyor_id) {
@@ -479,7 +927,7 @@ export const detail = async (req: Request, res: Response) => {
 
     // Sap xep frame theo frame_index truoc khi dua ra trang detail.
     return res.render("history/detail", {
-      title: `Chi tiet luot ${jobId}`,
+      title: `Chi tiet luot ${stt}`,
       inspection: {
         ...inspection,
         display_id: inspection.stt || "-",

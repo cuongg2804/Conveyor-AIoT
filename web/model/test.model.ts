@@ -34,7 +34,7 @@ const testSessionSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["RUNNING", "COMPLETED", "CANCELLED", "FAILED"],
+      enum: ["RUNNING", "COMPLETED", "CANCELLED"],
       default: "RUNNING",
     },
 

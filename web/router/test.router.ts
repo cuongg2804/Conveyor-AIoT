@@ -14,6 +14,6 @@ router.get("/settings/serial-ports", testController.scanPorts);
 
 router.get("/history", testController.history);
 router.get("/history/detail/:test_session_id", testController.detail);
-// router.get("/settings/options/:conveyor_id", testController.getAvailableOptions);
+router.get("/monitor/:test_session_id", testController.monitor);
 
 export default router;

@@ -136,7 +136,7 @@ block main
 
         .settings-actions
           button.btn.btn--primary(type="submit") Lưu cấu hình
-  script(src="/socket.io/socket.io.js")
+  
   script.
     window.CONVEYOR_ID = "#{conveyor.conveyor_id}";
 
@@ -177,7 +177,7 @@ block main
         }
       }
 
-      const socket = io();
+      const socket = window.appSocket;
 
       socket.on("serial_ports", function (ports) {
         renderPorts(Array.isArray(ports) ? ports : []);

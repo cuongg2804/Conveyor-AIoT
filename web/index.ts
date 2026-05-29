@@ -10,6 +10,7 @@ import * as database from "./config/database";
 import { connectMqtt, getClient } from "./config/mqtt";
 import { initMqttService } from "./service/mqtt.service";
 import User from "./model/user.model";
+import { restoreRunningTestTimers } from "./controller/test.controller";
 
 dotenv.config();
 
@@ -213,6 +214,7 @@ io.on("connection", async (socket) => {
 const startServer = async () => {
   try {
     await database.connect();
+    await restoreRunningTestTimers();
 
     await User.updateMany(
       { status: "ONLINE" },

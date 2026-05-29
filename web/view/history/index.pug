@@ -6,6 +6,8 @@ block main
       .dashboard__heading
         h1.dashboard__title Thống kê kết quả kiểm tra
         p.dashboard__subtitle Theo dõi sản lượng và kết quả kiểm tra theo ca, ngày, tháng, năm
+      .dashboard-actions
+        a.btn.btn--primary#exportHistoryPdf(href="#") Xuất PDF danh sách
 
     if error
       .alert.alert--error
@@ -197,6 +199,7 @@ block main
                   td
                     .history-actions
                       a.history-image-link(href=detailUrl) Chi tiết
+                      
                       if preview.roi_path
                         button.history-image-link(
                           type="button"
@@ -268,4 +271,13 @@ block scripts
         modeSelect.addEventListener("change", syncDateField);
         syncDateField();
       }
+      const btn = document.getElementById("exportHistoryPdf");
+      if (!btn) return;
+
+      btn.addEventListener("click", function (event) {
+        event.preventDefault();
+
+        const query = window.location.search || "";
+        window.location.href = `/history/export/pdf${query}`;
+      });
     });

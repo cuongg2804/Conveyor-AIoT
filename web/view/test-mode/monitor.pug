@@ -1,0 +1,153 @@
+extends ../layout/default.pug
+
+block main
+  - const statusLabels = { RUNNING: "Đang kiểm thử", COMPLETED: "Hoàn tất", CANCELLED: "Đã hủy" }
+  - const testStatusText = statusLabels[session.status] || session.status || "Đang chờ dữ liệu"
+
+  .dashboard(
+    data-conveyor-code=conveyor.conveyor_id
+    data-test-session-id=session.test_session_id
+    data-test-status=session.status
+    data-end-at=endAtMs
+  )
+    .dashboard__header
+      .dashboard__heading
+        h1.dashboard__title Giám sát kiểm thử
+        p.dashboard__subtitle Mã lượt kiểm thử: #{session.test_session_id}
+
+      .dashboard-actions
+        a.btn.btn--secondary(href="/test-mode/history") Quay lại lịch sử
+        a.btn.btn--primary(href="/test-mode/settings") Tạo lượt kiểm thử
+
+      .dashboard__status-pill(class=session.status)
+        span.status-dot
+        span#testStatusText #{testStatusText}
+
+    if query && query.cancelled
+      .alert.alert--success Đã hủy lượt kiểm thử.
+    if query && query.error
+      .alert.alert--error Không thể thực hiện thao tác với lượt kiểm thử.
+
+    .inspection-layout
+      .preview-panel.card
+        .card__head.preview-panel__head
+          div
+            h2.card__title Ảnh kiểm thử mới nhất
+            p.card__desc Hiển thị ảnh đại diện của sản phẩm mới nhất trong lượt kiểm thử
+          .preview-frame-meta
+            span Khung hình đại diện
+            strong#framePreviewScore -
+
+        .main-preview
+          .main-preview__label Ảnh khoanh vùng lỗi
+          .main-preview__image
+            img#overlayPreviewImage(src="" alt="Ảnh khoanh vùng lỗi")
+            .image-placeholder Chưa có ảnh khoanh vùng lỗi
+
+        .thumb-grid.thumb-grid--one
+          .thumb-box
+            .thumb-box__title Ảnh sản phẩm
+            .thumb-box__image
+              img#roiPreviewImage(src="" alt="Ảnh sản phẩm")
+              .image-placeholder Chưa có ảnh sản phẩm
+
+      .side-panel
+        .card.control-card
+          .card__head
+            h2.card__title Điều khiển kiểm thử
+            p.card__desc Theo dõi thời gian và dừng lượt kiểm thử khi cần
+
+          .inspection-summary
+            .summary-row
+              span.summary-label Băng tải
+              span.summary-value= conveyor.name || conveyor.conveyor_id
+
+            .summary-row
+              span.summary-label Model
+              span.summary-value #{session.model_name || "-"} #{session.model_version ? "- " + session.model_version : ""}
+
+            .summary-row
+              span.summary-label Bắt đầu
+              span.summary-value= session.started_at ? new Date(session.started_at).toLocaleString("vi-VN") : "-"
+
+            .summary-row
+              span.summary-label Thời lượng
+              span.summary-value #{session.duration_minutes || "-"} phút
+
+            .summary-row
+              span.summary-label Còn lại
+              strong#testCountdown.summary-value -
+
+          if session.status === "RUNNING"
+            form(
+              method="POST"
+              action=stopUrl
+              onsubmit="return confirm('Bạn có chắc muốn dừng và hủy lượt kiểm thử này không?');"
+            )
+              button.btn.btn--danger(type="submit") Dừng kiểm thử
+          else
+            button.btn.btn--secondary(type="button" disabled) Lượt kiểm thử đã kết thúc
+
+        .result-card.card
+          .card__head
+            h2.card__title Kết quả kiểm thử
+            p.card__desc Kết quả mới nhất và thống kê tạm thời
+
+          .result-main
+            span#resultLabel.result-badge -
+
+          .inspection-summary
+            .summary-row
+              span.summary-label Tổng sản phẩm
+              span#testTotal.summary-value= summary.total_products || 0
+
+            .summary-row
+              span.summary-label OK
+              span#testOk.summary-value= summary.ok_count || 0
+
+            .summary-row
+              span.summary-label NG
+              span#testNg.summary-value= summary.ng_count || 0
+
+            .summary-row
+              span.summary-label Avg score
+              span#testAvg.summary-value
+                if summary.avg_score !== null && summary.avg_score !== undefined
+                  | #{Number(summary.avg_score).toFixed(3)}
+                else
+                  | -
+
+            .summary-row
+              span.summary-label Mã kiểm tra
+              span#stt.summary-value -
+
+            .summary-row
+              span.summary-label Kết quả mới nhất
+              span#framePreviewLabel.summary-value -
+
+            .summary-row
+              span.summary-label Thời gian
+              span#resultTimestamp.summary-value -
+
+        .card
+          .card__head
+            h2.card__title Trạng thái
+            p.card__desc Trạng thái lượt kiểm thử hiện tại
+
+          .system-status
+            span.system-status__label Lượt kiểm thử
+            span#testStatusBox.system-status__value(class=session.status)
+              span.status-dot
+              | #{testStatusText}
+
+          .system-status
+            span.system-status__label Máy chủ WEB
+            span.system-status__value.connected
+              span.status-dot
+              | Đang chạy
+
+  script.
+    window.__TEST_SESSION__ = !{JSON.stringify(session || null)};
+    window.__LATEST_INSPECTION__ = !{JSON.stringify(latestInspection || null)};
+    window.__TEST_SUMMARY__ = !{JSON.stringify(summary || null)};
+    window.__TEST_END_AT__ = !{JSON.stringify(endAtMs || null)};

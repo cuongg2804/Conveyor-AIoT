@@ -2109,3 +2109,18 @@ img[src]:not([src=""]) + .image-placeholder {
   padding: 9px 14px;
   opacity: 0.88;
 }
+
+.conveyor-status.RUNNING {
+  background: var(--warning-bg);
+  color: var(--warning-text);
+}
+
+.conveyor-status.COMPLETED {
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+
+.conveyor-status.CANCELLED {
+  background: var(--danger-bg);
+  color: var(--danger-text);
+}
