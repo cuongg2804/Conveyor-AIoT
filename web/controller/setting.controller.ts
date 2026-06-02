@@ -5,13 +5,14 @@ import Camera from "../model/camera.model";
 import User from "../model/user.model";
 import Config_log from "../model/config_logs.model";
 import { publishControlCommand } from "../service/mqtt.service";
-
+import mongoose from "mongoose";
+import ModelRegistry from "../model/modelRegister.model";
 type ConveyorView = {
   conveyor_id: string;
   name: string;
   line_id?: string;
   status?: string;
-  operator_id?: string;
+  user_id?: string;
   description?: string;
   is_active?: boolean;
 };
@@ -26,6 +27,8 @@ type ConveyorConfigView = {
   speed?: number;
   goc_home?: number;
   goc_gat?: number;
+  model_id?: string;
+  config_mode?: "PRODUCTION" | "TEST";
 };
 
 const normalizeCode = (value: any) =>
@@ -65,10 +68,16 @@ export const settings = async (req: Request, res: Response) => {
       ],
     }).lean();
 
+    const selectedTab =
+      String(req.query.tab || "production").toLowerCase() === "test"
+        ? "test"
+        : "production";
+    const selectedConfigMode = selectedTab === "test" ? "TEST" : "PRODUCTION";
+
     const usedOperatorIds = await Conveyor.find({
       conveyor_id: { $ne: conveyorId },
-      operator_id: { $ne: ""}
-      }).distinct("operator_id");
+      user_id: { $ne: ""}
+      }).distinct("user_id");
       const operators = await User.find(
         {
           user_id: { $nin: usedOperatorIds },
@@ -80,18 +89,47 @@ export const settings = async (req: Request, res: Response) => {
         }
       ).lean();
 
+    const activeModels = await ModelRegistry.find({ status: "active" })
+      .sort({ created_at: -1 })
+      .lean();
+
+    const testingModels = await ModelRegistry.find({ status: "testing" })
+      .sort({ created_at: -1 })
+      .lean();
+    const selectedModel = config.model_id
+      ? await ModelRegistry.findOne({ model_id: config.model_id }).lean()
+      : null;
+    const isTestingModelLocked =
+      selectedTab === "test" &&
+      config.config_mode === "TEST" &&
+      !!config.model_id &&
+      selectedModel?.status === "testing";
+
     return res.render("setting/settings", {
       title: `Cấu hình băng tải`,
       conveyor,
       config,
       cameras,
       operators,
+
+      selectedTab,
+      activeModels,
+      testingModels,
+      selectedConfigMode,
+      selectedModel,
+      isTestingModelLocked,
+
       updated: req.query.updated === "1",
       configSynced: req.query.synced === "1",
       configSyncFailed: req.query.synced === "0",
+      started: req.query.started === "1",
+      stopped: req.query.stopped === "1",
+      approved: req.query.approved === "1",
+      rejected: req.query.rejected === "1",
+
       monitorUrl: `/inspection/monitor/${conveyor.conveyor_id}`,
       dashboardUrl: "/dashboard",
-      formAction: req.originalUrl.split("?")[0],
+      formAction: `/settings/${conveyor.conveyor_id}?tab=${selectedTab}`
     });
   } catch (error) {
     console.error("Lỗi render:", error);
@@ -122,6 +160,19 @@ export const updateSettings = async (req: Request, res: Response) => {
     const conveyorId = getConveyorId(req);
     const conveyor = await Conveyor.findOne({ conveyor_id: conveyorId }).lean<ConveyorView | null>();
 
+    const selectedTab =
+      String(req.query.tab || req.body.tab || "production").toLowerCase() === "test"
+        ? "test"
+        : "production";
+
+    const selectedModelId = String(req.body.model_id || "").trim();
+
+    console.log("[SETTINGS] Submit model:", {
+      selectedTab,
+      selectedModelId,
+      bodyModelId: req.body.model_id,
+    });
+
     if (!conveyor) {
       return res.status(404).send("Không tìm thấy băng tải.");
     }
@@ -135,9 +186,8 @@ export const updateSettings = async (req: Request, res: Response) => {
 
     const {
       name,
-      /*line_id,*/
       status,
-      operator_id,
+      user_id,
       description,
 
       camera_id,
@@ -159,13 +209,70 @@ export const updateSettings = async (req: Request, res: Response) => {
     const newCameraTriggerDelay = toNumberInRange(camera_trigger_delay, 0, 0, 10000);
     const newAiThreshold = Number(ai_threshold || 30.436506);
 
+    let nextModelId = String(oldConfig.model_id || "").trim();
+    let nextConfigMode = String(oldConfig.config_mode || "PRODUCTION").toUpperCase();
+
+    const currentModel = oldConfig.model_id
+      ? await ModelRegistry.findOne({ model_id: oldConfig.model_id }).lean()
+      : null;
+
+    const isTestingModelLocked =
+      selectedTab === "test" &&
+      oldConfig.config_mode === "TEST" &&
+      !!oldConfig.model_id &&
+      currentModel?.status === "testing";
+
+    if (selectedTab === "production") {
+      if (!selectedModelId) {
+        return res.status(400).send("Vui lòng chọn model đã phê duyệt.");
+      }
+
+      const activeModel = await ModelRegistry.findOne({
+        model_id: selectedModelId,
+        status: "active",
+      }).lean();
+
+      if (!activeModel) {
+        return res
+          .status(400)
+          .send("Model vận hành không tồn tại hoặc chưa được phê duyệt.");
+      }
+
+      nextModelId = activeModel.model_id;
+      nextConfigMode = "PRODUCTION";
+    }
+
+    if (selectedTab === "test") {
+      if (isTestingModelLocked) {
+        nextModelId = String(oldConfig.model_id || "");
+        nextConfigMode = "TEST";
+      } else {
+        if (!selectedModelId) {
+          return res.status(400).send("Vui lòng chọn model cần kiểm thử.");
+        }
+
+        const testingModel = await ModelRegistry.findOne({
+          model_id: selectedModelId,
+          status: "testing",
+        }).lean();
+
+        if (!testingModel) {
+          return res
+            .status(400)
+            .send("Model kiểm thử không tồn tại hoặc không ở trạng thái testing.");
+        }
+
+        nextModelId = testingModel.model_id;
+        nextConfigMode = "TEST";
+      }
+    }
+
     if (oldCameraId && oldCameraId !== newCameraId) {
       await Camera.updateOne(
         { camera_id: oldCameraId },
         {
           $set: {
             status: "AVAILABLE",
-            conveyor_id: "",
           },
         }
       );
@@ -192,7 +299,6 @@ export const updateSettings = async (req: Request, res: Response) => {
         {
           $set: {
             status: "IN_USE",
-            conveyor_id: conveyorId,
           },
         }
       );
@@ -214,7 +320,7 @@ export const updateSettings = async (req: Request, res: Response) => {
         $set: {
           name: String(name || "").trim(),
           status: normalizeCode(status || "ONLINE"),
-          operator_id: String(operator_id || "").trim(),
+          user_id: String(user_id || "").trim(),
           description: String(description || "").trim(),
         },
       }
@@ -232,12 +338,14 @@ export const updateSettings = async (req: Request, res: Response) => {
           speed: newSpeed,
           goc_home: newGocHome,
           goc_gat: newGocGat,
+          model_id: nextModelId,
+          config_mode: nextConfigMode,
         },
       }
     );
 
     
-    addChange("operator_id", conveyor.operator_id, operator_id);
+    addChange("user_id", conveyor.user_id, user_id);
     addChange("camera_id", oldConfig.camera_id, newCameraId);
     addChange("serial_port", oldConfig.serial_port, serial_port);
     addChange("name", conveyor.name, name);
@@ -248,6 +356,8 @@ export const updateSettings = async (req: Request, res: Response) => {
     addChange("goc_home", oldConfig.goc_home, newGocHome);
     addChange("goc_gat", oldConfig.goc_gat, newGocGat);
     addChange("ai_threshold", oldConfig.ai_threshold, newAiThreshold);
+    addChange("model_id", oldConfig.model_id, nextModelId);
+    addChange("config_mode", oldConfig.config_mode, nextConfigMode);
 
     
 
@@ -273,9 +383,100 @@ export const updateSettings = async (req: Request, res: Response) => {
       console.error("[MQTT] RELOAD_CONFIG lỗi:", mqttError);
     }
 
-    return res.redirect(`/settings/${conveyorId}?updated=1`);
+    return res.redirect(`/settings/${conveyorId}?tab=${selectedTab}&updated=1&synced=${synced}`);
   } catch (error) {
     console.error("Update settings không thành công:", error);
     return res.status(500).send("Không thể cập nhật cấu hình.");
+  }
+};
+
+
+export const approveModel = async (req: Request, res: Response) => {
+  try {
+    const conveyorId = normalizeCode(
+      req.params.conveyor_id || req.params.conveyorCode
+    );
+
+    const decision = String(req.body.decision || "").toUpperCase();
+
+    if (!["PASS", "FAIL"].includes(decision)) {
+      return res.status(400).send("Lựa chọn phê duyệt không hợp lệ.");
+    }
+
+    const conveyor = await Conveyor.findOne({ conveyor_id: conveyorId }).lean<any>();
+
+    if (!conveyor) {
+      return res.status(404).send("Không tìm thấy băng tải.");
+    }
+
+    if (String(conveyor.status || "").toUpperCase() === "RUNNING") {
+      return res
+        .status(400)
+        .send("Chỉ được phê duyệt model sau khi đã dừng kiểm thử.");
+    }
+
+    const config = await ConveyorConfig.findOne({ conveyor_id: conveyorId }).lean<any>();
+
+    if (!config || !config.model_id || config.config_mode !== "TEST") {
+      return res.status(400).send("Không có model kiểm thử đang chờ phê duyệt.");
+    }
+
+    const model = await ModelRegistry.findOne({
+      model_id: config.model_id,
+      status: "testing",
+    }).lean();
+
+    if (!model) {
+      return res
+        .status(400)
+        .send("Model kiểm thử không tồn tại hoặc đã được xử lý.");
+    }
+
+    if (decision === "PASS") {
+      await ModelRegistry.updateOne(
+        { model_id: config.model_id },
+        {
+          $set: {
+            status: "active",
+          },
+        }
+      );
+
+      await ConveyorConfig.updateOne(
+        { conveyor_id: conveyorId },
+        {
+          $set: {
+            config_mode: "PRODUCTION",
+            ai_threshold: model.threshold,
+          },
+        }
+      );
+
+      return res.redirect(`/settings/${conveyorId}?tab=test&approved=1`);
+    }
+
+    await ModelRegistry.updateOne(
+      { model_id: config.model_id },
+      {
+        $set: {
+          status: "failed",
+        },
+      }
+    );
+
+    await ConveyorConfig.updateOne(
+      { conveyor_id: conveyorId },
+      {
+        $set: {
+          model_id: "",
+          config_mode: "TEST",
+        },
+      }
+    );
+
+    return res.redirect(`/settings/${conveyorId}?tab=test&rejected=1`);
+  } catch (error) {
+    console.error("Approve model error:", error);
+    return res.status(500).send("Không thể phê duyệt model.");
   }
 };

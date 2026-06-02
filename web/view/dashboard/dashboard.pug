@@ -19,10 +19,10 @@ block main
             .conveyor-card__head
               .conveyor-card__info
                 h2 #{conveyor.name}
-                if conveyor.description
-                  p #{conveyor.description}
+                if conveyor.user_id
+                  p Người vận hành: #{conveyor.fullname}
                 else
-                  p Chưa có mô tả
+                  p Chưa có người vận hành
 
               span.conveyor-status(class=conveyor.status)
                 span.status-dot
@@ -34,11 +34,11 @@ block main
                 strong #{conveyor.conveyor_id}
 
               .conveyor-meta__item
-                span Nguồn camera
+                span Camera
                 strong #{conveyor.camera_name || "-"}
 
               .conveyor-meta__item
-                span Cổng điều khiển
+                span Cổng kết nối
                 strong #{conveyor.serial_port || "-"}
 
               .conveyor-meta__item
@@ -46,15 +46,15 @@ block main
                 strong #{conveyor.baud_rate || "-"}
 
               .conveyor-meta__item
-                span Độ trễ camera
-                strong #{conveyor.camera_trigger_delay || "-"}
+                span Model AI
+                strong #{conveyor.model_name || "-"}
               .conveyor-meta__item
-                span Ngưỡng đánh giá
-                strong #{conveyor.ai_threshold || "-"}
+                span Chế độ vận hành
+                strong #{conveyor.config_mode || "-"}
 
             .conveyor-actions
-              a.btn.btn--primary(href=`/inspection/monitor/${conveyor.conveyor_id}`) Giám sát
-              a.btn.btn--secondary(href=`/settings/${conveyor.conveyor_id}`) Cấu hình
+              a.btn.btn--primary(href=`/inspection/monitor/${conveyor.conveyor_id}?mode=${conveyor.config_mode || "PRODUCTION"}`) Giám sát
+              a.btn.btn--secondary(href=`/settings/${conveyor.conveyor_id}?tab=${conveyor.config_mode === "TEST" ? "test" : "production"}`) Cấu hình
       else
         .card
           .empty-state

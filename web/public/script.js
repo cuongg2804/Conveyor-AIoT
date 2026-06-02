@@ -73,12 +73,12 @@ if(serial && typeof socket !=="undefined"){
     initOption.text = "--Chọn cổng kết nối--"
     serial.appendChild(initOption)
 
-    ports.forEach((ports) => {
+    ports.forEach((port) => {
       const option = document.createElement("option")
-      option.value = ports.device
-      option.textContent = `${ports.value} - ${port.description || ""}`
+      option.value = port.device
+      option.textContent = `${port.value} - ${port.description || ""}`
 
-      if(ports.device === curr_port) {
+      if(port.device === curr_port) {
         option.selected = true
       }
       serial.appendChild(option)
@@ -224,6 +224,18 @@ function renderInspectionResult(data) {
   if (resultConveyorCode && resultConveyorCode !== getCurrentConveyorCode()) return;
   if (!inspectionSessionActive) return;
 
+  const currentMode = String(window.__RUNTIME_MODE__ || "PRODUCTION").toUpperCase();
+  const resultMode = String(data.mode || "PRODUCTION").toUpperCase();
+
+  if (currentMode === "TEST" && resultMode !== "TEST") return;
+
+  if (currentMode === "PRODUCTION") {
+    const isProductionResult =
+      resultMode === "PRODUCTION" || resultMode === "" || !data.mode;
+
+    if (!isProductionResult) return;
+  }
+
   setText("stt", data.job_id ? `Lượt ${data.job_id}` : "-");
   updateResultBadge(data.label);
   setText("averageScore", formatScore(data.average_score));
@@ -282,6 +294,7 @@ async function sendControlCommand(command, payload = {}) {
         payload: {
           conveyor_id: conveyorCode,
           ...payload,
+          mode: window.__RUNTIME_MODE__ || "PRODUCTION",
         },
       }),
     });
@@ -503,140 +516,3 @@ socket.on("session_rejected", (payload) => {
   window.location.href = "/login";
 });
 
-document.addEventListener("DOMContentLoaded", function () {
-  const testSession = window.__TEST_SESSION__;
-  const testEndAt = window.__TEST_END_AT__;
-  const socket = window.appSocket;
-
-  if (!testSession) return;
-
-  const countdownEl = document.getElementById("testCountdown");
-  const statusTextEl = document.getElementById("testStatusText");
-  const statusBoxEl = document.getElementById("testStatusBox");
-
-  const formatDuration = (ms) => {
-    const totalSeconds = Math.max(Math.floor(ms / 1000), 0);
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-
-    return [
-      String(hours).padStart(2, "0"),
-      String(minutes).padStart(2, "0"),
-      String(seconds).padStart(2, "0"),
-    ].join(":");
-  };
-
-  const updateCountdown = () => {
-    if (!countdownEl) return;
-
-    if (testSession.status !== "RUNNING") {
-      countdownEl.textContent = "00:00:00";
-      return;
-    }
-
-    const remaining = Number(testEndAt || 0) - Date.now();
-    countdownEl.textContent = formatDuration(remaining);
-
-    if (remaining <= 0) {
-      countdownEl.textContent = "Đang hoàn tất...";
-    }
-  };
-
-  updateCountdown();
-  setInterval(updateCountdown, 1000);
-
-  const applyInspectionToMonitor = (data) => {
-    if (!data) return;
-
-    if (data.run_mode !== "TEST") return;
-    if (data.test_session_id !== testSession.test_session_id) return;
-
-    const resultLabel = document.getElementById("resultLabel");
-    const stt = document.getElementById("stt");
-    const averageScore = document.getElementById("testAvg");
-    const framePreviewLabel = document.getElementById("framePreviewLabel");
-    const resultTimestamp = document.getElementById("resultTimestamp");
-    const framePreviewScore = document.getElementById("framePreviewScore");
-
-    if (resultLabel) {
-      resultLabel.textContent = data.label || "-";
-      resultLabel.className = `result-badge ${String(data.label || "").toLowerCase()}`;
-    }
-
-    if (stt) {
-      stt.textContent = data.inspection_id || data.job_id || "-";
-    }
-
-    if (averageScore) {
-      averageScore.textContent =
-        data.average_score !== undefined && data.average_score !== null
-          ? Number(data.average_score).toFixed(3)
-          : "-";
-    }
-
-    if (framePreviewLabel) {
-      framePreviewLabel.textContent = data.label || "-";
-    }
-
-    if (framePreviewScore) {
-      framePreviewScore.textContent =
-        data.average_score !== undefined && data.average_score !== null
-          ? Number(data.average_score).toFixed(3)
-          : "-";
-    }
-
-    if (resultTimestamp) {
-      const ts = Number(data.timestamp || 0);
-      const date = ts > 1000000000000 ? new Date(ts) : new Date(ts * 1000);
-      resultTimestamp.textContent = Number.isFinite(ts)
-        ? date.toLocaleString("vi-VN")
-        : "-";
-    }
-
-    const frames = Array.isArray(data.frames) ? data.frames : [];
-    const previewFrame = frames[1] || frames[0];
-
-    const roiImg = document.getElementById("roiPreviewImage");
-    const overlayImg = document.getElementById("overlayPreviewImage");
-
-    if (previewFrame) {
-      if (roiImg && previewFrame.roi_path) {
-        roiImg.src = previewFrame.roi_path;
-        roiImg.style.display = "block";
-        const placeholder = roiImg.parentElement?.querySelector(".image-placeholder");
-        if (placeholder) placeholder.style.display = "none";
-      }
-
-      if (overlayImg && previewFrame.overlay_path) {
-        overlayImg.src = previewFrame.overlay_path;
-        overlayImg.style.display = "block";
-        const placeholder = overlayImg.parentElement?.querySelector(".image-placeholder");
-        if (placeholder) placeholder.style.display = "none";
-      }
-    }
-  };
-
-  applyInspectionToMonitor(window.__LATEST_INSPECTION__);
-
-  if (socket) {
-    socket.on("inspection_result", applyInspectionToMonitor);
-
-    socket.on("test_session_completed", function (payload) {
-      if (!payload || payload.test_session_id !== testSession.test_session_id) return;
-
-      if (statusTextEl) statusTextEl.textContent = "Hoàn tất";
-      if (statusBoxEl) {
-        statusBoxEl.className = "system-status__value COMPLETED";
-        statusBoxEl.innerHTML = '<span class="status-dot"></span>Hoàn tất';
-      }
-
-      if (countdownEl) {
-        countdownEl.textContent = "00:00:00";
-      }
-
-      alert(`Lượt kiểm thử ${payload.test_session_id} đã hoàn tất.`);
-      window.location.reload();
-    });
-  }
-});

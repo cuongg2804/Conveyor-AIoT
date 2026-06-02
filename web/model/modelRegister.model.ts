@@ -2,6 +2,12 @@ const mongoose = require("mongoose");
 
 const ModelRegistrySchema = new mongoose.Schema(
   {
+    model_id: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+    },
     model_name: {
       type: String,
       required: true,
@@ -64,13 +70,6 @@ const ModelRegistrySchema = new mongoose.Schema(
       default: "testing",
       index: true,
     },
-
-    // created_by: {
-    //   type: mongoose.Schema.Types.ObjectId,
-    //   ref: "User",
-    //   default: null,
-    // },
-
     created_at: {
       type: Date,
       default: Date.now,
@@ -78,6 +77,7 @@ const ModelRegistrySchema = new mongoose.Schema(
   },
   {
     collection: "model_registry",
+    versionKey: false,
   }
 );
 

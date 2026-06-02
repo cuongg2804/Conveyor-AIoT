@@ -4,16 +4,16 @@ block main
   .page
     .dashboard__header
       .dashboard__heading
-        h1.dashboard__title Cap nhat model
-        p.dashboard__subtitle Sua threshold, metric va status cho model registry
+        h1.dashboard__title Cập nhật model
+        p.dashboard__subtitle Sửa threshold, metric và trạng thái cho model registry
       .dashboard-actions
-        a.btn.btn--secondary(href="/models") Quay lai
+        a.btn.btn--secondary(href="/models") Quay lại
 
     .model-upload-layout
       .card
         .card__head
-          h2.card__title Thong tin dinh danh
-          p.card__desc Cac truong nay gan voi object key tren MinIO nen khong sua tai day.
+          h2.card__title Thông tin định danh
+          p.card__desc Các trường này gắn với object key trên MinIO nên không sửa tại đây.
 
         .upload-result
           .upload-result__row
@@ -35,7 +35,7 @@ block main
       .card
         .card__head
           h2.card__title Metadata
-          p.card__desc Cap nhat thong so danh gia va trang thai su dung.
+          p.card__desc Cập nhật thông số đánh giá và trạng thái sử dụng.
 
         form.model-upload-form(method="POST" action=`/models/${model._id}/edit`)
           .field
@@ -60,7 +60,7 @@ block main
               input#f1_score.field__control(type="number" name="f1_score" value=model.f1_score step="0.0001")
 
           .field
-            label.field__label(for="status") Status
+            label.field__label(for="status") Trạng thái
             select#status.field__control(name="status" required)
               option(value="testing" selected=model.status === "testing") testing
               option(value="active" selected=model.status === "active") active
@@ -69,7 +69,7 @@ block main
               option(value="failed" selected=model.status === "failed") failed
 
           .btn-row
-            button.btn.btn--primary(type="submit") Luu thay doi
+            button.btn.btn--primary(type="submit") Lưu thay đổi
 
 block scripts
   if error

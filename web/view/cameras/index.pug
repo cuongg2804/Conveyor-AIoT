@@ -63,6 +63,7 @@ block main
                                     | #{item.status || "-"}
                             td=item.conveyor_name
                             td
-                                a.btn.btn--secondary(href=`/cameras/edit/${item.camera_id}`) Sửa
-                                form(method="POST" action=`/cameras/delete/${item.camera_id}` style="display:inline-block; margin-left: 8px;")
-                                    button.btn.btn--danger(type="submit" onClick="return confirm('Bạn có chắc muốn xóa camera này?');") Xóa
+                                .table-actions
+                                    a.btn.btn--secondary.btn--sm(href=`/cameras/edit/${item.camera_id}`) Sửa
+                                    form(method="POST" action=`/cameras/delete/${item.camera_id}`)
+                                        button.btn.btn--danger.btn--sm(type="submit" onClick="return confirm('Bạn có chắc muốn xóa camera này?');") Xóa

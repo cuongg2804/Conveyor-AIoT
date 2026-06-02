@@ -115,10 +115,33 @@ const getStatsRange = (
 // - co inspection_id
 // - co conveyor_id
 // - co du 3 frame, vi "frames.2" la frame thu 3 trong mang.
-const validInspectionFilter = {
-  inspection_id: { $exists: true, $ne: "" },
-  conveyor_id: { $exists: true, $ne: "" },
-  "frames.2": { $exists: true },
+const getValidInspectionFilter = (inspectionMode: string) => {
+  const normalizedMode =
+    String(inspectionMode || "PRODUCTION").toUpperCase() === "TEST"
+      ? "TEST"
+      : "PRODUCTION";
+
+  const baseFilter = {
+    inspection_id: { $exists: true, $ne: "" },
+    conveyor_id: { $exists: true, $ne: "" },
+    "frames.2": { $exists: true },
+  };
+
+  if (normalizedMode === "TEST") {
+    return {
+      ...baseFilter,
+      mode: "TEST",
+    };
+  }
+
+  return {
+    ...baseFilter,
+    $or: [
+      { mode: "PRODUCTION" },
+      { mode: { $exists: false } },
+      { mode: "" },
+    ],
+  };
 };
 
 // Tinh so luong OK/NG, ti le OK/NG va diem trung binh de hien thi o phan thong ke.
@@ -238,9 +261,14 @@ const drawKeyValue = (doc: any, label: string, value: any) => {
 const buildHistoryExportFilter = async (query: any) => {
   const clearFilter = query.clear === "1";
 
+  const selectedInspectionMode =
+  String(query.inspectionMode || "PRODUCTION").toUpperCase() === "TEST"
+    ? "TEST"
+    : "PRODUCTION";
+
   if (clearFilter) {
     return {
-      filter: { ...validInspectionFilter },
+      filter: { ...getValidInspectionFilter(selectedInspectionMode) },
       filterText: "Tất cả dữ liệu hợp lệ",
     };
   }
@@ -281,7 +309,7 @@ const buildHistoryExportFilter = async (query: any) => {
   const selectedDay = dayRange(selectedDateValue || todayInputValue());
 
   const filter: any = {
-    ...validInspectionFilter,
+    ...getValidInspectionFilter(selectedInspectionMode),
     timestamp: {
       $gte: selectedRange.start,
       $lte: selectedRange.end,
@@ -331,7 +359,7 @@ const buildHistoryExportFilter = async (query: any) => {
 
   return {
     filter,
-    filterText: `${modeText} | ${shiftText} | ${labelText} | ${conveyorText}`,
+    filterText: `${modeText} | ${shiftText} | ${labelText} | ${conveyorText} | ${modeText}`,
   };
 };
 
@@ -474,12 +502,17 @@ export const exportDetailPdf = async (req: Request, res: Response) => {
   try {
     const stt = Number(req.params.stt);
 
+    const selectedInspectionMode =
+      String(req.query.inspectionMode || "PRODUCTION").toUpperCase() === "TEST"
+        ? "TEST"
+        : "PRODUCTION";
+
     if (!Number.isFinite(stt)) {
       return res.status(400).send("Mã lượt kiểm tra không hợp lệ.");
     }
 
     const filter: any = {
-      ...validInspectionFilter,
+      ...getValidInspectionFilter(selectedInspectionMode),
       stt: stt,
     };
 
@@ -607,6 +640,11 @@ export const index = async (req: Request, res: Response) => {
   try {
     const clearFilter = req.query.clear === "1";
 
+    const selectedInspectionMode =
+      String(req.query.inspectionMode || "PRODUCTION").toUpperCase() === "TEST"
+        ? "TEST"
+        : "PRODUCTION";
+
     const selectedMode = ["day", "month", "year"].includes(String(req.query.mode))
       ? String(req.query.mode)
       : "day";
@@ -705,6 +743,7 @@ export const index = async (req: Request, res: Response) => {
           statsMonth: selectedMonthValue,
           statsYear: selectedYearValue,
           shift: "all",
+          inspectionMode: selectedInspectionMode,
         },
 
         shiftLinks: {
@@ -754,9 +793,7 @@ export const index = async (req: Request, res: Response) => {
     // Filter nay khong loc theo ca va khong loc OK/NG,
     // vi phan thong ke phia tren can tinh tong ca ngay.
     const wholeDayFilter: any = {
-      inspection_id: validInspectionFilter.inspection_id,
-      conveyor_id: validInspectionFilter.conveyor_id,
-      "frames.2": validInspectionFilter["frames.2"],
+      ...getValidInspectionFilter(selectedInspectionMode),
       timestamp: {
         $gte: selectedRange.start,
         $lte: selectedRange.end,
@@ -778,9 +815,7 @@ export const index = async (req: Request, res: Response) => {
     // 3. Tao filter cho bang danh sach ben duoi
     // Ban dau bang danh sach cung lay tat ca ket qua trong ngay.
     const listFilter: any = {
-      inspection_id: validInspectionFilter.inspection_id,
-      conveyor_id: validInspectionFilter.conveyor_id,
-      "frames.2": validInspectionFilter["frames.2"],
+      ...getValidInspectionFilter(selectedInspectionMode),
       timestamp: {
         $gte: selectedRange.start,
         $lte: selectedRange.end,
@@ -843,7 +878,7 @@ export const index = async (req: Request, res: Response) => {
     // 7. Tao du lieu phan trang va link chuyen ca
     // commonQuery giu lai ngay va label hien tai khi bam chuyen ca hoac chuyen trang.
     const totalPages = Math.max(Math.ceil(total / PAGE_SIZE), 1);
-    const commonQuery = { mode: selectedMode, statsDate: selectedDay.date, statsMonth: selectedMonthValue, statsYear: selectedYearValue, label: selectedLabel, conveyor_id: selectedConveyorId };
+    const commonQuery = { mode: selectedMode, statsDate: selectedDay.date, statsMonth: selectedMonthValue, statsYear: selectedYearValue, label: selectedLabel, conveyor_id: selectedConveyorId, inspectionMode: selectedInspectionMode };
     
     const inspectionList = await Promise.all(
       listItems.map((item: any) => previewItem(item))
@@ -868,6 +903,7 @@ export const index = async (req: Request, res: Response) => {
         statsMonth: selectedMonthValue,
         statsYear: selectedYearValue,
         shift: selectedMode === "day" ? selectedShift : "all",
+        inspectionMode: selectedInspectionMode,
       },
 
       // Link cho 3 tab: tat ca, ca sang, ca chieu.
@@ -910,8 +946,13 @@ export const detail = async (req: Request, res: Response) => {
     const stt = Number(req.params.stt);
     if (!Number.isFinite(stt)) return res.status(400).send("Ma luot kiem tra khong hop le.");
 
+    const selectedInspectionMode =
+      String(req.query.inspectionMode || "PRODUCTION").toUpperCase() === "TEST"
+        ? "TEST"
+        : "PRODUCTION";
+
     // Tim lan kiem tra theo stt va chi lay ban ghi hop le.
-    const filter: any = { ...validInspectionFilter, stt: stt };
+    const filter: any = { ...getValidInspectionFilter(selectedInspectionMode), stt: stt };
 
     // Neu URL co conveyor_id thi loc them de tranh trung stt giua cac bang tai.
     if (req.query.conveyor_id) {
@@ -937,7 +978,7 @@ export const detail = async (req: Request, res: Response) => {
             )
           : [],
       },
-      backUrl: "/history",
+      backUrl: `/history/inspectionMode=${selectedInspectionMode}`,
     });
   } catch (error) {
     console.error("History detail error:", error);

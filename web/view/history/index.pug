@@ -12,7 +12,16 @@ block main
     if error
       .alert.alert--error
         | #{error}
+    .history-shift-tabs
+      a.history-shift-tab(
+        class=filters.inspectionMode === "PRODUCTION" ? "active" : ""
+        href="/history?inspectionMode=PRODUCTION"
+      ) Vận hành chính thức
 
+      a.history-shift-tab(
+        class=filters.inspectionMode === "TEST" ? "active" : ""
+        href="/history?inspectionMode=TEST"
+      ) Kiểm thử model
     .card.history-filter-card
       .card__head
         h2.card__title Chọn ngày thống kê
@@ -21,7 +30,7 @@ block main
       form.history-filters.history-filters--daily(method="GET" action="/history")
         input(type="hidden" name="shift" value=filters.shift)
         .field
-          label.field__label(for="mode") Kiểu thống kê
+          label.field__label(for="mode") Thống kê
           select#mode.field__control(name="mode")
             option(value="day" selected=filters.mode === "day") Theo ngày
             option(value="month" selected=filters.mode === "month") Theo tháng
@@ -53,7 +62,12 @@ block main
             each conveyor in conveyors
               option(value=conveyor.conveyor_id selected=filters.conveyor_id === conveyor.conveyor_id)
                 | #{conveyor.name}
-
+        //.field
+          label.field__label(for="inspectionMode") Kiểu kiểm tra
+          select#inspectionMode.field__control(name="inspectionMode")
+            option(value="PRODUCTION" selected=filters.inspectionMode === "PRODUCTION") Vận hành chính thức
+            option(value="TEST" selected=filters.inspectionMode === "TEST") Kiểm thử model
+        
         .history-filters__actions
           button.btn.btn--primary(type="submit") Xem thống kê
           a.btn.btn--secondary(href="/history?clear=1") Xóa

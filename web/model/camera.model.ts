@@ -19,21 +19,10 @@ const cameraSchema = new mongoose.Schema(
       default: "",
       trim: true,
     },
-    // type: {
-    //   type: String,
-    //   enum: ["GIGE", "USB", "IP_CAMERA"],
-    //   default: "GIGE",
-    // },
     status: {
       type: String,
       enum: ["AVAILABLE", "IN_USE", "ERROR"],
       default: "AVAILABLE",
-    },
-    conveyor_id: {
-      type: String,
-      default: "",
-      trim: true,
-      uppercase: true,
     },
   },
   {

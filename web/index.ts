@@ -10,7 +10,6 @@ import * as database from "./config/database";
 import { connectMqtt, getClient } from "./config/mqtt";
 import { initMqttService } from "./service/mqtt.service";
 import User from "./model/user.model";
-import { restoreRunningTestTimers } from "./controller/test.controller";
 
 dotenv.config();
 
@@ -106,28 +105,24 @@ io.on("connection", async (socket) => {
     const existingSession = activeUserSockets.get(userId);
 
     if (existingSession) {
-      const existingSession = activeUserSockets.get(userId);
+      const existingSocket = io.sockets.sockets.get(existingSession.socket_id);
+      const existingSocketStillConnected = existingSocket?.connected === true;
+      const isSameTab = existingSession.tab_id === tabId;
 
-      if (existingSession) {
-        const existingSocket = io.sockets.sockets.get(existingSession.socket_id);
-        const existingSocketStillConnected = existingSocket?.connected === true;
-        const isSameTab = existingSession.tab_id === tabId;
+      if (existingSocketStillConnected && !isSameTab) {
+        socket.emit("session_rejected", {
+          message: "Tài khoản này đang được sử dụng trên một tab hoặc thiết bị khác.",
+        });
 
-        if (existingSocketStillConnected && !isSameTab) {
-          socket.emit("session_rejected", {
-            message: "Tài khoản này đang được sử dụng trên một tab hoặc thiết bị khác.",
-          });
-
-          socket.disconnect(true);
-          return;
-        }
-
-        if (existingSocket?.connected && isSameTab) {
-          existingSocket.disconnect(true);
-        }
-
-        activeUserSockets.delete(userId);
+        socket.disconnect(true);
+        return;
       }
+
+      if (existingSocketStillConnected && isSameTab) {
+        existingSocket.disconnect(true);
+      }
+
+      activeUserSockets.delete(userId);
     }
 
     if (offlineTimers.has(userId)) {
@@ -214,19 +209,22 @@ io.on("connection", async (socket) => {
 const startServer = async () => {
   try {
     await database.connect();
-    await restoreRunningTestTimers();
 
-    await User.updateMany(
-      { status: "ONLINE" },
-      {
-        $set: {
-          status: "OFFLINE",
-          token: "",
-        },
-      }
-    );
+    try {
+      await User.updateMany(
+        { status: "ONLINE" },
+        {
+          $set: {
+            status: "OFFLINE",
+            token: "",
+          },
+        }
+      );
 
-    console.log("Đã reset trạng thái ONLINE về OFFLINE khi khởi động server.");
+      console.log("Đã reset trạng thái ONLINE về OFFLINE khi khởi động server.");
+    } catch (error) {
+      console.error("Không thể reset trạng thái ONLINE khi khởi động:", error);
+    }
 
     const mqttClient = connectMqtt();
     initMqttService(mqttClient, io);

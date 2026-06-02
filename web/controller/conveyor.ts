@@ -13,8 +13,8 @@ const getCreateViewData = async (form: any = {}, error: string | null = null) =>
   const cameras = await Camera.find({ status: "AVAILABLE" }).lean();
 
   const usedOperatorIds = await Conveyor.find({
-    operator_id: { $ne: "" },
-  }).distinct("operator_id");
+    user_id: { $ne: "" },
+  }).distinct("user_id");
 
   const operators = await User.find(
     {
@@ -37,7 +37,7 @@ const getCreateViewData = async (form: any = {}, error: string | null = null) =>
       name: "",
       /*line_id: "",*/
       status: "ONLINE",
-      operator_id: "",
+      user_id: "",
       description: "",
       camera_id: "",
       camera_trigger_delay: 0,
@@ -74,7 +74,7 @@ export const index = async (req: Request, res: Response) => {
       .lean();
 
     const operatorIds = conveyors
-      .map((item: any) => item.operator_id)
+      .map((item: any) => item.user_id)
       .filter(Boolean);
 
     const users = await User.find(
@@ -94,8 +94,8 @@ export const index = async (req: Request, res: Response) => {
 
     const conveyorList = conveyors.map((item: any) => ({
       ...item,
-      operator_name: item.operator_id
-        ? userMap.get(item.operator_id) || "-"
+      operator_name: item.user_id
+        ? userMap.get(item.user_id) || "-"
         : "-",
     }));
 
@@ -128,7 +128,7 @@ export const createPost = async (req: Request, res: Response) => {
       name,
       /*line_id,*/
       status,
-      operator_id,
+      user_id,
       description,
 
       camera_id,
@@ -164,7 +164,7 @@ export const createPost = async (req: Request, res: Response) => {
       name: String(name).trim(),
       /*line_id: String(line_id).trim(),*/
       status: String(status || "ONLINE").toUpperCase(),
-      operator_id: String(operator_id || "").trim(),
+      user_id: String(user_id || "").trim(),
       description: String(description || "").trim(),
       is_active: true,
     });
@@ -184,9 +184,9 @@ export const createPost = async (req: Request, res: Response) => {
       user_id: res.locals.user?.user_id || "UNKNOW",
       action: "CREATE_NEW",
       changes: {
-        operator_id: {
+        user_id: {
           old: "",
-          new: String(operator_id || "").trim(),
+          new: String(user_id || "").trim(),
         }
       },
       message: String(description || "").trim() || "Phân công người vận hành băng tải"

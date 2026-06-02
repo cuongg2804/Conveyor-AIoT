@@ -12,18 +12,13 @@ const conveyor = new mongoose.Schema({
         required: true,
         trim: true
     },
-    /*line_id: {
-        type: String,
-        required: true,
-        trim: true
-    },*/
     status: {
         type: String,
         required: true,
         trim: true,
         enum: ["READY", "RUNNING", "STOP", "ERROR", "OFFLINE"]
     },
-    operator_id: {
+    user_id: {
       type: String,
       default: "",
       trim: true,
@@ -32,9 +27,6 @@ const conveyor = new mongoose.Schema({
       type: Boolean,
       default: true,
     },
-    description: {
-        type: String
-    }
 },
     {
         timestamps: {

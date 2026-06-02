@@ -1,19 +1,24 @@
 extend ../layout/default.pug
 
 block main
+  - const currentTab = selectedTab || "production"
+  - const currentMode = currentTab === "test" ? "TEST" : "PRODUCTION"
+  - const isRunning = String(conveyor.status || "").toUpperCase() === "RUNNING"
+  - const isTestModelLocked = currentTab === "test" && config.config_mode === "TEST" && config.model_id && isTestingModelLocked
+
   .page
     .dashboard__header
       .dashboard__heading
         h1.dashboard__title= title || "Cấu hình băng tải"
-        p.dashboard__subtitle Cập nhật thông tin băng tải và cấu hình vận hành
+        p.dashboard__subtitle Cấu hình thông số vận hành, camera và model AI cho băng tải.
 
       .dashboard-actions
-        a.btn.btn--secondary(href="/dashboard") Quay lại danh sách
+        a.btn.btn--secondary(href=dashboardUrl || "/dashboard") Quay lại danh sách
         if monitorUrl
-          a.btn.btn--primary(href=monitorUrl) Giám sát
-  if error
-  .alert.alert--error
-    | #{error}
+          a.btn.btn--primary(href=`${monitorUrl}?mode=${currentMode}`) Giám sát
+
+    if error
+      .alert.alert--error #{error}
 
     if updated
       .alert.alert--success Cập nhật cấu hình thành công.
@@ -24,39 +29,99 @@ block main
     if configSyncFailed
       .alert.alert--error Không thể đồng bộ cấu hình.
 
+    if approved
+      .alert.alert--success Model kiểm thử đã đạt và được chuyển sang model vận hành thật.
+
+    if rejected
+      .alert.alert--error Model kiểm thử đã được đánh dấu không đạt.
+
+    .history-shift-tabs
+      a.history-shift-tab(
+        class=currentTab === "production" ? "active" : ""
+        href=`/settings/${conveyor.conveyor_id}?tab=production`
+      ) Vận hành thật
+
+      a.history-shift-tab(
+        class=currentTab === "test" ? "active" : ""
+        href=`/settings/${conveyor.conveyor_id}?tab=test`
+      ) Kiểm thử model
+
     .card.settings-card
       form.settings-form(method="POST" action=formAction)
+        input(type="hidden" name="tab" value=currentTab)
+
         .settings-section
           .settings-section__head
-            h3.settings-section__title Thông tin băng tải
-            p.settings-section__desc Cập nhật tên, người vận hành, trạng thái và mô tả băng tải
+            h3.settings-section__title Băng tải
+            p.settings-section__desc Cấu hình thông tin băng tải, tốc độ, cổng Serial và cơ cấu gạt.
 
           .settings-section-grid.settings-section-grid--two
             .field
               label.field__label(for="name") Tên băng tải
-              input#name.field__control(type="text" name="name" value=conveyor.name required)
+              input#name.field__control(
+                type="text"
+                name="name"
+                value=conveyor.name
+                required
+              )
 
             if user && user.role === "ADMIN"
               .field
-                label.field__label(for="operator_id") Người vận hành
-                select#operator_id.field__control(name="operator_id")
-                  option(value="" selected=!conveyor.operator_id) -- Chưa phân công --
+                label.field__label(for="user_id") Người vận hành
+                select#user_id.field__control(name="user_id")
+                  option(value="" selected=!conveyor.user_id) -- Chưa phân công --
                   each operator in operators
-                    option(value=operator.user_id selected=conveyor.operator_id === operator.user_id)
+                    option(value=operator.user_id selected=conveyor.user_id === operator.user_id)
                       | #{operator.fullname || operator.username || operator.user_id}
+            else
+              input(type="hidden" name="user_id" value=conveyor.user_id || "")
+
+          .settings-section-grid.settings-section-grid--three
             .field
-                label.field__label(for="speed") Tốc độ băng tải PWM
-                input#speed.field__control(
-                  type="number"
-                  name="speed"
-                  min="0"
-                  max="255"
-                  step="1"
-                  value=config.speed || 150
-                  required
-                )
-          .settings-section-grid.settings-section-grid--hardware
-            
+              label.field__label(for="status") Trạng thái
+              input#status(for="status").field__control(
+                type="text"
+                name="status"
+                value=conveyor.status
+                disabled
+              )
+              
+              //select#status.field__control(name="status" disabled)
+                option(value="READY" selected=conveyor.status === "READY") READY
+                option(value="RUNNING" selected=conveyor.status === "RUNNING") RUNNING
+                option(value="STOP" selected=conveyor.status === "STOP") STOP
+                option(value="ERROR" selected=conveyor.status === "ERROR") ERROR
+                option(value="OFFLINE" selected=conveyor.status === "OFFLINE") OFFLINE
+
+            .field
+              label.field__label(for="speed") Tốc độ băng tải PWM
+              input#speed.field__control(
+                type="number"
+                name="speed"
+                min="0"
+                max="255"
+                step="1"
+                value=config.speed || 150
+                required
+              )
+
+            .field
+              label.field__label(for="serial_port") Cổng kết nối
+              select#serial_port.field__control(name="serial_port")
+                option(value=config.serial_port selected=config.serial_port)= config.serial_port || "-- Chưa chọn cổng --"
+
+          .settings-section-grid.settings-section-grid--three
+            .field
+              label.field__label(for="baud_rate") Tốc độ truyền Serial
+              input#baud_rate.field__control(
+                type="number"
+                name="baud_rate"
+                min="1200"
+                max="115200"
+                step="1"
+                value=config.baud_rate || 9600
+                required
+              )
 
             .field
               label.field__label(for="goc_home") Góc home servo
@@ -81,33 +146,17 @@ block main
                 value=config.goc_gat || 120
                 required
               )
-            .settings-section-grid.settings-section-grid--control
-              .field
-                label.field__label(for="serial_port") Cổng kết nối
-                select#serial_port.field__control(name="serial_port")
-                  option(value=config.serial_port selected=config.serial_port)= config.serial_port || "-- Chưa chọn cổng --"
 
-              .field
-                label.field__label(for="baud_rate") Tốc độ truyền serial
-                input#baud_rate.field__control(
-                  type="number"
-                  name="baud_rate"
-                  min="1200"
-                  max="115200"
-                  step="1"  
-                  value=config.baud_rate || 9600
-                  required
-                )
-            .field
-              label.field__label(for="description") Mô tả
-              textarea#description.field__control(name="description")= conveyor.description || ""
+          .field
+            label.field__label(for="description") Mô tả
+            textarea#description.field__control(name="description")= conveyor.description || ""
 
         .settings-section
           .settings-section__head
             h3.settings-section__title Camera
-            p.settings-section__desc Chọn camera và thiết lập độ trễ kích hoạt chụp ảnh
+            p.settings-section__desc Chọn nguồn camera và thiết lập độ trễ kích hoạt chụp ảnh.
 
-          .settings-section-grid
+          .settings-section-grid.settings-section-grid--two
             .field
               label.field__label(for="camera_id") Nguồn camera
               select#camera_id.field__control(name="camera_id")
@@ -117,26 +166,71 @@ block main
                     | #{camera.camera_name} - #{camera.camera_id}
 
             .field
-              label.field__label(for="camera_trigger_delay") Độ trễ kích hoạt
-              input#camera_trigger_delay.field__control(type="number" name="camera_trigger_delay" value=config.camera_trigger_delay || 0)
-
-        
-
-        
+              label.field__label(for="camera_trigger_delay") Độ trễ kích hoạt camera ms
+              input#camera_trigger_delay.field__control(
+                type="number"
+                name="camera_trigger_delay"
+                min="0"
+                max="10000"
+                step="1"
+                value=config.camera_trigger_delay || 0
+              )
 
         .settings-section
           .settings-section__head
-            h3.settings-section__title AI
-            p.settings-section__desc Thiết lập ngưỡng đánh giá phục vụ phân loại sản phẩm đạt/không đạt
+            h3.settings-section__title Model AI
+            if currentTab === "test"
+              p.settings-section__desc Chọn model ở trạng thái testing để kiểm thử. Khi đã chọn, model sẽ bị khóa cho đến khi phê duyệt Đạt hoặc Không đạt.
+            else
+              p.settings-section__desc Chọn model đã được phê duyệt active để vận hành thật.
 
-          .settings-section-column.settings-section-column--small
+          .settings-section-grid.settings-section-grid--two
+            .field
+              label.field__label(for="model_id") Model AI
+
+              if currentTab === "test" && isTestModelLocked
+                select#model_id.field__control(name="model_id" disabled)
+                  if selectedModel
+                    option(value=selectedModel.model_id selected)
+                      | #{selectedModel.model_name} - #{selectedModel.version} - #{selectedModel.product_code}
+                  else
+                    option(value="" selected) Model đang kiểm thử không còn tồn tại
+
+                input(type="hidden" name="model_id" value=String(config.model_id))
+
+                p.field__hint Model kiểm thử đang được khóa. Hãy phê duyệt Đạt hoặc Không đạt trước khi chọn model khác.
+
+              else
+                select#model_id.field__control(name="model_id" required)
+                  if currentTab === "test"
+                    option(value="") -- Chọn model chờ kiểm thử --
+                    each model in testingModels
+                      option(
+                        value=model.model_id
+                        selected=String(config.model_id || "") === String(model.model_id)
+                      ) #{model.model_name} - #{model.version} - #{model.product_code}
+                  else
+                    option(value="") -- Chọn model đã phê duyệt --
+                    each model in activeModels
+                      option(
+                        value=model.model_id
+                        selected=String(config.model_id || "") === String(model.model_id)
+                      ) #{model.model_name} - #{model.version} - #{model.product_code}
+
             .field
               label.field__label(for="ai_threshold") Ngưỡng đánh giá
-              input#ai_threshold.field__control(type="number" name="ai_threshold" step="0.000001" value=config.ai_threshold || 30.436506 required)
+              input#ai_threshold.field__control(
+                type="number"
+                name="ai_threshold"
+                step="0.000001"
+                value=config.ai_threshold || 30.436506
+                required
+              )
 
         .settings-actions
           button.btn.btn--primary(type="submit") Lưu cấu hình
-  
+
+
   script.
     window.CONVEYOR_ID = "#{conveyor.conveyor_id}";
 
@@ -155,20 +249,25 @@ block main
         serialSelect.appendChild(emptyOption);
 
         ports.forEach(function (port) {
-          const option = document.createElement("option");
-          option.value = port.device;
-          option.textContent = port.description
-            ? `${port.device} - ${port.description}`
-            : port.device;
+          const device = port.device || port.path || port.name || String(port);
 
-          if (currentSerialPort === port.device) {
+          const option = document.createElement("option");
+          option.value = device;
+          option.textContent = port.description
+            ? `${device} - ${port.description}`
+            : device;
+
+          if (currentSerialPort === device) {
             option.selected = true;
           }
 
           serialSelect.appendChild(option);
         });
 
-        if (currentSerialPort && !ports.some(function (p) { return p.device === currentSerialPort; })) {
+        if (currentSerialPort && !ports.some(function (p) {
+          const device = p.device || p.path || p.name || String(p);
+          return device === currentSerialPort;
+        })) {
           const currentOption = document.createElement("option");
           currentOption.value = currentSerialPort;
           currentOption.textContent = `${currentSerialPort} - Cổng đã lưu`;
@@ -179,9 +278,11 @@ block main
 
       const socket = window.appSocket;
 
-      socket.on("serial_ports", function (ports) {
-        renderPorts(Array.isArray(ports) ? ports : []);
-      });
+      if (socket) {
+        socket.on("serial_ports", function (ports) {
+          renderPorts(Array.isArray(ports) ? ports : []);
+        });
+      }
 
       fetch("/settings/serial-ports")
         .then(function (res) { return res.json(); })

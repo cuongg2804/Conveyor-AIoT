@@ -47,7 +47,14 @@ export const monitor = async (req: Request, res: Response) => {
     );
 
     const latestInspection: any = isRunning
-      ? await InspectionResult.findOne({ conveyor_id: conveyorCode })
+      ? await InspectionResult.findOne({
+          conveyor_id: conveyorCode,
+          $or: [
+            { mode: "PRODUCTION" },
+            { mode: { $exists: false } },
+            { mode: "" },
+          ],
+        })
           .select("-_id")
           .sort({ timestamp: -1 })
           .lean()
@@ -99,6 +106,12 @@ export const handleInspectionResultMessage = async (payload: any, io: Server) =>
       return;
     }
 
+    const rawMode = String(payload.mode || payload.run_mode || "PRODUCTION")
+      .trim()
+      .toUpperCase();
+
+    const mode = rawMode === "TEST" ? "TEST" : "PRODUCTION";
+
     const frames = Array.isArray(payload.frames)
       ? payload.frames.map(normalizeFrame)
       : [];
@@ -112,6 +125,7 @@ export const handleInspectionResultMessage = async (payload: any, io: Server) =>
       average_score: Number(payload.average_score || payload.avg_score || 0),
       threshold: Number(payload.threshold || 0),
       frames,
+      mode
     };
 
     await InspectionResult.updateOne(
@@ -127,8 +141,8 @@ export const handleInspectionResultMessage = async (payload: any, io: Server) =>
       frames: framesForView,
     });
 
-    console.log(`[MQTT] Saved inspection_result: ${inspectionId}`);
+    console.log(`[MQTT] Đã lưu kết quả kiểm tra: ${inspectionId}, mode=${mode}`);
   } catch (error) {
-    console.error("Handle inspection result error:", error);
+    console.error("Lỗi:", error);
   }
 };

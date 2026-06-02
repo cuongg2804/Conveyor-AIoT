@@ -146,13 +146,13 @@ export const createPost = async (req: Request, res: Response) => {
     }
 }
 export const edit = async (req: Request, res: Response) => {
-    const user = await User.findOne({user_id: req.params.user_id}, {password: 0, token: 0}).lean();
-    if(!user){
+    const userEdit = await User.findOne({user_id: req.params.user_id}, {password: 0, token: 0}).lean();
+    if(!userEdit){
         return res.status(404).send("Không tìm thấy người dùng.");
     }
     return res.render("users/edit", {
         title: "Cập nhật người dùng",
-        user,
+        userEdit,
         error: null
     })
 }
@@ -178,7 +178,7 @@ export const editPost = async (req: Request, res: Response) => {
             return res.render("users/edit", {
                 title: "Cập nhật người dùng",
                 error,
-                user: {
+                userEdit: {
                     ...currentUser,
                     username: normalizedUsername,
                     fullname: normalizedFullname,
