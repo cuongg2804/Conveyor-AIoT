@@ -7,7 +7,6 @@ block main
   - const shiftText = hour < 12 ? "Ca sáng" : "Ca chiều"
   - const labelClass = inspection.label === "OK" ? "ok" : inspection.label === "NG" ? "ng" : ""
   - const labelText = inspection.label === "OK" ? "Đạt" : inspection.label === "NG" ? "Không đạt" : "Chưa xác định"
-  - const scoreText = inspection.average_score !== undefined ? Number(inspection.average_score).toFixed(3) : "-"
   - const thresholdText = inspection.threshold !== undefined && inspection.threshold !== null ? Number(inspection.threshold).toFixed(6) : "-"
 
   .history-page.product-detail-page
@@ -49,9 +48,6 @@ block main
         .summary-row
           span.summary-label Kết quả
           span.summary-value #{inspection.label || "-"} - #{labelText}
-        .summary-row
-          span.summary-label Điểm trung bình
-          span.summary-value #{scoreText}
         .summary-row
           span.summary-label Ngưỡng đánh giá
           span.summary-value #{thresholdText}

@@ -12,6 +12,7 @@ import cameraRoute from "./camera.router";
 import modelRoute from "./model.router";
 import runtimeConfigRoute from "./runtimeConfig.router";
 import logRoute from "./log.router";
+import mediaRoute from "./media.router";
 import { requireAuth } from "../middleware/auth.middleware";
 
 const router = Router();
@@ -25,6 +26,7 @@ router.use("/conveyors", requireAuth, conveyorRoute);
 router.use("/cameras", requireAuth, cameraRoute);
 router.use("/models", modelRoute);
 router.use("/logs", requireAuth, logRoute);
+router.use("/media", requireAuth, mediaRoute);
 router.use("/api/runtime-config", runtimeConfigRoute);
 router.use("/login", loginRoute);
 router.use("/logout", logoutRoute);

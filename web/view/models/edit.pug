@@ -26,6 +26,9 @@ block main
             span Version
             strong= model.version
           .upload-result__row
+            span Format
+            strong= model.model_format || (model.object_key || "").split(".").pop()
+          .upload-result__row
             span Bucket
             strong= model.bucket
           .upload-result__row
@@ -64,6 +67,7 @@ block main
             select#status.field__control(name="status" required)
               option(value="testing" selected=model.status === "testing") testing
               option(value="active" selected=model.status === "active") active
+              option(value="inactive" selected=model.status === "inactive") inactive
               option(value="archived" selected=model.status === "archived") archived
               option(value="failed" selected=model.status === "failed") failed
 

@@ -7,6 +7,6 @@ export const connect = async () => {
     await mongoose.connect(uri);
     console.log("Kết nối thành công đến cơ sở dữ liệu");
   } catch (error) {
-    console.error("Kết nối thất bại đến cơ sở dữ liệu:", error);
+    console.error("Kết nối thất bại đến cơ sở dữ liệu: ", error);
   }
 };

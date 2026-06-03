@@ -1,9 +1,13 @@
-﻿const socket = io();
+const socket = io();
 
 const COMMAND_LABELS = {
   START_SYSTEM: "Khởi động hệ thống",
   STOP_SYSTEM: "Dừng hệ thống",
   GET_STATUS: "Kiểm tra trạng thái",
+  RESET_ARDUINO_CONFIG_DEFAULT: "Khoi phuc cau hinh Arduino",
+  LIGHT_CHECK: "Kiem tra anh sang",
+  GET_ARDUINO_CONFIG: "Doc cau hinh Arduino",
+  APPLY_ARDUINO_CONFIG: "Ap dung cau hinh Arduino",
 };
 
 const ACK_STATUS_LABELS = {
@@ -162,9 +166,9 @@ function renderInspectionResult(data) {
   if (resultConveyorCode && resultConveyorCode !== getCurrentConveyorCode()) return;
   if (!inspectionSessionActive) return;
 
-  setText("jobId", data.job_id ? `Lượt ${data.job_id}` : "-");
+  const displayId = data.stt || data.job_id;
+  setText("jobId", displayId ? `Lượt ${displayId}` : "-");
   updateResultBadge(data.label);
-  setText("averageScore", formatScore(data.average_score));
   setText("resultTimestamp", formatTimestamp(data.timestamp));
 
   const frames = Array.isArray(data.frames) ? data.frames : [];
@@ -181,13 +185,12 @@ function renderInspectionResult(data) {
   setText("framePreviewLabel", resultLabel(previewFrame.predicted_label));
   setText("framePreviewScore", formatScore(previewFrame.predicted_score));
   setImage("roiPreviewImage", previewFrame.roi_path);
-  setImage("overlayPreviewImage", previewFrame.overlay_path);
+  setImage("overlayPreviewImage", previewFrame.overlay_path || previewFrame.roi_path);
 }
 
 function clearInspectionResult() {
   setText("jobId", "-");
   updateResultBadge("-");
-  setText("averageScore", "-");
   setText("resultTimestamp", "-");
   setText("framePreviewLabel", "-");
   setText("framePreviewScore", "-");
