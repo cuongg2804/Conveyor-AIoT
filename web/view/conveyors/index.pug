@@ -69,7 +69,7 @@ block main
                                 else
                                     | #{item.status || "-"}
                             td
-                                a.btn.btn--secondary(href=`/conveyors/settings/${item.conveyor_id}`) Sửa
+                                a.btn.btn--secondary(href=`/settings/${item.conveyor_id}`) Sửa
                                 form(method="POST" action=`/conveyors/delete/${item.conveyor_id}` style="display:inline-block; margin-left: 8px;")
                                     button.btn.btn--danger(type="submit" onClick="return confirm('Bạn có chắc muốn xóa băng tải này?');") Xóa
 block scripts

@@ -28,6 +28,13 @@ const modelRegistrySchema = new mongoose.Schema(
       default: "minio",
     },
 
+    model_format: {
+      type: String,
+      enum: ["ckpt", "onnx"],
+      default: "ckpt",
+      index: true,
+    },
+
     bucket: {
       type: String,
       required: true,
@@ -90,7 +97,7 @@ const modelRegistrySchema = new mongoose.Schema(
 );
 
 modelRegistrySchema.index(
-  { product_code: 1, model_name: 1, version: 1 },
+  { product_code: 1, model_name: 1, version: 1, model_format: 1 },
   { unique: true }
 );
 

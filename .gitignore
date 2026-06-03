@@ -13,6 +13,15 @@ __pycache__/
 # Runtime output
 ai/logs/
 ai/storage/
+docker/data/
+rewrite/logs/
+rewrite/dataset_tim/
+rewrite/dataset_tim_debug/
+rewrite/ai_models/
+rewrite/models/
+rewrite/ai/models/
+*.onnx
+*.ckpt
 
 # Local editor and OS files
 .vscode/

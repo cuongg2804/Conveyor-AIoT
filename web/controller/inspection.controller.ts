@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { Server } from "socket.io";
 import InspectionResult from "../model/inspection-result.model";
 import Conveyor from "../model/conveyor.model";
+import { withPublicFrameImageUrls, withPublicInspectionImageUrls } from "../helper/image-url";
 
 const normalizeConveyorCode = (value: any) =>
   String(value || "").trim().toUpperCase();
@@ -55,10 +56,7 @@ export const monitor = async (req: Request, res: Response) => {
 
     const latestInspectionView =
       latestInspection && Array.isArray(latestInspection.frames)
-        ? {
-            ...latestInspection,
-            frames: latestInspection.frames,
-          }
+        ? withPublicInspectionImageUrls(latestInspection)
         : latestInspection;
 
     return res.render("dashboard/monitor", {
@@ -109,7 +107,7 @@ export const handleInspectionResultMessage = async (payload: any, io: Server) =>
       conveyor_id: conveyorId,
       timestamp: Number(payload.timestamp || Date.now() / 1000),
       label: String(payload.label || "UNKNOWN").toUpperCase(),
-      average_score: Number(payload.average_score || payload.avg_score || 0),
+      ng_count: Number(payload.ng_count || 0),
       threshold: Number(payload.threshold || 0),
       frames,
     };
@@ -120,7 +118,7 @@ export const handleInspectionResultMessage = async (payload: any, io: Server) =>
       { upsert: true }
     );
 
-    const framesForView = frames;
+    const framesForView = frames.map(withPublicFrameImageUrls);
 
     io.emit("inspection_result", {
       ...document,

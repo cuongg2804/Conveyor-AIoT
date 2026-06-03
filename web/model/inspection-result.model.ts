@@ -66,9 +66,9 @@ const inspectionResultSchema = new mongoose.Schema(
       enum: ["OK", "NG", "UNKNOWN"],
       required: true,
     },
-    average_score: {
+    ng_count: {
       type: Number,
-      required: true,
+      default: 0,
     },
     threshold: {
       type: Number,

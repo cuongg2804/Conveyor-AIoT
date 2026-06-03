@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import InspectionResult from "../model/inspection-result.model";
 import Conveyor from "../model/conveyor.model";
+import { withPublicFrameImageUrls, withPublicInspectionImageUrls } from "../helper/image-url";
 
 const PAGE_SIZE = 10;
 
@@ -117,13 +118,11 @@ const validInspectionFilter = {
   "frames.2": { $exists: true },
 };
 
-// Tinh so luong OK/NG, ti le OK/NG va diem trung binh de hien thi o phan thong ke.
+// Tinh so luong OK/NG va ti le OK/NG de hien thi o phan thong ke.
 const summarize = (items: any[]) => {
   const total = items.length;
   const ok = items.filter((item) => item.label === "OK").length;
   const ng = items.filter((item) => item.label === "NG").length;
-  const scores = items.map((item) => Number(item.average_score)).filter(Number.isFinite);
-  const avgScore = scores.length ? scores.reduce((sum, score) => sum + score, 0) / scores.length : null;
 
   return {
     total,
@@ -131,7 +130,6 @@ const summarize = (items: any[]) => {
     ng,
     okRate: total ? (ok / total) * 100 : 0,
     ngRate: total ? (ng / total) * 100 : 0,
-    avgScore,
   };
 };
 
@@ -151,7 +149,7 @@ const previewItem = async (item: any) => {
   return {
     ...item,
     display_id: item.stt || "-",
-    preview_frame: previewFrame
+    preview_frame: previewFrame ? withPublicFrameImageUrls(previewFrame) : null
   };
 };
 
@@ -481,10 +479,10 @@ export const detail = async (req: Request, res: Response) => {
     return res.render("history/detail", {
       title: `Chi tiet luot ${jobId}`,
       inspection: {
-        ...inspection,
+        ...withPublicInspectionImageUrls(inspection),
         display_id: inspection.stt || "-",
         frames: Array.isArray(inspection.frames)
-          ? inspection.frames.sort(
+          ? inspection.frames.map(withPublicFrameImageUrls).sort(
               (a: any, b: any) => Number(a.frame_index) - Number(b.frame_index)
             )
           : [],

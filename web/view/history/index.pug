@@ -84,10 +84,6 @@ block main
               .daily-stat-metric
                 span Tỷ lệ đạt
                 strong #{formatPercent(dailyStats.total.okRate)}
-              .daily-stat-metric
-                span Điểm TB
-                strong #{formatScore(dailyStats.total.avgScore)}
-
           .daily-stat-card
             .daily-stat-card__head
               span Ca sáng
@@ -103,10 +99,6 @@ block main
               .daily-stat-metric
                 span Tỷ lệ đạt
                 strong #{formatPercent(dailyStats.morning.okRate)}
-              .daily-stat-metric
-                span Điểm TB
-                strong #{formatScore(dailyStats.morning.avgScore)}
-
           .daily-stat-card
             .daily-stat-card__head
               span Ca chiều
@@ -122,9 +114,6 @@ block main
               .daily-stat-metric
                 span Tỷ lệ đạt
                 strong #{formatPercent(dailyStats.afternoon.okRate)}
-              .daily-stat-metric
-                span Điểm TB
-                strong #{formatScore(dailyStats.afternoon.avgScore)}
     if filters.mode === "day"
       .history-shift-tabs
         a.history-shift-tab(class=filters.shift === "all" ? "active" : "" href=shiftLinks.all) Tất cả
@@ -146,7 +135,6 @@ block main
                 th Ca
                 th Thời gian
                 th Kết quả
-                th Điểm trung bình
                 th Khung hình
                 th Điểm khung hình
                 th Thao tác
@@ -161,7 +149,6 @@ block main
                 - const labelClass = item.label === "OK" ? "ok" : item.label === "NG" ? "ng" : ""
                 - const displayId = item.display_id || item.stt || "-"
                 - const labelText = item.label === "OK" ? "Đạt" : item.label === "NG" ? "Không đạt" : "-"
-                - const score = item.average_score !== undefined ? Number(item.average_score).toFixed(3) : "-"
                 - const frameScore = preview.predicted_score !== undefined ? Number(preview.predicted_score).toFixed(3) : "-"
                 - const detailUrl = `/history/${item.stt}${item.conveyor_id ? `?conveyor_id=${encodeURIComponent(item.conveyor_id)}` : ""}`
 
@@ -187,8 +174,6 @@ block main
 
                   td
                     span.history-label-badge(class=labelClass) #{labelText}
-
-                  td #{score}
 
                   td #{preview.frame_index || "-"}
 

@@ -1,0 +1,72 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: conveyor-mongo
+    restart: unless-stopped
+    ports:
+      - "27018:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGO_DATABASE}
+    volumes:
+      - ./data/mongo:/data/db
+
+  minio:
+    image: minio/minio:latest
+    container_name: conveyor-minio
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    command: server /data --console-address ":9001"
+    volumes:
+      - ./data/minio:/data
+
+  mqtt:
+    image: eclipse-mosquitto:2
+    container_name: conveyor-mqtt
+    restart: unless-stopped
+    ports:
+      - "${MQTT_PORT}:1883"
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - ./data/mosquitto/data:/mosquitto/data
+      - ./data/mosquitto/log:/mosquitto/log
+
+  backend:
+    build:
+      context: ../web
+      dockerfile: Dockerfile
+    container_name: conveyor-backend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+
+      MONGO_URI: mongodb://${MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD}@mongo:27017/${MONGO_DATABASE}?authSource=admin
+
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: 9000
+      MINIO_USE_SSL: "false"
+      MINIO_PUBLIC_BASE_URL: http://localhost:9000
+      MINIO_ACCESS_KEY: admin
+      MINIO_SECRET_KEY: admin123456
+      MINIO_MODEL_BUCKET: ai-models
+      MINIO_IMAGE_BUCKET: inspection-images
+
+      MQTT_HOST: mqtt
+      MQTT_BROKER: mqtt
+      MQTT_PORT: 1883
+
+      MODEL_UPLOAD_MAX_MB: 1024
+      SESSION_SECRET: conveyor_aiot_local_secret
+      JWT_SECRET: conveyor_aiot_jwt_secret
+    depends_on:
+      - mongo
+      - minio
+      - mqtt
