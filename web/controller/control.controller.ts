@@ -3,6 +3,7 @@ import Conveyor from "../model/conveyor.model";
 import ConveyorConfig from "../model/conveyorConfigSchema.model";
 import ModelRegistry from "../model/modelRegister.model";
 import { publishControlCommand } from "../service/mqtt.service";
+import { canAccessConveyor } from "../helper/conveyorAccess.helper";
 
 const allowedCommands = [
   "START_SYSTEM",
@@ -58,6 +59,22 @@ export const sendCommand = async (req: Request, res: Response) => {
     }
 
     const currentStatus = String(conveyor.status || "").toUpperCase();
+
+    const currentUser = res.locals.user;
+    const allow = await canAccessConveyor(currentUser, conveyorCode);
+    if (!allow) {
+      return res.status(403).json({
+        message: "Bạn không có quyền truy cập băng tải này.",
+      });
+    }
+    if (
+      command === "RELOAD_CONFIG" && ["STARTING", "RUNNING", "STOPPING"].includes(currentStatus)
+    ) {
+      return res.status(400).json({
+        message:
+          "Không thể áp dụng cấu hình khi băng tải đang vận hành. Vui lòng dừng hệ thống trước.",
+      });
+    }
 
     if (
       command === "START_SYSTEM" &&

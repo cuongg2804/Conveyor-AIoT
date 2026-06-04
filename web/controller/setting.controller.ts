@@ -7,6 +7,12 @@ import Config_log from "../model/config_logs.model";
 import { publishControlCommand } from "../service/mqtt.service";
 import mongoose from "mongoose";
 import ModelRegistry from "../model/modelRegister.model";
+import {
+  canAccessConveyor,
+  canConfigureByStatus,
+  CONFIG_LOCKED_STATUSES,
+} from "../helper/conveyorAccess.helper";
+
 type ConveyorView = {
   conveyor_id: string;
   name: string;
@@ -60,6 +66,23 @@ export const settings = async (req: Request, res: Response) => {
     if (!conveyor || !config) {
       return res.status(404).send("Không tìm thấy băng tải hoặc cấu hình.");
     }
+
+    const currentUser = res.locals.user;
+
+    const allowed = await canAccessConveyor(currentUser, conveyorId);
+
+    if (!allowed) {
+      return res.status(403).send("Bạn không được phân công vận hành băng tải này.");
+    }
+
+    const isConfigLocked = !canConfigureByStatus(conveyor.status);
+
+    const error =
+      req.query.error === "config_locked"
+        ? "Không thể lưu cấu hình khi băng tải đang vận hành. Vui lòng dừng hệ thống trước."
+        : req.query.error === "access_denied"
+        ? "Bạn không có quyền truy cập băng tải này."
+        : null;
 
     const cameras = await Camera.find({
       $or: [
@@ -118,6 +141,9 @@ export const settings = async (req: Request, res: Response) => {
       selectedConfigMode,
       selectedModel,
       isTestingModelLocked,
+      isConfigLocked,
+      configLockMessage: isConfigLocked ? "Không thể cấu hình băng tải khi đang vận hành." : null,
+      error,
 
       updated: req.query.updated === "1",
       configSynced: req.query.synced === "1",
@@ -158,12 +184,27 @@ export const updateSettings = async (req: Request, res: Response) => {
     const getConveyorId = (req: Request) =>
     normalizeCode(req.params.conveyor_id || req.params.conveyorCode);
     const conveyorId = getConveyorId(req);
-    const conveyor = await Conveyor.findOne({ conveyor_id: conveyorId }).lean<ConveyorView | null>();
+    const conveyor : any = await Conveyor.findOne({ conveyor_id: conveyorId }).lean();
+
+    const currentUser = res.locals.user;
+
+    const allowed = await canAccessConveyor(currentUser, conveyorId);
+
+    if (!allowed) {
+      return res.status(403).send("Bạn không có quyền cấu hình băng tải này.");
+    }
+
+    
 
     const selectedTab =
       String(req.query.tab || req.body.tab || "production").toLowerCase() === "test"
         ? "test"
         : "production";
+    if (!canConfigureByStatus(conveyor.status)) {
+      return res.redirect(
+        `/settings/${conveyorId}?tab=${selectedTab}&error=config_locked`
+      );
+    }
 
     const selectedModelId = String(req.body.model_id || "").trim();
 
@@ -319,7 +360,7 @@ export const updateSettings = async (req: Request, res: Response) => {
       {
         $set: {
           name: String(name || "").trim(),
-          status: normalizeCode(status || "ONLINE"),
+          //status: normalizeCode(status || "ONLINE"),
           user_id: String(user_id || "").trim(),
           description: String(description || "").trim(),
         },

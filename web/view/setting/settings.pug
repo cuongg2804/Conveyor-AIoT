@@ -12,6 +12,7 @@ block main
         h1.dashboard__title= title || "Cấu hình băng tải"
         p.dashboard__subtitle Cấu hình thông số vận hành, camera và model AI cho băng tải.
 
+
       .dashboard-actions
         a.btn.btn--secondary(href=dashboardUrl || "/dashboard") Quay lại danh sách
         if monitorUrl
@@ -34,6 +35,9 @@ block main
 
     if rejected
       .alert.alert--error Model kiểm thử đã được đánh dấu không đạt.
+    
+    if isConfigLocked
+      .alert.alert--error #{configLockMessage}
 
     .history-shift-tabs
       a.history-shift-tab(
@@ -48,187 +52,187 @@ block main
 
     .card.settings-card
       form.settings-form(method="POST" action=formAction)
-        input(type="hidden" name="tab" value=currentTab)
+        fieldset(disabled=isConfigLocked)
+          input(type="hidden" name="tab" value=currentTab)
 
-        .settings-section
-          .settings-section__head
-            h3.settings-section__title Băng tải
-            p.settings-section__desc Cấu hình thông tin băng tải, tốc độ, cổng Serial và cơ cấu gạt.
+          .settings-section
+            .settings-section__head
+              h3.settings-section__title Băng tải
+              p.settings-section__desc Cấu hình thông tin băng tải, tốc độ, cổng Serial và cơ cấu gạt.
 
-          .settings-section-grid.settings-section-grid--two
-            .field
-              label.field__label(for="name") Tên băng tải
-              input#name.field__control(
-                type="text"
-                name="name"
-                value=conveyor.name
-                required
-              )
-
-            if user && user.role === "ADMIN"
+            .settings-section-grid.settings-section-grid--two
               .field
-                label.field__label(for="user_id") Người vận hành
-                select#user_id.field__control(name="user_id")
-                  option(value="" selected=!conveyor.user_id) -- Chưa phân công --
-                  each operator in operators
-                    option(value=operator.user_id selected=conveyor.user_id === operator.user_id)
-                      | #{operator.fullname || operator.username || operator.user_id}
-            else
-              input(type="hidden" name="user_id" value=conveyor.user_id || "")
+                label.field__label(for="name") Tên băng tải
+                input#name.field__control(
+                  type="text"
+                  name="name"
+                  value=conveyor.name
+                  required
+                )
 
-          .settings-section-grid.settings-section-grid--three
-            .field
-              label.field__label(for="status") Trạng thái
-              input#status(for="status").field__control(
-                type="text"
-                name="status"
-                value=conveyor.status
-                disabled
-              )
-              
-              //select#status.field__control(name="status" disabled)
-                option(value="READY" selected=conveyor.status === "READY") READY
-                option(value="RUNNING" selected=conveyor.status === "RUNNING") RUNNING
-                option(value="STOP" selected=conveyor.status === "STOP") STOP
-                option(value="ERROR" selected=conveyor.status === "ERROR") ERROR
-                option(value="OFFLINE" selected=conveyor.status === "OFFLINE") OFFLINE
-
-            .field
-              label.field__label(for="speed") Tốc độ băng tải PWM
-              input#speed.field__control(
-                type="number"
-                name="speed"
-                min="0"
-                max="255"
-                step="1"
-                value=config.speed || 150
-                required
-              )
-
-            .field
-              label.field__label(for="serial_port") Cổng kết nối
-              select#serial_port.field__control(name="serial_port")
-                option(value=config.serial_port selected=config.serial_port)= config.serial_port || "-- Chưa chọn cổng --"
-
-          .settings-section-grid.settings-section-grid--three
-            .field
-              label.field__label(for="baud_rate") Tốc độ truyền Serial
-              input#baud_rate.field__control(
-                type="number"
-                name="baud_rate"
-                min="1200"
-                max="115200"
-                step="1"
-                value=config.baud_rate || 9600
-                required
-              )
-
-            .field
-              label.field__label(for="goc_home") Góc home servo
-              input#goc_home.field__control(
-                type="number"
-                name="goc_home"
-                min="0"
-                max="180"
-                step="1"
-                value=config.goc_home || 0
-                required
-              )
-
-            .field
-              label.field__label(for="goc_gat") Góc gạt servo
-              input#goc_gat.field__control(
-                type="number"
-                name="goc_gat"
-                min="0"
-                max="180"
-                step="1"
-                value=config.goc_gat || 120
-                required
-              )
-
-          .field
-            label.field__label(for="description") Mô tả
-            textarea#description.field__control(name="description")= conveyor.description || ""
-
-        .settings-section
-          .settings-section__head
-            h3.settings-section__title Camera
-            p.settings-section__desc Chọn nguồn camera và thiết lập độ trễ kích hoạt chụp ảnh.
-
-          .settings-section-grid.settings-section-grid--two
-            .field
-              label.field__label(for="camera_id") Nguồn camera
-              select#camera_id.field__control(name="camera_id")
-                option(value="" selected=!config.camera_id) -- Chưa chọn camera --
-                each camera in cameras
-                  option(value=camera.camera_id selected=config.camera_id === camera.camera_id)
-                    | #{camera.camera_name} - #{camera.camera_id}
-
-            .field
-              label.field__label(for="camera_trigger_delay") Độ trễ kích hoạt camera ms
-              input#camera_trigger_delay.field__control(
-                type="number"
-                name="camera_trigger_delay"
-                min="0"
-                max="10000"
-                step="1"
-                value=config.camera_trigger_delay || 0
-              )
-
-        .settings-section
-          .settings-section__head
-            h3.settings-section__title Model AI
-            if currentTab === "test"
-              p.settings-section__desc Chọn model ở trạng thái testing để kiểm thử. Khi đã chọn, model sẽ bị khóa cho đến khi phê duyệt Đạt hoặc Không đạt.
-            else
-              p.settings-section__desc Chọn model đã được phê duyệt active để vận hành thật.
-
-          .settings-section-grid.settings-section-grid--two
-            .field
-              label.field__label(for="model_id") Model AI
-
-              if currentTab === "test" && isTestModelLocked
-                select#model_id.field__control(name="model_id" disabled)
-                  if selectedModel
-                    option(value=selectedModel.model_id selected)
-                      | #{selectedModel.model_name} - #{selectedModel.version} - #{selectedModel.product_code}
-                  else
-                    option(value="" selected) Model đang kiểm thử không còn tồn tại
-
-                input(type="hidden" name="model_id" value=String(config.model_id))
-
-                p.field__hint Model kiểm thử đang được khóa. Hãy phê duyệt Đạt hoặc Không đạt trước khi chọn model khác.
-
+              if user && user.role === "ADMIN"
+                .field
+                  label.field__label(for="user_id") Người vận hành
+                  select#user_id.field__control(name="user_id")
+                    option(value="" selected=!conveyor.user_id) -- Chưa phân công --
+                    each operator in operators
+                      option(value=operator.user_id selected=conveyor.user_id === operator.user_id)
+                        | #{operator.fullname || operator.username || operator.user_id}
               else
-                select#model_id.field__control(name="model_id" required)
-                  if currentTab === "test"
-                    option(value="") -- Chọn model chờ kiểm thử --
-                    each model in testingModels
-                      option(
-                        value=model.model_id
-                        selected=String(config.model_id || "") === String(model.model_id)
-                      ) #{model.model_name} - #{model.version} - #{model.product_code}
-                  else
-                    option(value="") -- Chọn model đã phê duyệt --
-                    each model in activeModels
-                      option(
-                        value=model.model_id
-                        selected=String(config.model_id || "") === String(model.model_id)
-                      ) #{model.model_name} - #{model.version} - #{model.product_code}
+                input(type="hidden" name="user_id" value=conveyor.user_id || "")
+
+            .settings-section-grid.settings-section-grid--three
+              .field
+                label.field__label(for="status") Trạng thái
+                input#status(for="status").field__control(
+                  type="text"
+                  name="status"
+                  value=conveyor.status
+                  disabled
+                )
+                
+                //select#status.field__control(name="status" disabled)
+                  option(value="READY" selected=conveyor.status === "READY") READY
+                  option(value="RUNNING" selected=conveyor.status === "RUNNING") RUNNING
+                  option(value="STOP" selected=conveyor.status === "STOP") STOP
+                  option(value="ERROR" selected=conveyor.status === "ERROR") ERROR
+                  option(value="OFFLINE" selected=conveyor.status === "OFFLINE") OFFLINE
+
+              .field
+                label.field__label(for="speed") Tốc độ băng tải PWM
+                input#speed.field__control(
+                  type="number"
+                  name="speed"
+                  min="0"
+                  max="255"
+                  step="1"
+                  value=config.speed || 150
+                  required
+                )
+
+              .field
+                label.field__label(for="serial_port") Cổng kết nối
+                select#serial_port.field__control(name="serial_port")
+                  option(value=config.serial_port selected=config.serial_port)= config.serial_port || "-- Chưa chọn cổng --"
+
+            .settings-section-grid.settings-section-grid--three
+              .field
+                label.field__label(for="baud_rate") Tốc độ truyền Serial
+                input#baud_rate.field__control(
+                  type="number"
+                  name="baud_rate"
+                  min="1200"
+                  max="115200"
+                  step="1"
+                  value=config.baud_rate || 9600
+                  required
+                )
+
+              .field
+                label.field__label(for="goc_home") Góc home servo
+                input#goc_home.field__control(
+                  type="number"
+                  name="goc_home"
+                  min="0"
+                  max="180"
+                  step="1"
+                  value=config.goc_home || 0
+                  required
+                )
+
+              .field
+                label.field__label(for="goc_gat") Góc gạt servo
+                input#goc_gat.field__control(
+                  type="number"
+                  name="goc_gat"
+                  min="0"
+                  max="180"
+                  step="1"
+                  value=config.goc_gat || 120
+                  required
+                )
 
             .field
-              label.field__label(for="ai_threshold") Ngưỡng đánh giá
-              input#ai_threshold.field__control(
-                type="number"
-                name="ai_threshold"
-                step="0.000001"
-                value=config.ai_threshold || 30.436506
-                required
-              )
+              label.field__label(for="description") Mô tả
+              textarea#description.field__control(name="description")= conveyor.description || ""
 
+          .settings-section
+            .settings-section__head
+              h3.settings-section__title Camera
+              p.settings-section__desc Chọn nguồn camera và thiết lập độ trễ kích hoạt chụp ảnh.
+
+            .settings-section-grid.settings-section-grid--two
+              .field
+                label.field__label(for="camera_id") Nguồn camera
+                select#camera_id.field__control(name="camera_id")
+                  option(value="" selected=!config.camera_id) -- Chưa chọn camera --
+                  each camera in cameras
+                    option(value=camera.camera_id selected=config.camera_id === camera.camera_id)
+                      | #{camera.camera_name} - #{camera.camera_id}
+
+              .field
+                label.field__label(for="camera_trigger_delay") Độ trễ kích hoạt camera ms
+                input#camera_trigger_delay.field__control(
+                  type="number"
+                  name="camera_trigger_delay"
+                  min="0"
+                  max="10000"
+                  step="1"
+                  value=config.camera_trigger_delay || 0
+                )
+
+          .settings-section
+            .settings-section__head
+              h3.settings-section__title Model AI
+              if currentTab === "test"
+                p.settings-section__desc Chọn model ở trạng thái testing để kiểm thử. Khi đã chọn, model sẽ bị khóa cho đến khi phê duyệt Đạt hoặc Không đạt.
+              else
+                p.settings-section__desc Chọn model đã được phê duyệt active để vận hành thật.
+
+            .settings-section-grid.settings-section-grid--two
+              .field
+                label.field__label(for="model_id") Model AI
+
+                if currentTab === "test" && isTestModelLocked
+                  select#model_id.field__control(name="model_id" disabled)
+                    if selectedModel
+                      option(value=selectedModel.model_id selected)
+                        | #{selectedModel.model_name} - #{selectedModel.version} - #{selectedModel.product_code}
+                    else
+                      option(value="" selected) Model đang kiểm thử không còn tồn tại
+
+                  input(type="hidden" name="model_id" value=String(config.model_id))
+
+                  p.field__hint Model kiểm thử đang được khóa. Hãy phê duyệt Đạt hoặc Không đạt trước khi chọn model khác.
+
+                else
+                  select#model_id.field__control(name="model_id" required)
+                    if currentTab === "test"
+                      option(value="") -- Chọn model chờ kiểm thử --
+                      each model in testingModels
+                        option(
+                          value=model.model_id
+                          selected=String(config.model_id || "") === String(model.model_id)
+                        ) #{model.model_name} - #{model.version} - #{model.product_code}
+                    else
+                      option(value="") -- Chọn model đã phê duyệt --
+                      each model in activeModels
+                        option(
+                          value=model.model_id
+                          selected=String(config.model_id || "") === String(model.model_id)
+                        ) #{model.model_name} - #{model.version} - #{model.product_code}
+
+              .field
+                label.field__label(for="ai_threshold") Ngưỡng đánh giá
+                input#ai_threshold.field__control(
+                  type="number"
+                  name="ai_threshold"
+                  step="0.000001"
+                  value=config.ai_threshold || 30.436506
+                  required
+                )
         .settings-actions
-          button.btn.btn--primary(type="submit") Lưu cấu hình
+            button.btn.btn--primary(type="submit") Lưu cấu hình
 
 
   script.

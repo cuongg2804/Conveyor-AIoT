@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { Server } from "socket.io";
 import InspectionResult from "../model/inspection-result.model";
 import Conveyor from "../model/conveyor.model";
+import { canAccessConveyor } from "../helper/conveyorAccess.helper";
 
 const normalizeConveyorCode = (value: any) =>
   String(value || "").trim().toUpperCase();
@@ -32,6 +33,12 @@ export const monitor = async (req: Request, res: Response) => {
 
     if (!conveyorCode) {
       return res.status(400).send("Thiếu mã băng tải.");
+    }
+
+    const currentUser = res.locals.user
+    const allow = await canAccessConveyor(currentUser, conveyorCode);
+    if(!allow) {
+      return res.status(403).send("Bạn không có quyền truy cập băng tải này.");
     }
 
     const conveyor = await Conveyor.findOne({ conveyor_id: conveyorCode })

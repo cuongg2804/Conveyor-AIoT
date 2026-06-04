@@ -17,6 +17,11 @@ export const index = async (req: Request, res: Response) => {
       camera_id: { $in: configs.map((c: any) => c.camera_id).filter(Boolean) },
     }).lean();
 
+    const currentUser = res.locals.user;
+    const isAdmin = String(currentUser.role || "").toUpperCase() === "ADMIN"
+    const conveyorQuery = isAdmin ? {is_active : true} : {is_active: true, user_id: currentUser.user_id}
+    //const conveyors = await Conveyor.find(conveyorQuery).lean();
+
     const configMap = new Map(configs.map((c: any) => [c.conveyor_id, c]));
     const cameraMap = new Map(cameras.map((c: any) => [c.camera_id, c]));
 

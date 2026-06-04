@@ -20,3 +20,8 @@ ai/storage/
 *.swp
 Thumbs.db
 .DS_Store
+
+backup-aiot/
+backup-aiot.rar
+*.bson
+*.metadata.json

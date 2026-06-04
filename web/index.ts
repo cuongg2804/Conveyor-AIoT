@@ -10,6 +10,8 @@ import * as database from "./config/database";
 import { connectMqtt, getClient } from "./config/mqtt";
 import { initMqttService } from "./service/mqtt.service";
 import User from "./model/user.model";
+import Conveyor from "./model/conveyor.model";
+import { publishControlCommand } from "./service/mqtt.service";
 
 dotenv.config();
 
@@ -22,6 +24,7 @@ const io = new Server(server, {
     credentials: true,
   },
 });
+
 
 app.set("view engine", "pug");
 app.set("views", path.join(__dirname, "view"));
@@ -62,7 +65,56 @@ type ActiveUserSession = {
 };
 
 const activeUserSockets = new Map<string, ActiveUserSession>();
-const offlineTimers = new Map<string, NodeJS.Timeout>();
+
+const operatorDisconnectTimers = new Map<string, NodeJS.Timeout>();
+const tokenExpireTimers = new Map<string, NodeJS.Timeout>();
+
+const autoStoppedConveyors = new Set<string>();
+
+const AUTO_STOP_DELAY_MS = 30_000;
+const TOKEN_EXPIRE_DELAY_MS = 60_000;
+
+const RUNNING_STATUSES = ["STARTING", "RUNNING", "STOPPING"];
+
+type MonitorViewer = {
+  socket_id: string;
+  user_id: string;
+  role: string;
+};
+
+const conveyorMonitorViewers = new Map<string, Map<string, MonitorViewer>>();
+
+const normalizeCode = (value: any) =>
+  String(value || "").trim().toUpperCase();
+
+const isAdminUser = (user: any) =>
+  String(user?.role || "").toUpperCase() === "ADMIN";
+
+const removeSocketFromMonitorViewers = (socketId: string) => {
+  for (const [conveyorId, viewers] of conveyorMonitorViewers.entries()) {
+    viewers.delete(socketId);
+
+    if (viewers.size === 0) {
+      conveyorMonitorViewers.delete(conveyorId);
+    }
+  }
+};
+
+const hasActiveMonitorViewer = (conveyorId: string) => {
+  const viewers = conveyorMonitorViewers.get(conveyorId);
+
+  if (!viewers || viewers.size === 0) return false;
+
+  for (const viewer of viewers.values()) {
+    const viewerSocket = io.sockets.sockets.get(viewer.socket_id);
+
+    if (viewerSocket?.connected === true) {
+      return true;
+    }
+  }
+
+  return false;
+};
 
 io.on("connection", async (socket) => {
   try {
@@ -125,18 +177,67 @@ io.on("connection", async (socket) => {
       activeUserSockets.delete(userId);
     }
 
-    if (offlineTimers.has(userId)) {
-      clearTimeout(offlineTimers.get(userId));
-      offlineTimers.delete(userId);
+    const tokenTimer = tokenExpireTimers.get(userId);
+
+    if (tokenTimer) {
+      clearTimeout(tokenTimer);
+      tokenExpireTimers.delete(userId);
+
+      console.log("[SESSION] User đã kết nối lại:", {
+        userId,
+      });
     }
 
     socket.data.user_id = userId;
     socket.data.tab_id = tabId;
+    socket.data.user = user;
+
+    if (isAdminUser(user)) {
+      socket.join("admins");
+    }
 
     activeUserSockets.set(userId, {
       socket_id: socket.id,
       tab_id: tabId,
     });
+
+    const assignedConveyors = await Conveyor.find({
+      user_id: userId,
+      is_active: true,
+    }).lean<any[]>();
+
+    for (const conveyor of assignedConveyors) {
+      const conveyorId = normalizeCode(conveyor.conveyor_id);
+      const conveyorName = conveyor.name || conveyorId;
+
+      const autoStopTimer = operatorDisconnectTimers.get(conveyorId);
+      const wasAutoStopped = autoStoppedConveyors.has(conveyorId);
+
+      if (autoStopTimer) {
+        clearTimeout(autoStopTimer);
+        operatorDisconnectTimers.delete(conveyorId);
+      }
+
+      if (wasAutoStopped) {
+        io.to("admins").emit("user_reconnected", {
+          user_id: userId,
+          user_name: user.fullname || user.username || userId,
+          conveyor_id: conveyorId,
+          conveyor_name: conveyorName,
+          auto_stopped: true,
+          message: `User ${user.fullname || user.username || userId} đã kết nối lại.`,
+        });
+      } else if (autoStopTimer) {
+        io.to("admins").emit("user_reconnected", {
+          user_id: userId,
+          user_name: user.fullname || user.username || userId,
+          conveyor_id: conveyorId,
+          conveyor_name: conveyorName,
+          auto_stopped: false,
+          message: `User ${user.fullname || user.username || userId} đã kết nối lại. Đã hủy tự động dừng băng tải ${conveyorName}.`,
+        });
+      }
+    }
 
     await User.updateOne(
       { user_id: userId },
@@ -158,30 +259,189 @@ io.on("connection", async (socket) => {
       status: "ONLINE",
     });
 
-    socket.on("disconnect", () => {
-      const disconnectedUserId = socket.data.user_id;
+    socket.on("join_monitor", async (payload) => {
+    try {
+      const conveyorId = normalizeCode(payload?.conveyor_id);
 
-      if (!disconnectedUserId) return;
+      if (!conveyorId) return;
 
-      const currentSession = activeUserSockets.get(disconnectedUserId);
+      const currentUser = socket.data.user;
 
-      if (!currentSession || currentSession.socket_id !== socket.id) {
+      const conveyor = await Conveyor.findOne({
+        conveyor_id: conveyorId,
+        is_active: true,
+      }).lean<any>();
+
+      if (!conveyor) return;
+
+      const allowed =
+        isAdminUser(currentUser) ||
+        String(conveyor.operator_id || "") === String(currentUser.user_id || "");
+
+      if (!allowed) {
+        socket.emit("monitor_access_denied", {
+          conveyor_id: conveyorId,
+          message: "Bạn không có quyền giám sát băng tải này.",
+        });
         return;
       }
 
-      activeUserSockets.delete(disconnectedUserId);
+      let viewers = conveyorMonitorViewers.get(conveyorId);
 
-      const timer = setTimeout(async () => {
-        try {
-          const stillActiveSession = activeUserSockets.get(disconnectedUserId);
+      if (!viewers) {
+        viewers = new Map<string, MonitorViewer>();
+        conveyorMonitorViewers.set(conveyorId, viewers);
+      }
 
-          if (!stillActiveSession) {
+      viewers.set(socket.id, {
+        socket_id: socket.id,
+        user_id: currentUser.user_id,
+        role: currentUser.role,
+      });
+
+      console.log("[MONITOR] viewer joined:", {
+        conveyorId,
+        userId: currentUser.user_id,
+        role: currentUser.role,
+      });
+    } catch (error) {
+      console.error("[MONITOR] join_monitor error:", error);
+    }
+  });
+
+    socket.on("disconnect", async () => {
+    const disconnectedUserId = socket.data.user_id;
+    const disconnectedUser = socket.data.user;
+
+    if (!disconnectedUserId) return;
+
+    const currentSession = activeUserSockets.get(disconnectedUserId);
+
+    if (!currentSession || currentSession.socket_id !== socket.id) {
+      removeSocketFromMonitorViewers(socket.id);
+      return;
+    }
+
+    activeUserSockets.delete(disconnectedUserId);
+    removeSocketFromMonitorViewers(socket.id);
+
+    try {
+      const runningConveyors = await Conveyor.find({
+        operator_id: disconnectedUserId,
+        status: { $in: RUNNING_STATUSES },
+        is_active: true,
+      }).lean<any[]>();
+
+      for (const conveyor of runningConveyors) {
+        const conveyorId = normalizeCode(conveyor.conveyor_id);
+        const conveyorName = conveyor.name || conveyorId;
+        const userName =
+          disconnectedUser.fullname ||
+          disconnectedUser.username ||
+          disconnectedUserId;
+
+        io.to("admins").emit("user_disconnected", {
+          user_id: disconnectedUserId,
+          user_name: userName,
+          conveyor_id: conveyorId,
+          conveyor_name: conveyorName,
+          countdown_seconds: 30,
+          message: `User ${userName} bị mất kết nối trong khi đang vận hành băng tải ${conveyorName}.`,
+        });
+
+        if (!operatorDisconnectTimers.has(conveyorId)) {
+          const autoStopTimer = setTimeout(async () => {
+            try {
+              const latestConveyor = await Conveyor.findOne({
+                conveyor_id: conveyorId,
+              }).lean<any>();
+
+              if (!latestConveyor) {
+                operatorDisconnectTimers.delete(conveyorId);
+                return;
+              }
+
+              const latestStatus = String(latestConveyor.status || "").toUpperCase();
+
+              if (!RUNNING_STATUSES.includes(latestStatus)) {
+                operatorDisconnectTimers.delete(conveyorId);
+                return;
+              }
+
+              const operatorReconnected = activeUserSockets.has(disconnectedUserId);
+              const hasViewer = hasActiveMonitorViewer(conveyorId);
+
+              if (operatorReconnected || hasViewer) {
+                operatorDisconnectTimers.delete(conveyorId);
+
+                io.to("admins").emit("auto_stop_cancelled", {
+                  user_id: disconnectedUserId,
+                  user_name: userName,
+                  conveyor_id: conveyorId,
+                  conveyor_name: conveyorName,
+                  message: `Đã hủy tự động dừng băng tải ${conveyorName} vì người vận hành đã kết nối lại hoặc admin đang giám sát.`,
+                });
+
+                return;
+              }
+
+              publishControlCommand("STOP_SYSTEM", {
+                conveyor_id: conveyorId,
+                source: "WEB_AUTO_STOP",
+                reason: "NO_OPERATOR_OR_VIEWER_AFTER_30S",
+              });
+
+              autoStoppedConveyors.add(conveyorId);
+
+              await Conveyor.updateOne(
+                { conveyor_id: conveyorId },
+                {
+                  $set: {
+                    status: "STOPPING",
+                  },
+                }
+              );
+
+              io.to("admins").emit("auto_stop_triggered", {
+                user_id: disconnectedUserId,
+                user_name: userName,
+                conveyor_id: conveyorId,
+                conveyor_name: conveyorName,
+                message: `Không có người vận hành hoặc người giám sát sau 30 giây. Hệ thống đã tự động gửi lệnh dừng băng tải ${conveyorName}.`,
+              });
+
+              io.emit("conveyor_status_changed", {
+                conveyor_id: conveyorId,
+                status: "STOPPING",
+              });
+
+              operatorDisconnectTimers.delete(conveyorId);
+            } catch (error) {
+              console.error("[AUTO_STOP] Timer error:", error);
+              operatorDisconnectTimers.delete(conveyorId);
+            }
+          }, AUTO_STOP_DELAY_MS);
+
+          operatorDisconnectTimers.set(conveyorId, autoStopTimer);
+        }
+      }
+
+      if (!tokenExpireTimers.has(disconnectedUserId)) {
+        const tokenTimer = setTimeout(async () => {
+          try {
+            const userReconnected = activeUserSockets.has(disconnectedUserId);
+
+            if (userReconnected) {
+              tokenExpireTimers.delete(disconnectedUserId);
+              return;
+            }
+
             await User.updateOne(
               { user_id: disconnectedUserId },
               {
                 $set: {
-                  status: "OFFLINE",
                   token: "",
+                  status: "OFFLINE",
                 },
               }
             );
@@ -190,16 +450,28 @@ io.on("connection", async (socket) => {
               user_id: disconnectedUserId,
               status: "OFFLINE",
             });
-          }
-        } catch (error) {
-          console.log("Lỗi cập nhật OFFLINE khi socket disconnect:", error);
-        } finally {
-          offlineTimers.delete(disconnectedUserId);
-        }
-      }, 5000);
 
-      offlineTimers.set(disconnectedUserId, timer);
-    });
+            io.to("admins").emit("operator_session_expired", {
+              user_id: disconnectedUserId,
+              user_name:
+                disconnectedUser.fullname ||
+                disconnectedUser.username ||
+                disconnectedUserId,
+              message: `User ${disconnectedUser.fullname || disconnectedUser.username || disconnectedUserId} đã mất kết nối quá 60 giây. Phiên đăng nhập đã bị vô hiệu hóa.`,
+            });
+          } catch (error) {
+            console.error("[SESSION] Token expiration error:", error);
+          } finally {
+            tokenExpireTimers.delete(disconnectedUserId);
+          }
+        }, TOKEN_EXPIRE_DELAY_MS);
+
+        tokenExpireTimers.set(disconnectedUserId, tokenTimer);
+      }
+    } catch (error) {
+      console.error("[DISCONNECT] handling error:", error);
+    }
+  });
   } catch (error) {
     console.log("Socket auth error:", error);
     socket.disconnect(true);

@@ -3,6 +3,7 @@ import minioClient, { MINIO_BUCKET } from "../config/minio";
 import ModelRegistry from "../model/modelRegister.model";
 
 export type ModelRegistryInput = {
+  model_id?: string;
   model_name: string;
   version: string;
   product_code: string;
@@ -15,6 +16,7 @@ export type ModelRegistryInput = {
 };
 
 export type StoredModel = ModelRegistryInput & {
+  model_id: string;
   bucket: string;
   object_key: string;
   storage_type: "minio";
@@ -66,6 +68,19 @@ const optionalNumber = (value: any) => {
 };
 
 const allowedStatuses = ["testing", "active", "inactive", "archived", "failed"];
+const normalizeModelIdPart = (value: any) =>
+  String(value || "")
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+const generateModelId = (input: Pick<ModelRegistryInput, "product_code" | "version">) => {
+  const productCode = normalizeModelIdPart(input.product_code);
+  const version = normalizeModelIdPart(input.version);
+
+  return `MODEL_${productCode}_${version}_${Date.now().toString(36).toUpperCase()}`;
+};
 
 export const listModels = async () => {
   return ModelRegistry.find({}).sort({ created_at: -1 }).lean();
@@ -193,10 +208,11 @@ export const uploadModelFile = async (
       "X-Amz-Meta-Original-Name": originalName,
     }
   );
-
+  const modelId = registryInput.model_id || generateModelId(registryInput);
   try {
     const registry = await ModelRegistry.create({
       ...registryInput,
+      model_id: modelId,
       status: "testing",
       storage_type: "minio",
       bucket: MINIO_BUCKET,
@@ -205,6 +221,7 @@ export const uploadModelFile = async (
 
     return {
       ...registryInput,
+      model_id: modelId,
       status: "testing",
       storage_type: "minio",
       bucket: MINIO_BUCKET,

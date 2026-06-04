@@ -41,6 +41,9 @@ block main
               span Bucket
               strong= uploadedModel.bucket
             .upload-result__row
+              span Model ID
+              strong= uploadedModel.model_id
+            .upload-result__row
               span Registry ID
               strong= uploadedModel.registry_id
             .upload-result__row
@@ -76,6 +79,7 @@ block main
           table.table
             thead
               tr
+                th Model ID
                 th Product
                 th Model
                 th Version
@@ -86,6 +90,7 @@ block main
             tbody
               each item in models
                 tr
+                  td= item.model_id
                   td= item.product_code
                   td= item.model_name
                   td= item.version

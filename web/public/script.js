@@ -13,16 +13,62 @@ const getOrCreateTabId = () => {
 
   return tabId;
 };
+const createPageInstanceId = () => { 
+  return (
+    "PAGE_" +
+    Date.now().toString(36) +
+    "_" +
+    Math.random().toString(36).slice(2, 10)
+  );
+};
 
 window.__TAB_ID__ = getOrCreateTabId();
+window.__PAGE_INSTANCE_ID__ = createPageInstanceId(); 
 
 window.appSocket =
   window.appSocket ||
   io({
     auth: {
       tab_id: window.__TAB_ID__,
+      page_instance_id: window.__PAGE_INSTANCE_ID__, 
+      pathname: window.location.pathname,
     },
   });
+
+document.addEventListener("click", function (event) { 
+  const link = event.target.closest("a[href]");
+
+  if (!link) return;
+
+  const url = new URL(link.href, window.location.origin);
+
+  if (url.origin !== window.location.origin) return;
+
+  sessionStorage.setItem("last_internal_navigation_at", String(Date.now()));
+});
+
+const lastInternalNavigationAt = Number(
+  sessionStorage.getItem("last_internal_navigation_at") || 0
+);
+
+const isInternalNavigation =
+  lastInternalNavigationAt > 0 &&
+  Date.now() - lastInternalNavigationAt < 5000;
+
+window.appSocket =
+  window.appSocket ||
+  io({
+    auth: {
+      tab_id: window.__TAB_ID__,
+      page_instance_id: window.__PAGE_INSTANCE_ID__,
+      pathname: window.location.pathname,
+      internal_navigation: isInternalNavigation,
+    },
+  });
+
+socket.on("connect", function () {
+  sessionStorage.removeItem("last_internal_navigation_at");
+});
 
 var socket = window.appSocket;
 
@@ -515,4 +561,27 @@ socket.on("session_rejected", (payload) => {
   alert(payload.message || "Phiên đăng nhập không hợp lệ.");
   window.location.href = "/login";
 });
+if (hasMonitorContext() && socket) {
+  socket.emit("join_monitor", {
+    conveyor_id: getCurrentConveyorCode(),
+  });
+}
+socket.on("user_disconnected", function (payload) {
+  showToast(payload.message, "error");
+});
 
+socket.on("user_reconnected", function (payload) {
+  showToast(payload.message, payload.auto_stopped ? "info" : "success");
+});
+
+socket.on("user_session_expired", function (payload) {
+  showToast(payload.message, "error");
+});
+
+socket.on("auto_stop_cancelled", function (payload) {
+  showToast(payload.message, "success");
+});
+
+socket.on("auto_stop_triggered", function (payload) {
+  showToast(payload.message, "error");
+});
