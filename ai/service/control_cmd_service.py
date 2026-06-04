@@ -114,7 +114,7 @@ class ControlCommandService:
             else:
                 ack = self.error_ack(command_id, command, f"Unsupported command: {command}")
 
-            
+
 
             self.publish_ack(ack)
 

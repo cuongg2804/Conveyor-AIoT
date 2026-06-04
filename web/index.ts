@@ -9,6 +9,7 @@ import router from "./router/index.router";
 import * as database from "./config/database";
 import { connectMqtt, getClient } from "./config/mqtt";
 import { initMqttService } from "./service/mqtt.service";
+<<<<<<< HEAD
 import User from "./model/user.model";
 import Conveyor from "./model/conveyor.model";
 import { publishControlCommand } from "./service/mqtt.service";
@@ -17,6 +18,20 @@ dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
+=======
+import { Server } from "socket.io";
+import http from "http";
+import path from "path";
+import fs from "fs";
+import cookieParser from "cookie-parser";
+
+dotenv.config({ path: path.resolve(__dirname, "../.env"), override: true });
+dotenv.config({ override: false });
+
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
+>>>>>>> origin/main
 
 const io = new Server(server, {
   cors: {
@@ -25,7 +40,10 @@ const io = new Server(server, {
   },
 });
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main
 app.set("view engine", "pug");
 app.set("views", path.join(__dirname, "view"));
 
@@ -38,7 +56,17 @@ const resolveStoragePath = () => {
     return path.resolve(process.env.STORAGE_PATH);
   }
 
+<<<<<<< HEAD
   return path.join(__dirname, "storage");
+=======
+  const candidates = [
+    path.resolve(process.cwd(), "../app/storage"),
+    path.resolve(__dirname, "../app/storage"),
+    path.resolve(__dirname, "../../app/storage"),
+  ];
+
+  return candidates.find((candidate) => fs.existsSync(candidate)) || candidates[0];
+>>>>>>> origin/main
 };
 
 const storagePath = resolveStoragePath();

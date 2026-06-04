@@ -15,7 +15,7 @@ class ArduinoComm:
 
     # Hàm scan cổng COM
     def scan_ports():
-        ports = list_ports.comports() # kiem tra xem latop dang co COM nao khong? 
+        ports = list_ports.comports() # kiem tra xem latop dang co COM nao khong?
         # Neu co thi tra ve 1 list. Trong co moi port = 1 object -> chuyen sang Broker
         return [
             {

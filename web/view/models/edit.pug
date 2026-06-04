@@ -26,6 +26,9 @@ block main
             span Version
             strong= model.version
           .upload-result__row
+            span Format
+            strong= model.model_format || (model.object_key || "").split(".").pop()
+          .upload-result__row
             span Bucket
             strong= model.bucket
           .upload-result__row

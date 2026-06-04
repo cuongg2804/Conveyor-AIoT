@@ -13,6 +13,15 @@ __pycache__/
 # Runtime output
 ai/logs/
 ai/storage/
+docker/data/
+rewrite/logs/
+rewrite/dataset_tim/
+rewrite/dataset_tim_debug/
+rewrite/ai_models/
+rewrite/models/
+rewrite/ai/models/
+*.onnx
+*.ckpt
 
 # Local editor and OS files
 .vscode/
@@ -20,7 +29,21 @@ ai/storage/
 *.swp
 Thumbs.db
 .DS_Store
+<<<<<<< HEAD
 
+backup-aiot/
+backup-aiot.rar
+*.bson
+*.metadata.json
+=======
+*.zip
+graph.py
+web/yarn-dev.log
+web/yarn-dev.err.log
+>>>>>>> origin/main
+
+ai/runtime/
+rewrite/
 backup-aiot/
 backup-aiot.rar
 *.bson

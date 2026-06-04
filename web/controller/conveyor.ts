@@ -99,7 +99,7 @@ export const index = async (req: Request, res: Response) => {
         : "-",
     }));
 
-    
+
 
     return res.render("conveyors/index", {
       title: "Quản lý băng tải",
@@ -157,7 +157,7 @@ export const createPost = async (req: Request, res: Response) => {
       );
     }
 
-    
+
 
     await Conveyor.create({
       conveyor_id,
@@ -213,7 +213,7 @@ export const createPost = async (req: Request, res: Response) => {
     return res.render(
       "conveyors/create",
       await getCreateViewData(req.body, "Không thể tạo băng tải.")
-    );  
+    );
   }
 };
 

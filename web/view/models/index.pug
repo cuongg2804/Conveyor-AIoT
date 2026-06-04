@@ -4,19 +4,28 @@ block main
   .page
     .dashboard__header
       .dashboard__heading
+<<<<<<< HEAD
         h1.dashboard__title Quản lý model AI
         p.dashboard__subtitle Upload file checkpoint .ckpt lên MinIO để lưu trữ model
+=======
+        h1.dashboard__title Quan ly model AI
+        p.dashboard__subtitle Upload file model .ckpt hoac .onnx len MinIO de luu tru model
+>>>>>>> origin/main
 
     .model-upload-layout
       .card
         .card__head
           h2.card__title Upload model package
+<<<<<<< HEAD
           p.card__desc Chọn checkpoint .ckpt và model_info.json xuất từ Kaggle.
+=======
+          p.card__desc Chon model .ckpt/.onnx va model_info.json.
+>>>>>>> origin/main
 
         form.model-upload-form(method="POST" action="/models/upload" enctype="multipart/form-data")
           .field
-            label.field__label(for="model") File checkpoint
-            input#model.field__control(type="file" name="model" accept=".ckpt" required)
+            label.field__label(for="model") File model
+            input#model.field__control(type="file" name="model" accept=".ckpt,.onnx" required)
 
           .field
             label.field__label(for="metadata") File metadata
@@ -53,6 +62,9 @@ block main
               span Model
               strong #{uploadedModel.product_code} / #{uploadedModel.model_name} / #{uploadedModel.version}
             .upload-result__row
+              span Format
+              strong= uploadedModel.model_format
+            .upload-result__row
               span Threshold
               strong= uploadedModel.threshold
             .upload-result__row
@@ -83,6 +95,7 @@ block main
                 th Product
                 th Model
                 th Version
+                th Format
                 th Threshold
                 th Trạng thái
                 th Object key
@@ -94,6 +107,7 @@ block main
                   td= item.product_code
                   td= item.model_name
                   td= item.version
+                  td= item.model_format || (item.object_key || "").split(".").pop()
                   td= item.threshold
                   td= item.status
                   td

@@ -7,6 +7,7 @@ export type ModelRegistryInput = {
   model_name: string;
   version: string;
   product_code: string;
+  model_format?: "ckpt" | "onnx";
   threshold: number;
   accuracy?: number | null;
   precision?: number | null;
@@ -20,6 +21,7 @@ export type StoredModel = ModelRegistryInput & {
   bucket: string;
   object_key: string;
   storage_type: "minio";
+  model_format: "ckpt" | "onnx";
   originalName: string;
   size: number;
   contentType: string;
@@ -35,6 +37,8 @@ export type ModelRegistryUpdate = {
   f1_score?: number | null;
   status: "testing" | "active" | "inactive" | "archived" | "failed";
 };
+
+const allowedModelExtensions = [".ckpt", ".onnx"];
 
 const safeFileName = (fileName: string) =>
   path.basename(fileName).replace(/[^a-zA-Z0-9._-]/g, "_");
@@ -139,15 +143,19 @@ export const deleteModelRegistry = async (id: string) => {
   return model;
 };
 
-export const validateCheckpointFile = (file: Express.Multer.File) => {
+export const validateModelFile = (file: Express.Multer.File) => {
   const originalName = safeFileName(file.originalname);
   const extension = path.extname(originalName).toLowerCase();
 
-  if (extension !== ".ckpt") {
-    throw new Error("Checkpoint file phai co dinh dang .ckpt.");
+  if (!allowedModelExtensions.includes(extension)) {
+    throw new Error("Model file phai co dinh dang .ckpt hoac .onnx.");
   }
 
-  return originalName;
+  return {
+    originalName,
+    extension,
+    modelFormat: extension.slice(1) as "ckpt" | "onnx",
+  };
 };
 
 export const parseModelInfo = (file: Express.Multer.File): ModelRegistryInput => {
@@ -172,6 +180,12 @@ export const parseModelInfo = (file: Express.Multer.File): ModelRegistryInput =>
     model_name: requiredString(metadata.model_name, "model_name"),
     version: requiredString(metadata.version, "version"),
     product_code: requiredString(metadata.product_code, "product_code").toUpperCase(),
+    model_format:
+      metadata.model_format === "onnx" || metadata.format === "onnx"
+        ? "onnx"
+        : metadata.model_format === "ckpt" || metadata.format === "ckpt"
+          ? "ckpt"
+          : undefined,
     threshold,
     accuracy: optionalNumber(metadata.accuracy),
     precision: optionalNumber(metadata.precision),
@@ -185,11 +199,16 @@ export const uploadModelFile = async (
   file: Express.Multer.File,
   registryInput: ModelRegistryInput
 ): Promise<StoredModel> => {
-  const originalName = validateCheckpointFile(file);
+  const modelFile = validateModelFile(file);
+  const modelFormat = registryInput.model_format || modelFile.modelFormat;
 
   await ensureBucket();
 
-  const modelFileName = `${slugFileName(registryInput.model_name)}.ckpt`;
+  if (registryInput.model_format && registryInput.model_format !== modelFile.modelFormat) {
+    throw new Error("model_format trong metadata khong khop voi duoi file model.");
+  }
+
+  const modelFileName = `${slugFileName(registryInput.model_name)}.${modelFormat}`;
   const objectKey = [
     "models",
     registryInput.product_code,
@@ -205,14 +224,19 @@ export const uploadModelFile = async (
     file.size,
     {
       "Content-Type": contentType,
-      "X-Amz-Meta-Original-Name": originalName,
+      "X-Amz-Meta-Original-Name": modelFile.originalName,
+      "X-Amz-Meta-Model-Format": modelFormat,
     }
   );
   const modelId = registryInput.model_id || generateModelId(registryInput);
   try {
     const registry = await ModelRegistry.create({
       ...registryInput,
+<<<<<<< HEAD
       model_id: modelId,
+=======
+      model_format: modelFormat,
+>>>>>>> origin/main
       status: "testing",
       storage_type: "minio",
       bucket: MINIO_BUCKET,
@@ -221,12 +245,16 @@ export const uploadModelFile = async (
 
     return {
       ...registryInput,
+<<<<<<< HEAD
       model_id: modelId,
+=======
+      model_format: modelFormat,
+>>>>>>> origin/main
       status: "testing",
       storage_type: "minio",
       bucket: MINIO_BUCKET,
       object_key: objectKey,
-      originalName,
+      originalName: modelFile.originalName,
       size: file.size,
       contentType,
       registry_id: String(registry._id),

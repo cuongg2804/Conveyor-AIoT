@@ -76,6 +76,10 @@ const COMMAND_LABELS = {
   START_SYSTEM: "Khởi động hệ thống",
   STOP_SYSTEM: "Dừng hệ thống",
   GET_STATUS: "Kiểm tra trạng thái",
+  RESET_ARDUINO_CONFIG_DEFAULT: "Khoi phuc cau hinh Arduino",
+  LIGHT_CHECK: "Kiem tra anh sang",
+  GET_ARDUINO_CONFIG: "Doc cau hinh Arduino",
+  APPLY_ARDUINO_CONFIG: "Ap dung cau hinh Arduino",
 };
 
 const ACK_STATUS_LABELS = {
@@ -95,6 +99,7 @@ const ackStatusLabel = (status) => ACK_STATUS_LABELS[status] || "Đang cập nh�
 const resultLabel = (label) => RESULT_LABELS[String(label || "").toUpperCase()] || "-";
 let inspectionSessionActive = ["STARTING", "RUNNING"].includes(String(window.__CONVEYOR_STATUS__ || "").toUpperCase());
 
+<<<<<<< HEAD
 const serial = document.getElementById("serial_port")
 if(serial && typeof socket !=="undefined"){
   fetch(`/control/${window.CONVEYOR_ID}/command`, {
@@ -131,6 +136,8 @@ if(serial && typeof socket !=="undefined"){
     })
   })
 }
+=======
+>>>>>>> origin/main
 const userMessage = (message, fallback = "Có lỗi xảy ra") => {
   const raw = String(message || "").trim();
   if (!raw) return fallback;
@@ -270,6 +277,7 @@ function renderInspectionResult(data) {
   if (resultConveyorCode && resultConveyorCode !== getCurrentConveyorCode()) return;
   if (!inspectionSessionActive) return;
 
+<<<<<<< HEAD
   const currentMode = String(window.__RUNTIME_MODE__ || "PRODUCTION").toUpperCase();
   const resultMode = String(data.mode || "PRODUCTION").toUpperCase();
 
@@ -283,8 +291,11 @@ function renderInspectionResult(data) {
   }
 
   setText("stt", data.job_id ? `Lượt ${data.job_id}` : "-");
+=======
+  const displayId = data.stt || data.job_id;
+  setText("jobId", displayId ? `Lượt ${displayId}` : "-");
+>>>>>>> origin/main
   updateResultBadge(data.label);
-  setText("averageScore", formatScore(data.average_score));
   setText("resultTimestamp", formatTimestamp(data.timestamp));
 
   const frames = Array.isArray(data.frames) ? data.frames : [];
@@ -301,13 +312,12 @@ function renderInspectionResult(data) {
   setText("framePreviewLabel", resultLabel(previewFrame.predicted_label));
   setText("framePreviewScore", formatScore(previewFrame.predicted_score));
   setImage("roiPreviewImage", previewFrame.roi_path);
-  setImage("overlayPreviewImage", previewFrame.overlay_path);
+  setImage("overlayPreviewImage", previewFrame.overlay_path || previewFrame.roi_path);
 }
 
 function clearInspectionResult() {
   setText("stt", "-");
   updateResultBadge("-");
-  setText("averageScore", "-");
   setText("resultTimestamp", "-");
   setText("framePreviewLabel", "-");
   setText("framePreviewScore", "-");
@@ -317,12 +327,12 @@ function clearInspectionResult() {
 
 const pendingControlCommands = new Map();
 async function sendControlCommand(command, payload = {}) {
-  if (pendingControlCommands.get(command)) {
-    showToast("Lệnh đang được xử lý, vui lòng chờ phản hồi từ AI", "info");
-    return;
-  }
+  // if (pendingControlCommands.get(command)) {
+  //   showToast("Lệnh đang được xử lý, vui lòng chờ phản hồi từ AI", "info");
+  //   return;
+  // }
 
-  pendingControlCommands.set(command, true);
+  // pendingControlCommands.set(command, true);
 
   try {
     const conveyorCode = getCurrentConveyorCode();
@@ -554,6 +564,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (document.querySelector("[data-conveyor-code]")) {
     setTimeout(() => sendControlCommand("GET_STATUS"), 600);
   }
+<<<<<<< HEAD
 
   
 });
@@ -584,4 +595,6 @@ socket.on("auto_stop_cancelled", function (payload) {
 
 socket.on("auto_stop_triggered", function (payload) {
   showToast(payload.message, "error");
+=======
+>>>>>>> origin/main
 });

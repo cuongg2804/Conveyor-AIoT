@@ -1,7 +1,7 @@
 import os
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-CKPT_PATH = os.path.join(BASE_DIR, "models", "model (12).ckpt")
+CKPT_PATH = os.path.join(BASE_DIR, "models", "model (9).ckpt")
 CAMERA_USER_SET = os.getenv("CAMERA_USER_SET", "UserSet1")
 MULTI_FRAME_COUNT = int(os.getenv("MULTI_FRAME_COUNT", "3"))
 INSPECTION_DUPLICATE_WINDOW_SEC = float(os.getenv("INSPECTION_DUPLICATE_WINDOW_SEC", "5.0"))

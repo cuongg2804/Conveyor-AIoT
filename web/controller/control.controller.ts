@@ -21,24 +21,75 @@ const normalizeRuntimeMode = (value: any) =>
     ? "TEST"
     : "PRODUCTION";
 
+<<<<<<< HEAD
+=======
+const allowedCommands = [
+  "START_SYSTEM",
+  "STOP_SYSTEM",
+  "GET_STATUS",
+  "RELOAD_CONFIG",
+  "GET_SERIAL_PORT",
+  "GET_SERIAL_PORTS",
+  "GET_ARDUINO_CONFIG",
+  "LIGHT_CHECK",
+  "RESET_ARDUINO_CONFIG_DEFAULT",
+  "APPLY_ARDUINO_CONFIG",
+];
+
+const arduinoCommands = [
+  "GET_ARDUINO_CONFIG",
+  "LIGHT_CHECK",
+  "RESET_ARDUINO_CONFIG_DEFAULT",
+  "APPLY_ARDUINO_CONFIG",
+];
+
+const normalizeConveyorCode = (value: any) => String(value || "").trim().toUpperCase();
+
+const publicErrorMessage = (error: any) => {
+  const raw = String(error?.message || error || "").toLowerCase();
+  if (
+    raw.includes("mongodb.net") ||
+    raw.includes("topologydescription") ||
+    raw.includes("serverselection") ||
+    raw.includes("replicasetnoprimary") ||
+    raw.includes("networktimeout") ||
+    raw.includes("timed out") ||
+    raw.includes("sockettimeoutms") ||
+    raw.includes("connecttimeoutms")
+  ) {
+    return "Khong ket noi duoc MongoDB Atlas. Kiem tra mang, DNS/VPN hoac IP whitelist roi thu lai.";
+  }
+  return "Khong gui duoc yeu cau toi he thong kiem tra.";
+};
+
+>>>>>>> origin/main
 export const sendCommand = async (req: Request, res: Response) => {
   try {
     const { command, payload } = req.body || {};
 
     if (!command) {
+<<<<<<< HEAD
       return res.status(400).json({
         message: "Vui lòng chọn thao tác điều khiển.",
       });
+=======
+      return res.status(400).json({ message: "Vui long chon thao tac dieu khien." });
+>>>>>>> origin/main
     }
 
     if (!allowedCommands.includes(command)) {
       return res.status(400).json({
+<<<<<<< HEAD
         message: "Thao tác điều khiển không hợp lệ.",
+=======
+        message: "Thao tac dieu khien khong hop le.",
+>>>>>>> origin/main
         allowedCommands,
       });
     }
 
     const payloadData = payload && typeof payload === "object" ? payload : {};
+<<<<<<< HEAD
     const conveyorCode = normalizeConveyorCode(payloadData.conveyor_id);
     const runtimeMode = normalizeRuntimeMode(payloadData.mode);
 
@@ -94,6 +145,26 @@ export const sendCommand = async (req: Request, res: Response) => {
         message: "Không tìm thấy cấu hình băng tải.",
       });
     }
+=======
+    const conveyorCode = normalizeConveyorCode(payloadData.conveyor_id || payloadData.conveyor_code);
+
+    if (!conveyorCode) {
+      return res.status(400).json({ message: "Khong xac dinh duoc bang tai can dieu khien." });
+    }
+
+    if (!arduinoCommands.includes(command)) {
+      const conveyor = await Conveyor.findOne({ conveyor_id: conveyorCode }).lean();
+      if (!conveyor) {
+        return res.status(404).json({ message: `Khong tim thay bang tai ${conveyorCode}.` });
+      }
+    }
+
+    const data = publishControlCommand(command, {
+      ...payloadData,
+      conveyor_id: conveyorCode,
+      conveyor_code: conveyorCode,
+    });
+>>>>>>> origin/main
 
     if (command === "START_SYSTEM") {
       const configMode = normalizeRuntimeMode(config.config_mode);
@@ -194,6 +265,7 @@ export const sendCommand = async (req: Request, res: Response) => {
       });
     }
 
+<<<<<<< HEAD
     const data = publishControlCommand(command, {
       ...payloadData,
       conveyor_id: conveyorCode,
@@ -207,9 +279,13 @@ export const sendCommand = async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error("sendCommand lỗi:", error);
 
+=======
+    return res.json({ message: "Da gui yeu cau toi he thong kiem tra.", data });
+  } catch (error: any) {
+    console.error("sendCommand loi:", error);
+>>>>>>> origin/main
     return res.status(500).json({
-      message: "Không gửi được yêu cầu tới hệ thống kiểm tra.",
-      error: error.message,
+      message: publicErrorMessage(error),
     });
   }
 };

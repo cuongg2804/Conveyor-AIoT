@@ -14,11 +14,13 @@ class ConveyorConfigService:
 
         conveyor_id = str(conveyor_id).strip().upper()
 
+        
+
         config = self.collection.find_one(
             {"conveyor_id": conveyor_id},
             {"_id": 0},
         )
-
+       
         if not config:
             raise RuntimeError(f"Không tìm thấy cấu hình băng tải: {conveyor_id}")
 

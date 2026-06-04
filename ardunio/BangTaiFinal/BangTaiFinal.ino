@@ -915,4 +915,8 @@ void loop() {
   xuLyCamBien();
 
   delay(20);
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> origin/main

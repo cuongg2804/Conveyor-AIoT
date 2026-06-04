@@ -9,28 +9,56 @@ const conveyorConfigSchema = new mongoose.Schema(
       trim: true,
       uppercase: true,
     },
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/main
     camera_id: {
       type: String,
       trim: true,
+      default: null,
     },
+<<<<<<< HEAD
+=======
+
+    model_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "ModelRegistry",
+      default: null,
+    },
+
+>>>>>>> origin/main
     camera_trigger_delay: {
       type: Number,
       default: 0,
     },
+
+    camera_trigger_delay_ms: {
+      type: Number,
+      default: 0,
+    },
+
     serial_port: {
       type: String,
       trim: true,
+      default: null,
     },
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/main
     baud_rate: {
       type: Number,
       required: true,
       default: 9600,
     },
+
     ai_threshold: {
       type: Number,
       required: true,
       default: 30.436506,
     },
+<<<<<<< HEAD
     speed: {
         type: Number,
         default: 150,
@@ -63,6 +91,66 @@ const conveyorConfigSchema = new mongoose.Schema(
       enum: ["PRODUCTION", "TEST"],
       default: "PRODUCTION",
       index: true,
+=======
+
+    arduino_speed_low_level: {
+      type: Number,
+      min: 1,
+      max: 5,
+      default: 2,
+    },
+
+    arduino_speed_high_level: {
+      type: Number,
+      min: 1,
+      max: 5,
+      default: 5,
+    },
+
+    arduino_servo_home_angle: {
+      type: Number,
+      min: 0,
+      max: 180,
+      default: 0,
+    },
+
+    arduino_servo_gate_angle: {
+      type: Number,
+      min: 0,
+      max: 180,
+      default: 130,
+    },
+
+    arduino_light_min_lux: {
+      type: Number,
+      min: 0,
+      max: 3000,
+      default: 1000,
+    },
+
+    arduino_light_max_lux: {
+      type: Number,
+      min: 0,
+      max: 3000,
+      default: 2000,
+    },
+
+    threshold_override: {
+      type: Number,
+      default: null,
+    },
+
+    mode: {
+      type: String,
+      enum: ["AUTO", "MANUAL"],
+      default: "AUTO",
+    },
+
+    status: {
+      type: String,
+      enum: ["ACTIVE", "INACTIVE", "MAINTENANCE"],
+      default: "ACTIVE",
+>>>>>>> origin/main
     },
   },
   {

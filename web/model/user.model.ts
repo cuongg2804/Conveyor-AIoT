@@ -1,5 +1,13 @@
 import mongoose from "mongoose";
 
+export const USER_ROLES = ["ADMIN", "USER"] as const;
+export type UserRole = (typeof USER_ROLES)[number];
+
+export const normalizeUserRole = (role: unknown): UserRole | "" => {
+    const normalized = String(role || "").trim().toUpperCase();
+    return USER_ROLES.includes(normalized as UserRole) ? (normalized as UserRole) : "";
+};
+
 const userSchema = new mongoose.Schema({
     user_id: {
         type: String,
@@ -24,7 +32,10 @@ const userSchema = new mongoose.Schema({
     },
     role: {
         type: String,
-        enum: ["ADMIN", "USER"],
+        enum: USER_ROLES,
+        default: "USER",
+        set: (value: unknown) => normalizeUserRole(value) || "USER",
+        required: true,
     },
     token: {
         type: String,

@@ -58,13 +58,13 @@ export const uploadModel = async (req: Request, res: Response) => {
       if (!wantsJson(req)) {
         res.status(400);
         return renderIndex(res, {
-          error: "Can upload du 2 file: checkpoint .ckpt va model_info.json.",
+          error: "Can upload du 2 file: model .ckpt/.onnx va model_info.json.",
         });
       }
 
       return res.status(400).json({
         success: false,
-        message: "Can upload du 2 file multipart/form-data: model (.ckpt) va metadata (.json).",
+        message: "Can upload du 2 file multipart/form-data: model (.ckpt/.onnx) va metadata (.json).",
       });
     }
 

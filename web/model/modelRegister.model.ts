@@ -1,6 +1,7 @@
-const mongoose = require("mongoose");
+// models/ModelRegistry.ts
+import mongoose from "mongoose";
 
-const ModelRegistrySchema = new mongoose.Schema(
+const modelRegistrySchema = new mongoose.Schema(
   {
     model_id: {
       type: String,
@@ -11,16 +12,20 @@ const ModelRegistrySchema = new mongoose.Schema(
     model_name: {
       type: String,
       required: true,
+      trim: true,
     },
 
     version: {
       type: String,
       required: true,
+      trim: true,
     },
 
     product_code: {
       type: String,
       required: true,
+      trim: true,
+      uppercase: true,
     },
 
     storage_type: {
@@ -29,14 +34,23 @@ const ModelRegistrySchema = new mongoose.Schema(
       default: "minio",
     },
 
+    model_format: {
+      type: String,
+      enum: ["ckpt", "onnx"],
+      default: "ckpt",
+      index: true,
+    },
+
     bucket: {
       type: String,
       required: true,
+      trim: true,
     },
 
     object_key: {
       type: String,
       required: true,
+      trim: true,
     },
 
     threshold: {
@@ -70,6 +84,7 @@ const ModelRegistrySchema = new mongoose.Schema(
       default: "testing",
       index: true,
     },
+<<<<<<< HEAD
     created_at: {
       type: Date,
       default: Date.now,
@@ -77,15 +92,37 @@ const ModelRegistrySchema = new mongoose.Schema(
   },
   {
     collection: "model_registry",
+=======
+
+    // Nếu có User thì bật lại phần này
+    // created_by: {
+    //   type: mongoose.Schema.Types.ObjectId,
+    //   ref: "User",
+    //   default: null,
+    // },
+  },
+  {
+    collection: "model_registry",
+    timestamps: {
+      createdAt: "created_at",
+      updatedAt: "updated_at",
+    },
+>>>>>>> origin/main
     versionKey: false,
   }
 );
 
-ModelRegistrySchema.index(
-  { product_code: 1, model_name: 1, version: 1 },
+modelRegistrySchema.index(
+  { product_code: 1, model_name: 1, version: 1, model_format: 1 },
   { unique: true }
 );
 
+<<<<<<< HEAD
 const ModelRegistry = mongoose.model("ModelRegistry", ModelRegistrySchema);
+=======
+const ModelRegistry =
+  mongoose.models.ModelRegistry ||
+  mongoose.model("ModelRegistry", modelRegistrySchema);
+>>>>>>> origin/main
 
 export default ModelRegistry;
