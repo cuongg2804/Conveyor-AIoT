@@ -48,3 +48,5 @@ backup-aiot/
 backup-aiot.rar
 *.bson
 *.metadata.json
+
+_local_backup_before_merge/
