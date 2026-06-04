@@ -10,6 +10,10 @@ const conveyorConfigSchema = new mongoose.Schema(
       uppercase: true,
     },
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/main
 =======
 
 >>>>>>> origin/main
@@ -19,7 +23,10 @@ const conveyorConfigSchema = new mongoose.Schema(
       default: null,
     },
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> origin/main
 
     model_id: {
       type: mongoose.Schema.Types.ObjectId,
@@ -27,6 +34,9 @@ const conveyorConfigSchema = new mongoose.Schema(
       default: null,
     },
 
+<<<<<<< HEAD
+>>>>>>> origin/main
+=======
 >>>>>>> origin/main
     camera_trigger_delay: {
       type: Number,
@@ -44,6 +54,10 @@ const conveyorConfigSchema = new mongoose.Schema(
       default: null,
     },
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/main
 =======
 
 >>>>>>> origin/main
@@ -58,6 +72,7 @@ const conveyorConfigSchema = new mongoose.Schema(
       required: true,
       default: 30.436506,
     },
+<<<<<<< HEAD
 <<<<<<< HEAD
     speed: {
         type: Number,
@@ -92,6 +107,8 @@ const conveyorConfigSchema = new mongoose.Schema(
       default: "PRODUCTION",
       index: true,
 =======
+=======
+>>>>>>> origin/main
 
     arduino_speed_low_level: {
       type: Number,
@@ -150,6 +167,9 @@ const conveyorConfigSchema = new mongoose.Schema(
       type: String,
       enum: ["ACTIVE", "INACTIVE", "MAINTENANCE"],
       default: "ACTIVE",
+<<<<<<< HEAD
+>>>>>>> origin/main
+=======
 >>>>>>> origin/main
     },
   },

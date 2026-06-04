@@ -877,8 +877,13 @@ export const index = async (req: Request, res: Response) => {
     // commonQuery giu lai ngay va label hien tai khi bam chuyen ca hoac chuyen trang.
     const totalPages = Math.max(Math.ceil(total / PAGE_SIZE), 1);
 <<<<<<< HEAD
+<<<<<<< HEAD
     const commonQuery = { mode: selectedMode, statsDate: selectedDay.date, statsMonth: selectedMonthValue, statsYear: selectedYearValue, label: selectedLabel, conveyor_id: selectedConveyorId, inspectionMode: selectedInspectionMode };
     
+=======
+    const commonQuery = { mode: selectedMode, statsDate: selectedDay.date, statsMonth: selectedMonthValue, statsYear: selectedYearValue, label: selectedLabel, conveyor_id: selectedConveyorId };
+
+>>>>>>> origin/main
 =======
     const commonQuery = { mode: selectedMode, statsDate: selectedDay.date, statsMonth: selectedMonthValue, statsYear: selectedYearValue, label: selectedLabel, conveyor_id: selectedConveyorId };
 

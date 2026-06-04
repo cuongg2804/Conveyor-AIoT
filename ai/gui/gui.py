@@ -299,6 +299,7 @@ class AnomalyGUI:
                     self.set_arduino_status(f"Đã kết nối ({serial_port})")
 
 <<<<<<< HEAD
+<<<<<<< HEAD
             self.controller.conveyor_id = conveyor_id
             self.controller.runtime_config = config
 
@@ -310,6 +311,10 @@ class AnomalyGUI:
                 raise
 
             self.log(f"[CONFIG] Runtime config reload completed for {conveyor_id}")
+=======
+            self.controller.conveyor_code = conveyor_code
+            self.log(f"[CONFIG] Runtime config reload completed for {conveyor_code}")
+>>>>>>> origin/main
 =======
             self.controller.conveyor_code = conveyor_code
             self.log(f"[CONFIG] Runtime config reload completed for {conveyor_code}")
@@ -669,6 +674,7 @@ class AnomalyGUI:
         pass
 
 <<<<<<< HEAD
+<<<<<<< HEAD
         for name, obj, method in reversed(resources):
             try:
                 if obj is not None:
@@ -792,6 +798,11 @@ class AnomalyGUI:
         self.set_status("Đã khởi tạo")
         self.startup_resources = []
         self.log("Khởi tạo hệ thống hoàn tất.")
+=======
+    def create_controller(self, conveyor_code: str):
+        self.controller, self.conveyor_config = self.controller_factory.create(conveyor_code)
+        self.current_conveyor_code = str(conveyor_code).strip().upper()
+>>>>>>> origin/main
 =======
     def create_controller(self, conveyor_code: str):
         self.controller, self.conveyor_config = self.controller_factory.create(conveyor_code)

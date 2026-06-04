@@ -85,6 +85,7 @@ const modelRegistrySchema = new mongoose.Schema(
       index: true,
     },
 <<<<<<< HEAD
+<<<<<<< HEAD
     created_at: {
       type: Date,
       default: Date.now,
@@ -103,10 +104,25 @@ const modelRegistrySchema = new mongoose.Schema(
   },
   {
     collection: "model_registry",
+=======
+
+    // Nếu có User thì bật lại phần này
+    // created_by: {
+    //   type: mongoose.Schema.Types.ObjectId,
+    //   ref: "User",
+    //   default: null,
+    // },
+  },
+  {
+    collection: "model_registry",
+>>>>>>> origin/main
     timestamps: {
       createdAt: "created_at",
       updatedAt: "updated_at",
     },
+<<<<<<< HEAD
+>>>>>>> origin/main
+=======
 >>>>>>> origin/main
     versionKey: false,
   }
@@ -118,7 +134,13 @@ modelRegistrySchema.index(
 );
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 const ModelRegistry = mongoose.model("ModelRegistry", ModelRegistrySchema);
+=======
+const ModelRegistry =
+  mongoose.models.ModelRegistry ||
+  mongoose.model("ModelRegistry", modelRegistrySchema);
+>>>>>>> origin/main
 =======
 const ModelRegistry =
   mongoose.models.ModelRegistry ||

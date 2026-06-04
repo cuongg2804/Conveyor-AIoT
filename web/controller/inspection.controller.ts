@@ -3,7 +3,11 @@ import { Server } from "socket.io";
 import InspectionResult from "../model/inspection-result.model";
 import Conveyor from "../model/conveyor.model";
 <<<<<<< HEAD
+<<<<<<< HEAD
 import { canAccessConveyor } from "../helper/conveyorAccess.helper";
+=======
+import { withPublicFrameImageUrls, withPublicInspectionImageUrls } from "../helper/image-url";
+>>>>>>> origin/main
 =======
 import { withPublicFrameImageUrls, withPublicInspectionImageUrls } from "../helper/image-url";
 >>>>>>> origin/main

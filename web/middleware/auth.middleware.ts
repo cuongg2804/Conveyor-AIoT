@@ -18,14 +18,20 @@ export const requireAuth = async (
             return res.redirect("/login");
         }
 <<<<<<< HEAD
+<<<<<<< HEAD
         (res.locals as any).user = user;
         (req as any).user = user;
         res.locals.user = user;
 =======
+=======
+>>>>>>> origin/main
         const authUser = user.toObject();
         (authUser as any).role = normalizeUserRole(authUser.role);
         (res.locals as any).user = authUser;
         (req as any).user = authUser;
+<<<<<<< HEAD
+>>>>>>> origin/main
+=======
 >>>>>>> origin/main
         return next();
     }

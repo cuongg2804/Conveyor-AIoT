@@ -26,8 +26,12 @@ class SystemController:
         mqtt_topic_result=MQTT_TOPIC_INSPECTION_RESULT,
         callbacks=None,
 <<<<<<< HEAD
+<<<<<<< HEAD
         conveyor_id=None,
         config_service=None,
+=======
+        conveyor_code=None,
+>>>>>>> origin/main
 =======
         conveyor_code=None,
 >>>>>>> origin/main
@@ -202,6 +206,7 @@ class SystemController:
         # Chặn start nếu đã đang chạy để tránh lỗi
         if self.running:
 <<<<<<< HEAD
+<<<<<<< HEAD
             self.cb("log", "Hệ thống đã đang chạy.")
             return False
         self.running = True
@@ -216,12 +221,17 @@ class SystemController:
 
         if self.arduino is not None:
 =======
+=======
+>>>>>>> origin/main
             self.cb("log", "System is already running.")
             return False
 
         self.running = True
         # Khởi tạo job_id từ database nếu có thể, để tránh trùng lặp khi restart
         if self.mongo is not None and hasattr(self.mongo, "get_max_job_id"):
+<<<<<<< HEAD
+>>>>>>> origin/main
+=======
 >>>>>>> origin/main
             try:
                 self.job_id = self.mongo.get_max_job_id()

@@ -233,7 +233,11 @@ export const uploadModelFile = async (
     const registry = await ModelRegistry.create({
       ...registryInput,
 <<<<<<< HEAD
+<<<<<<< HEAD
       model_id: modelId,
+=======
+      model_format: modelFormat,
+>>>>>>> origin/main
 =======
       model_format: modelFormat,
 >>>>>>> origin/main
@@ -246,7 +250,11 @@ export const uploadModelFile = async (
     return {
       ...registryInput,
 <<<<<<< HEAD
+<<<<<<< HEAD
       model_id: modelId,
+=======
+      model_format: modelFormat,
+>>>>>>> origin/main
 =======
       model_format: modelFormat,
 >>>>>>> origin/main

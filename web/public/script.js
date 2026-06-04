@@ -100,6 +100,7 @@ const resultLabel = (label) => RESULT_LABELS[String(label || "").toUpperCase()] 
 let inspectionSessionActive = ["STARTING", "RUNNING"].includes(String(window.__CONVEYOR_STATUS__ || "").toUpperCase());
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 const serial = document.getElementById("serial_port")
 if(serial && typeof socket !=="undefined"){
   fetch(`/control/${window.CONVEYOR_ID}/command`, {
@@ -136,6 +137,8 @@ if(serial && typeof socket !=="undefined"){
     })
   })
 }
+=======
+>>>>>>> origin/main
 =======
 >>>>>>> origin/main
 const userMessage = (message, fallback = "Có lỗi xảy ra") => {
@@ -278,6 +281,7 @@ function renderInspectionResult(data) {
   if (!inspectionSessionActive) return;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   const currentMode = String(window.__RUNTIME_MODE__ || "PRODUCTION").toUpperCase();
   const resultMode = String(data.mode || "PRODUCTION").toUpperCase();
 
@@ -291,6 +295,10 @@ function renderInspectionResult(data) {
   }
 
   setText("stt", data.job_id ? `Lượt ${data.job_id}` : "-");
+=======
+  const displayId = data.stt || data.job_id;
+  setText("jobId", displayId ? `Lượt ${displayId}` : "-");
+>>>>>>> origin/main
 =======
   const displayId = data.stt || data.job_id;
   setText("jobId", displayId ? `Lượt ${displayId}` : "-");
@@ -565,6 +573,7 @@ document.addEventListener("DOMContentLoaded", () => {
     setTimeout(() => sendControlCommand("GET_STATUS"), 600);
   }
 <<<<<<< HEAD
+<<<<<<< HEAD
 
   
 });
@@ -595,6 +604,8 @@ socket.on("auto_stop_cancelled", function (payload) {
 
 socket.on("auto_stop_triggered", function (payload) {
   showToast(payload.message, "error");
+=======
+>>>>>>> origin/main
 =======
 >>>>>>> origin/main
 });

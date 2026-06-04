@@ -3,7 +3,11 @@
     "outDir": "dist",
     "target": "ES6",
     "module": "CommonJS",
+<<<<<<< HEAD
     "moduleResolution": "node10",
+=======
+    "moduleResolution": "node",
+>>>>>>> origin/main
     "ignoreDeprecations": "5.0",
     "esModuleInterop": true,
     "resolveJsonModule": true,

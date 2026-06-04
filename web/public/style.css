@@ -2031,6 +2031,7 @@ img[src]:not([src=""]) + .image-placeholder {
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 .settings-section-grid + .settings-section-grid {
   margin-top: 14px;
 }
@@ -2041,6 +2042,8 @@ img[src]:not([src=""]) + .image-placeholder {
 
 .settings-section > .field,
 =======
+=======
+>>>>>>> origin/main
 .settings-subsection {
   margin-top: 18px;
   padding-top: 16px;
@@ -2231,6 +2234,9 @@ img[src]:not([src=""]) + .image-placeholder {
   line-height: 1.45;
 }
 
+<<<<<<< HEAD
+>>>>>>> origin/main
+=======
 >>>>>>> origin/main
 .settings-section-full {
   margin-top: 16px;
@@ -2364,5 +2370,8 @@ img[src]:not([src=""]) + .image-placeholder {
 =======
   font-weight: 950;
   min-height: 1.2em;
+<<<<<<< HEAD
+>>>>>>> origin/main
+=======
 >>>>>>> origin/main
 }

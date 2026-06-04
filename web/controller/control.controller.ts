@@ -43,6 +43,29 @@ const arduinoCommands = [
   "APPLY_ARDUINO_CONFIG",
 ];
 
+<<<<<<< HEAD
+=======
+const allowedCommands = [
+  "START_SYSTEM",
+  "STOP_SYSTEM",
+  "GET_STATUS",
+  "RELOAD_CONFIG",
+  "GET_SERIAL_PORT",
+  "GET_SERIAL_PORTS",
+  "GET_ARDUINO_CONFIG",
+  "LIGHT_CHECK",
+  "RESET_ARDUINO_CONFIG_DEFAULT",
+  "APPLY_ARDUINO_CONFIG",
+];
+
+const arduinoCommands = [
+  "GET_ARDUINO_CONFIG",
+  "LIGHT_CHECK",
+  "RESET_ARDUINO_CONFIG_DEFAULT",
+  "APPLY_ARDUINO_CONFIG",
+];
+
+>>>>>>> origin/main
 const normalizeConveyorCode = (value: any) => String(value || "").trim().toUpperCase();
 
 const publicErrorMessage = (error: any) => {
@@ -62,6 +85,9 @@ const publicErrorMessage = (error: any) => {
   return "Khong gui duoc yeu cau toi he thong kiem tra.";
 };
 
+<<<<<<< HEAD
+>>>>>>> origin/main
+=======
 >>>>>>> origin/main
 export const sendCommand = async (req: Request, res: Response) => {
   try {
@@ -69,9 +95,13 @@ export const sendCommand = async (req: Request, res: Response) => {
 
     if (!command) {
 <<<<<<< HEAD
+<<<<<<< HEAD
       return res.status(400).json({
         message: "Vui lòng chọn thao tác điều khiển.",
       });
+=======
+      return res.status(400).json({ message: "Vui long chon thao tac dieu khien." });
+>>>>>>> origin/main
 =======
       return res.status(400).json({ message: "Vui long chon thao tac dieu khien." });
 >>>>>>> origin/main
@@ -80,7 +110,11 @@ export const sendCommand = async (req: Request, res: Response) => {
     if (!allowedCommands.includes(command)) {
       return res.status(400).json({
 <<<<<<< HEAD
+<<<<<<< HEAD
         message: "Thao tác điều khiển không hợp lệ.",
+=======
+        message: "Thao tac dieu khien khong hop le.",
+>>>>>>> origin/main
 =======
         message: "Thao tac dieu khien khong hop le.",
 >>>>>>> origin/main
@@ -89,6 +123,7 @@ export const sendCommand = async (req: Request, res: Response) => {
     }
 
     const payloadData = payload && typeof payload === "object" ? payload : {};
+<<<<<<< HEAD
 <<<<<<< HEAD
     const conveyorCode = normalizeConveyorCode(payloadData.conveyor_id);
     const runtimeMode = normalizeRuntimeMode(payloadData.mode);
@@ -159,6 +194,21 @@ export const sendCommand = async (req: Request, res: Response) => {
       }
     }
 
+=======
+    const conveyorCode = normalizeConveyorCode(payloadData.conveyor_id || payloadData.conveyor_code);
+
+    if (!conveyorCode) {
+      return res.status(400).json({ message: "Khong xac dinh duoc bang tai can dieu khien." });
+    }
+
+    if (!arduinoCommands.includes(command)) {
+      const conveyor = await Conveyor.findOne({ conveyor_id: conveyorCode }).lean();
+      if (!conveyor) {
+        return res.status(404).json({ message: `Khong tim thay bang tai ${conveyorCode}.` });
+      }
+    }
+
+>>>>>>> origin/main
     const data = publishControlCommand(command, {
       ...payloadData,
       conveyor_id: conveyorCode,
@@ -266,6 +316,7 @@ export const sendCommand = async (req: Request, res: Response) => {
     }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     const data = publishControlCommand(command, {
       ...payloadData,
       conveyor_id: conveyorCode,
@@ -279,6 +330,11 @@ export const sendCommand = async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error("sendCommand lỗi:", error);
 
+=======
+    return res.json({ message: "Da gui yeu cau toi he thong kiem tra.", data });
+  } catch (error: any) {
+    console.error("sendCommand loi:", error);
+>>>>>>> origin/main
 =======
     return res.json({ message: "Da gui yeu cau toi he thong kiem tra.", data });
   } catch (error: any) {

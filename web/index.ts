@@ -31,6 +31,9 @@ dotenv.config({ override: false });
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
+<<<<<<< HEAD
+>>>>>>> origin/main
+=======
 >>>>>>> origin/main
 
 const io = new Server(server, {
@@ -41,7 +44,10 @@ const io = new Server(server, {
 });
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main
 =======
 >>>>>>> origin/main
 app.set("view engine", "pug");
@@ -66,6 +72,9 @@ const resolveStoragePath = () => {
   ];
 
   return candidates.find((candidate) => fs.existsSync(candidate)) || candidates[0];
+<<<<<<< HEAD
+>>>>>>> origin/main
+=======
 >>>>>>> origin/main
 };
 

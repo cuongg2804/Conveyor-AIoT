@@ -916,7 +916,11 @@ void loop() {
 
   delay(20);
 <<<<<<< HEAD
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> origin/main
 =======
 }
 >>>>>>> origin/main

@@ -33,12 +33,15 @@ type ConveyorConfigView = {
   baud_rate?: number;
   ai_threshold?: number;
 <<<<<<< HEAD
+<<<<<<< HEAD
   speed?: number;
   goc_home?: number;
   goc_gat?: number;
   model_id?: string;
   config_mode?: "PRODUCTION" | "TEST";
 =======
+=======
+>>>>>>> origin/main
   arduino_speed_low_level?: number;
   arduino_speed_high_level?: number;
   arduino_servo_home_angle?: number;
@@ -48,6 +51,9 @@ type ConveyorConfigView = {
   threshold_override?: number | null;
   mode?: string;
   model_id?: any;
+<<<<<<< HEAD
+>>>>>>> origin/main
+=======
 >>>>>>> origin/main
 };
 
@@ -121,6 +127,7 @@ const validateArduinoConfig = (config: typeof defaultArduinoConfig) => {
 
   return null;
 };
+<<<<<<< HEAD
 
 const toNumberInRange = (
   value: any,
@@ -134,6 +141,8 @@ const toNumberInRange = (
 
   return Math.min(Math.max(num, min), max);
 };
+=======
+>>>>>>> origin/main
 
 export const settings = async (req: Request, res: Response) => {
   try {
@@ -186,6 +195,7 @@ export const settings = async (req: Request, res: Response) => {
     const usedOperatorIds = await Conveyor.find({
       conveyor_id: { $ne: conveyorId },
 <<<<<<< HEAD
+<<<<<<< HEAD
       user_id: { $ne: ""}
       }).distinct("user_id");
       const operators = await User.find(
@@ -199,6 +209,8 @@ export const settings = async (req: Request, res: Response) => {
         }
       ).lean();
 =======
+=======
+>>>>>>> origin/main
       operator_id: { $ne: "" },
     }).distinct("operator_id");
 
@@ -213,6 +225,7 @@ export const settings = async (req: Request, res: Response) => {
         fullname: 1,
       }
     ).lean();
+<<<<<<< HEAD
 >>>>>>> origin/main
 
     const activeModels = await ModelRegistry.find({ status: "active" })
@@ -230,6 +243,8 @@ export const settings = async (req: Request, res: Response) => {
       config.config_mode === "TEST" &&
       !!config.model_id &&
       selectedModel?.status === "testing";
+=======
+>>>>>>> origin/main
 
     return res.render("setting/settings", {
       title: "Cau hinh bang tai",
@@ -265,6 +280,9 @@ export const settings = async (req: Request, res: Response) => {
       ModelRegistryList: modelRegistryList,
       speedPresets,
       arduinoConfig: buildArduinoConfig(config),
+<<<<<<< HEAD
+>>>>>>> origin/main
+=======
 >>>>>>> origin/main
     });
   } catch (error) {
@@ -291,6 +309,7 @@ export const scanPorts = async (_req: Request, res: Response) => {
 
 export const updateSettings = async (req: Request, res: Response) => {
   try {
+<<<<<<< HEAD
 <<<<<<< HEAD
     const getConveyorId = (req: Request) =>
     normalizeCode(req.params.conveyor_id || req.params.conveyorCode);
@@ -325,6 +344,8 @@ export const updateSettings = async (req: Request, res: Response) => {
       bodyModelId: req.body.model_id,
     });
 =======
+=======
+>>>>>>> origin/main
     const conveyorId = normalizeCode(req.params.conveyor_id || req.params.conveyorCode);
     const conveyor = await Conveyor.findOne({ conveyor_id: conveyorId }).lean<ConveyorView | null>();
 >>>>>>> origin/main
@@ -343,6 +364,10 @@ export const updateSettings = async (req: Request, res: Response) => {
     const {
       name,
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+      line_id,
+>>>>>>> origin/main
 =======
       line_id,
 >>>>>>> origin/main
@@ -356,10 +381,13 @@ export const updateSettings = async (req: Request, res: Response) => {
       baud_rate,
       ai_threshold,
 <<<<<<< HEAD
+<<<<<<< HEAD
       speed,
       goc_home,
       goc_gat,
 =======
+=======
+>>>>>>> origin/main
       threshold_override,
       mode,
       model_id,
@@ -370,6 +398,9 @@ export const updateSettings = async (req: Request, res: Response) => {
       arduino_light_min_lux,
       arduino_light_max_lux,
       save_arduino_default,
+<<<<<<< HEAD
+>>>>>>> origin/main
+=======
 >>>>>>> origin/main
     } = req.body;
 
@@ -474,6 +505,7 @@ export const updateSettings = async (req: Request, res: Response) => {
     }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     
     if (newCameraId) {
       const newCamera = await Camera.findOne({ camera_id: newCameraId }).lean<any>();
@@ -532,6 +564,38 @@ export const updateSettings = async (req: Request, res: Response) => {
       thresholdOverride !== null ? thresholdOverride : Number(ai_threshold || 30.436506);
 >>>>>>> origin/main
 
+=======
+    if (newCameraId) {
+      const newCamera = await Camera.findOne({ camera_id: newCameraId }).lean<any>();
+
+      if (!newCamera) {
+        return res.status(400).send("Camera khong ton tai.");
+      }
+
+      if (
+        newCamera.status === "IN_USE" &&
+        normalizeCode(newCamera.conveyor_id) !== conveyorId
+      ) {
+        return res.status(400).send("Camera nay dang duoc gan cho bang tai khac.");
+      }
+
+      await Camera.updateOne(
+        { camera_id: newCameraId },
+        {
+          $set: {
+            status: "IN_USE",
+            conveyor_id: conveyorId,
+          },
+        }
+      );
+    }
+
+    const cameraDelay = Number(camera_trigger_delay_ms ?? camera_trigger_delay ?? 0);
+    const thresholdOverride = optionalNumber(threshold_override);
+    const legacyThreshold =
+      thresholdOverride !== null ? thresholdOverride : Number(ai_threshold || 30.436506);
+
+>>>>>>> origin/main
     const changes: Record<string, { old: any; new: any }> = {};
     const addChange = (field: string, oldValue: any, newValue: any) => {
       if (String(oldValue ?? "") !== String(newValue ?? "")) {
@@ -571,9 +635,12 @@ export const updateSettings = async (req: Request, res: Response) => {
         $set: {
           name: String(name || "").trim(),
 <<<<<<< HEAD
+<<<<<<< HEAD
           //status: normalizeCode(status || "ONLINE"),
           user_id: String(user_id || "").trim(),
 =======
+=======
+>>>>>>> origin/main
           line_id: String(line_id || "").trim(),
           status: normalizeCode(status || "ONLINE"),
           operator_id: String(operator_id || "").trim(),
@@ -589,6 +656,7 @@ export const updateSettings = async (req: Request, res: Response) => {
         $set: {
           camera_id: newCameraId,
 <<<<<<< HEAD
+<<<<<<< HEAD
           camera_trigger_delay: newCameraTriggerDelay,
           serial_port: String(serial_port || "").trim(),
           baud_rate: newBaudRate,
@@ -599,6 +667,8 @@ export const updateSettings = async (req: Request, res: Response) => {
           model_id: nextModelId,
           config_mode: nextConfigMode,
 =======
+=======
+>>>>>>> origin/main
           camera_trigger_delay: cameraDelay,
           camera_trigger_delay_ms: cameraDelay,
           serial_port: String(serial_port || "").trim(),
@@ -613,11 +683,15 @@ export const updateSettings = async (req: Request, res: Response) => {
           threshold_override: thresholdOverride,
           mode: normalizeCode(mode || "AUTO"),
           model_id: selectedModelId || null,
+<<<<<<< HEAD
+>>>>>>> origin/main
+=======
 >>>>>>> origin/main
         },
       }
     );
 
+<<<<<<< HEAD
 <<<<<<< HEAD
     
     addChange("user_id", conveyor.user_id, user_id);
@@ -638,6 +712,8 @@ export const updateSettings = async (req: Request, res: Response) => {
 
 =======
 >>>>>>> origin/main
+=======
+>>>>>>> origin/main
     if (Object.keys(changes).length > 0) {
       await ConfigLog.create({
         config_log_id: `CFG_${Date.now()}`,
@@ -649,6 +725,7 @@ export const updateSettings = async (req: Request, res: Response) => {
       });
     }
 
+<<<<<<< HEAD
 <<<<<<< HEAD
     let synced = "1";
 
@@ -663,6 +740,8 @@ export const updateSettings = async (req: Request, res: Response) => {
 
     return res.redirect(`/settings/${conveyorId}?tab=${selectedTab}&updated=1&synced=${synced}`);
 =======
+=======
+>>>>>>> origin/main
     try {
       publishControlCommand("APPLY_ARDUINO_CONFIG", {
         conveyor_id: conveyorId,
@@ -687,6 +766,7 @@ export const updateSettings = async (req: Request, res: Response) => {
     return res.status(500).send("Khong the cap nhat cau hinh.");
   }
 };
+<<<<<<< HEAD
 <<<<<<< HEAD
 
 
@@ -779,5 +859,7 @@ export const approveModel = async (req: Request, res: Response) => {
     return res.status(500).send("Không thể phê duyệt model.");
   }
 };
+=======
+>>>>>>> origin/main
 =======
 >>>>>>> origin/main
