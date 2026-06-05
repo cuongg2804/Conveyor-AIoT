@@ -29,30 +29,3 @@ rewrite/ai/models/
 *.swp
 Thumbs.db
 .DS_Store
-<<<<<<< HEAD
-<<<<<<< HEAD
-
-backup-aiot/
-backup-aiot.rar
-*.bson
-*.metadata.json
-=======
-=======
->>>>>>> origin/main
-*.zip
-graph.py
-web/yarn-dev.log
-web/yarn-dev.err.log
-<<<<<<< HEAD
->>>>>>> origin/main
-
-ai/runtime/
-rewrite/
-backup-aiot/
-backup-aiot.rar
-*.bson
-*.metadata.json
-
-_local_backup_before_merge/
-=======
->>>>>>> origin/main

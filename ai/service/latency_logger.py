@@ -8,9 +8,9 @@ from config import BASE_DIR
 class LatencyLogger:
     FIELDNAMES = [
         "timestamp",
-        "job_id",
+        "stt",
         "inspection_id",
-        "conveyor_code",
+        "conveyor_id",
         "label",
         "avg_score",
         "threshold",
@@ -95,6 +95,6 @@ class LatencyLogger:
 
         print(
             "[LatencyLogger] wrote "
-            f"job_id={clean_row.get('job_id')} "
+            f"stt={clean_row.get('stt')} "
             f"end_to_end_ms={clean_row.get('end_to_end_ms')}"
         )

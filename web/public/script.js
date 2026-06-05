@@ -13,47 +13,22 @@ const getOrCreateTabId = () => {
 
   return tabId;
 };
-const createPageInstanceId = () => { 
-  return (
-    "PAGE_" +
-    Date.now().toString(36) +
-    "_" +
-    Math.random().toString(36).slice(2, 10)
-  );
-};
+
+const createPageInstanceId = () =>
+  "PAGE_" +
+  Date.now().toString(36) +
+  "_" +
+  Math.random().toString(36).slice(2, 10);
 
 window.__TAB_ID__ = getOrCreateTabId();
-window.__PAGE_INSTANCE_ID__ = createPageInstanceId(); 
-
-window.appSocket =
-  window.appSocket ||
-  io({
-    auth: {
-      tab_id: window.__TAB_ID__,
-      page_instance_id: window.__PAGE_INSTANCE_ID__, 
-      pathname: window.location.pathname,
-    },
-  });
-
-document.addEventListener("click", function (event) { 
-  const link = event.target.closest("a[href]");
-
-  if (!link) return;
-
-  const url = new URL(link.href, window.location.origin);
-
-  if (url.origin !== window.location.origin) return;
-
-  sessionStorage.setItem("last_internal_navigation_at", String(Date.now()));
-});
+window.__PAGE_INSTANCE_ID__ = createPageInstanceId();
 
 const lastInternalNavigationAt = Number(
   sessionStorage.getItem("last_internal_navigation_at") || 0
 );
 
 const isInternalNavigation =
-  lastInternalNavigationAt > 0 &&
-  Date.now() - lastInternalNavigationAt < 5000;
+  lastInternalNavigationAt > 0 && Date.now() - lastInternalNavigationAt < 5000;
 
 window.appSocket =
   window.appSocket ||
@@ -66,20 +41,28 @@ window.appSocket =
     },
   });
 
-socket.on("connect", function () {
-  sessionStorage.removeItem("last_internal_navigation_at");
-});
+const socket = window.appSocket;
 
-var socket = window.appSocket;
+document.addEventListener("click", (event) => {
+  const link = event.target.closest("a[href]");
+  if (!link) return;
+
+  const url = new URL(link.href, window.location.origin);
+  if (url.origin !== window.location.origin) return;
+
+  sessionStorage.setItem("last_internal_navigation_at", String(Date.now()));
+});
 
 const COMMAND_LABELS = {
   START_SYSTEM: "Khởi động hệ thống",
   STOP_SYSTEM: "Dừng hệ thống",
   GET_STATUS: "Kiểm tra trạng thái",
-  RESET_ARDUINO_CONFIG_DEFAULT: "Khoi phuc cau hinh Arduino",
-  LIGHT_CHECK: "Kiem tra anh sang",
-  GET_ARDUINO_CONFIG: "Doc cau hinh Arduino",
-  APPLY_ARDUINO_CONFIG: "Ap dung cau hinh Arduino",
+  GET_SERIAL_PORT: "Quét cổng Serial",
+  GET_SERIAL_PORTS: "Quét cổng Serial",
+  RESET_ARDUINO_CONFIG_DEFAULT: "Khôi phục cấu hình Arduino",
+  LIGHT_CHECK: "Kiểm tra ánh sáng",
+  GET_ARDUINO_CONFIG: "Đọc cấu hình Arduino",
+  APPLY_ARDUINO_CONFIG: "Áp dụng cấu hình Arduino",
 };
 
 const ACK_STATUS_LABELS = {
@@ -94,58 +77,23 @@ const RESULT_LABELS = {
   UNKNOWN: "Chưa xác định",
 };
 
+const RUNNING_STATUSES = ["STARTING", "RUNNING"];
+
+let inspectionSessionActive = RUNNING_STATUSES.includes(
+  String(window.__CONVEYOR_STATUS__ || "").toUpperCase()
+);
+
 const commandLabel = (command) => COMMAND_LABELS[command] || "Thao tác";
 const ackStatusLabel = (status) => ACK_STATUS_LABELS[status] || "Đang cập nhật";
-const resultLabel = (label) => RESULT_LABELS[String(label || "").toUpperCase()] || "-";
-let inspectionSessionActive = ["STARTING", "RUNNING"].includes(String(window.__CONVEYOR_STATUS__ || "").toUpperCase());
+const resultLabel = (label) =>
+  RESULT_LABELS[String(label || "").toUpperCase()] || "-";
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-const serial = document.getElementById("serial_port")
-if(serial && typeof socket !=="undefined"){
-  fetch(`/control/${window.CONVEYOR_ID}/command`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      command: "GET_SERIAL_PORT",
-    }),
-  })
-  socket.on("control_ack", (payload) => {
-    if(payload.command !== "GET_SERIAL_PORT") return;
-
-    const ports = payload?.data?.ports || []
-    const curr_port = serial.dataset.current || "" // 
-
-    serial.innerHTML = ""
-
-    const initOption = document.createElement("option")
-    initOption.value = ""
-    initOption.text = "--Chọn cổng kết nối--"
-    serial.appendChild(initOption)
-
-    ports.forEach((port) => {
-      const option = document.createElement("option")
-      option.value = port.device
-      option.textContent = `${port.value} - ${port.description || ""}`
-
-      if(port.device === curr_port) {
-        option.selected = true
-      }
-      serial.appendChild(option)
-    })
-  })
-}
-=======
->>>>>>> origin/main
-=======
->>>>>>> origin/main
 const userMessage = (message, fallback = "Có lỗi xảy ra") => {
   const raw = String(message || "").trim();
   if (!raw) return fallback;
 
   const normalized = raw.toLowerCase();
+
   if (normalized.includes("command is required")) return "Thiếu thao tác điều khiển.";
   if (normalized.includes("invalid command")) return "Thao tác điều khiển không hợp lệ.";
   if (normalized.includes("conveyor_id is required")) return "Thiếu mã băng tải.";
@@ -161,16 +109,17 @@ const userMessage = (message, fallback = "Có lỗi xảy ra") => {
     .replaceAll("command", "Thao tác");
 };
 
-/* ================= TOAST ================= */
 const showToast = (message, type = "success") => {
   if (typeof Toastify !== "function") {
     console.log(`[${type}] ${message}`);
     return;
   }
 
-  let background = "linear-gradient(to right, #00b09b, #96c93d)";
-  if (type === "error") background = "linear-gradient(to right, #ff5f6d, #ffc371)";
-  if (type === "info") background = "linear-gradient(to right, #2193b0, #6dd5ed)";
+  const colors = {
+    success: "linear-gradient(to right, #00b09b, #96c93d)",
+    error: "linear-gradient(to right, #ff5f6d, #ffc371)",
+    info: "linear-gradient(to right, #2193b0, #6dd5ed)",
+  };
 
   Toastify({
     text: message,
@@ -178,11 +127,10 @@ const showToast = (message, type = "success") => {
     close: true,
     gravity: "top",
     position: "right",
-    backgroundColor: background,
+    backgroundColor: colors[type] || colors.success,
   }).showToast();
 };
 
-/* ================= HELPERS ================= */
 const setText = (id, value) => {
   const el = document.getElementById(id);
   if (el) el.textContent = value ?? "-";
@@ -191,51 +139,70 @@ const setText = (id, value) => {
 const setImage = (id, src) => {
   const el = document.getElementById(id);
   if (!el) return;
-  if (src) el.src = `${src}${String(src).includes("?") ? "&" : "?"}t=${Date.now()}`;
-  else el.removeAttribute("src");
+
+  if (!src) {
+    el.removeAttribute("src");
+    return;
+  }
+
+  el.src = `${src}${String(src).includes("?") ? "&" : "?"}t=${Date.now()}`;
 };
 
 const formatScore = (value) => {
   const num = Number(value);
-  if (Number.isNaN(num)) return "-";
-  return num.toFixed(3);
+  return Number.isFinite(num) ? num.toFixed(3) : "-";
 };
 
 const formatTimestamp = (timestamp) => {
   if (!timestamp) return "-";
+
   const ts = Number(timestamp);
   const date = ts > 1000000000000 ? new Date(ts) : new Date(ts * 1000);
+
   return date.toLocaleString("vi-VN");
 };
+
+const normalizeCode = (value) => String(value || "").trim().toUpperCase();
+
+function hasMonitorContext() {
+  return Boolean(document.querySelector("[data-conveyor-code]"));
+}
+
+function getCurrentConveyorCode() {
+  const el = document.querySelector("[data-conveyor-code]");
+
+  if (!el || !el.dataset.conveyorCode) {
+    throw new Error("Không xác định được băng tải trên trang giám sát.");
+  }
+
+  return normalizeCode(el.dataset.conveyorCode);
+}
 
 const setAiStatus = (mode, text) => {
   const aiStatus = document.getElementById("aiStatus");
   const topText = document.getElementById("systemStatusText");
   const topPill = topText ? topText.closest(".dashboard__status-pill") : null;
 
-  if (aiStatus) {
-    aiStatus.classList.remove("connected", "disconnected", "warning", "READY", "STARTING", "RUNNING", "STOPPING", "STOPPED", "ERROR");
-    if (mode) aiStatus.classList.add(mode);
-    aiStatus.innerHTML = `<span class="status-dot"></span>${text}`;
-  }
+  [aiStatus, topPill].forEach((el) => {
+    if (!el) return;
 
+    el.classList.remove(
+      "connected",
+      "disconnected",
+      "warning",
+      "READY",
+      "STARTING",
+      "RUNNING",
+      "STOPPING",
+      "STOPPED",
+      "ERROR"
+    );
+
+    if (mode) el.classList.add(mode);
+  });
+
+  if (aiStatus) aiStatus.innerHTML = `<span class="status-dot"></span>${text}`;
   if (topText) topText.textContent = text;
-
-  if (topPill) {
-    topPill.classList.remove("connected", "disconnected", "warning", "READY", "STARTING", "RUNNING", "STOPPING", "STOPPED", "ERROR");
-    if (mode) topPill.classList.add(mode);
-  }
-};
-
-const updateResultBadge = (label) => {
-  const el = document.getElementById("resultLabel");
-  if (!el) return;
-
-  const normalized = String(label || "-").toUpperCase();
-  el.textContent = resultLabel(normalized);
-  el.classList.remove("ok", "ng");
-  if (normalized === "OK") el.classList.add("ok");
-  if (normalized === "NG") el.classList.add("ng");
 };
 
 const updateMqttStatus = (status) => {
@@ -260,54 +227,56 @@ const updateMqttStatus = (status) => {
   el.innerHTML = `<span class="status-dot"></span>Mất kết nối`;
 };
 
-function getCurrentConveyorCode() {
-  const el = document.querySelector("[data-conveyor-code]");
-  if (!el || !el.dataset.conveyorCode) {
-    throw new Error("Không xác định được băng tải trên trang giám sát.");
-  }
-  return el.dataset.conveyorCode;
-}
+const updateResultBadge = (label) => {
+  const el = document.getElementById("resultLabel");
+  if (!el) return;
 
-function hasMonitorContext() {
-  return Boolean(document.querySelector("[data-conveyor-code]"));
+  const normalized = normalizeCode(label || "-");
+
+  el.textContent = resultLabel(normalized);
+  el.classList.remove("ok", "ng");
+
+  if (normalized === "OK") el.classList.add("ok");
+  if (normalized === "NG") el.classList.add("ng");
+};
+
+function clearInspectionResult() {
+  setText("stt", "-");
+  setText("jobId", "-");
+  updateResultBadge("-");
+  setText("resultTimestamp", "-");
+  setText("framePreviewLabel", "-");
+  setText("framePreviewScore", "-");
+  setImage("roiPreviewImage", "");
+  setImage("overlayPreviewImage", "");
 }
 
 function renderInspectionResult(data) {
-  if (!data) return;
-  if (!hasMonitorContext()) return;
+  if (!data || !hasMonitorContext()) return;
 
-  const resultConveyorCode = String(data.conveyor_id || "").trim().toUpperCase();
+  const resultConveyorCode = normalizeCode(data.conveyor_id);
   if (resultConveyorCode && resultConveyorCode !== getCurrentConveyorCode()) return;
+
   if (!inspectionSessionActive) return;
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-  const currentMode = String(window.__RUNTIME_MODE__ || "PRODUCTION").toUpperCase();
-  const resultMode = String(data.mode || "PRODUCTION").toUpperCase();
+  const currentMode = normalizeCode(window.__RUNTIME_MODE__ || "PRODUCTION");
+  const resultMode = normalizeCode(data.mode || "PRODUCTION");
 
   if (currentMode === "TEST" && resultMode !== "TEST") return;
+  if (currentMode === "PRODUCTION" && resultMode === "TEST") return;
 
-  if (currentMode === "PRODUCTION") {
-    const isProductionResult =
-      resultMode === "PRODUCTION" || resultMode === "" || !data.mode;
+  const displayId = data.stt || data.job_id || data.inspection_id;
 
-    if (!isProductionResult) return;
-  }
-
-  setText("stt", data.job_id ? `Lượt ${data.job_id}` : "-");
-=======
-  const displayId = data.stt || data.job_id;
+  setText("stt", displayId ? `Lượt ${displayId}` : "-");
   setText("jobId", displayId ? `Lượt ${displayId}` : "-");
->>>>>>> origin/main
-=======
-  const displayId = data.stt || data.job_id;
-  setText("jobId", displayId ? `Lượt ${displayId}` : "-");
->>>>>>> origin/main
   updateResultBadge(data.label);
   setText("resultTimestamp", formatTimestamp(data.timestamp));
 
   const frames = Array.isArray(data.frames) ? data.frames : [];
-  const previewFrame = frames.find((f) => Number(f.frame_index) === 2) || frames[1] || frames[0];
+  const previewFrame =
+    frames.find((frame) => Number(frame.frame_index) === 2) ||
+    frames[1] ||
+    frames[0];
 
   if (!previewFrame) {
     setText("framePreviewLabel", "-");
@@ -323,25 +292,23 @@ function renderInspectionResult(data) {
   setImage("overlayPreviewImage", previewFrame.overlay_path || previewFrame.roi_path);
 }
 
-function clearInspectionResult() {
-  setText("stt", "-");
-  updateResultBadge("-");
-  setText("resultTimestamp", "-");
-  setText("framePreviewLabel", "-");
-  setText("framePreviewScore", "-");
-  setImage("roiPreviewImage", "");
-  setImage("overlayPreviewImage", "");
+function updateControlAckBox(ack) {
+  const box = document.querySelector(".control-ack-box");
+  const text = document.getElementById("lastControlAck");
+
+  if (!box || !text) return;
+
+  box.classList.remove("success", "error");
+
+  if (ack.status === "SUCCESS") box.classList.add("success");
+  if (ack.status === "ERROR") box.classList.add("error");
+
+  text.textContent = `${ackStatusLabel(ack.status)} - ${commandLabel(
+    ack.command
+  )}: ${userMessage(ack.message, "Đang chờ phản hồi.")}`;
 }
 
-const pendingControlCommands = new Map();
 async function sendControlCommand(command, payload = {}) {
-  // if (pendingControlCommands.get(command)) {
-  //   showToast("Lệnh đang được xử lý, vui lòng chờ phản hồi từ AI", "info");
-  //   return;
-  // }
-
-  // pendingControlCommands.set(command, true);
-
   try {
     const conveyorCode = getCurrentConveyorCode();
     const label = commandLabel(command);
@@ -352,78 +319,176 @@ async function sendControlCommand(command, payload = {}) {
 
     const res = await fetch("/control/command", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({
         command,
         payload: {
           conveyor_id: conveyorCode,
-          ...payload,
           mode: window.__RUNTIME_MODE__ || "PRODUCTION",
+          ...payload,
         },
       }),
     });
 
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
 
     if (!res.ok) {
       const message = userMessage(data.message || data.error, "Không gửi được yêu cầu.");
+
       showToast(message, "error");
-      updateControlAckBox({
-        status: "ERROR",
-        command,
-        message,
-      });
+      updateControlAckBox({ status: "ERROR", command, message });
       setAiStatus("disconnected", "Không gửi được yêu cầu");
       return;
     }
 
     showToast(`Đã gửi yêu cầu: ${label}`, "success");
+
     if (command === "START_SYSTEM") inspectionSessionActive = true;
+
     if (command === "STOP_SYSTEM") {
       inspectionSessionActive = false;
       clearInspectionResult();
     }
+
     updateControlAckBox({
       status: "PENDING",
       command,
       message: "Yêu cầu đã được gửi, đang chờ phản hồi từ hệ thống AI.",
     });
   } catch (error) {
-    pendingControlCommands.delete(command);
     console.error("sendControlCommand error:", error);
+
     const message = userMessage(error.message, "Không gửi được yêu cầu điều khiển.");
+
     showToast(message, "error");
     updateControlAckBox({ status: "ERROR", command, message });
     setAiStatus("disconnected", "Không kiểm tra được trạng thái");
   }
 }
 
-function updateControlAckBox(ack) {
-  const box = document.querySelector(".control-ack-box");
-  const text = document.getElementById("lastControlAck");
-  if (!box || !text) return;
+window.sendControlCommand = sendControlCommand;
 
-  box.classList.remove("success", "error");
-  if (ack.status === "SUCCESS") box.classList.add("success");
-  if (ack.status === "ERROR") box.classList.add("error");
+function initSerialPortSelect() {
+  const serialSelect = document.getElementById("serial_port");
+  if (!serialSelect || !socket) return;
 
-  const status = ackStatusLabel(ack.status);
-  const action = commandLabel(ack.command);
-  const message = userMessage(ack.message, "Đang chờ phản hồi.");
-  text.textContent = `${status} - ${action}: ${message}`;
+  const currentPort = serialSelect.dataset.current || serialSelect.value || "";
+
+  fetch("/settings/serial-ports").catch(() => {
+    showToast("Không gửi được yêu cầu quét cổng Serial.", "error");
+  });
+
+  socket.on("control_ack", (payload) => {
+    if (!["GET_SERIAL_PORT", "GET_SERIAL_PORTS"].includes(payload.command)) return;
+
+    const ports = payload?.data?.ports || payload?.ports || [];
+
+    serialSelect.innerHTML = "";
+
+    const emptyOption = document.createElement("option");
+    emptyOption.value = "";
+    emptyOption.textContent = "-- Chọn cổng kết nối --";
+    serialSelect.appendChild(emptyOption);
+
+    ports.forEach((port) => {
+      const option = document.createElement("option");
+      const value = port.device || port.path || port.value || "";
+
+      option.value = value;
+      option.textContent = `${value}${port.description ? ` - ${port.description}` : ""}`;
+
+      if (value === currentPort) option.selected = true;
+
+      serialSelect.appendChild(option);
+    });
+  });
 }
 
-/* ================= SOCKET EVENTS ================= */
+function initFullnameValidation() {
+  document.querySelectorAll(".js-fullname-only").forEach((input) => {
+    input.addEventListener("input", function () {
+      this.value = this.value.replace(/[^\p{L}\s]/gu, "");
+    });
+
+    input.addEventListener("paste", function (event) {
+      event.preventDefault();
+
+      const pastedText = (event.clipboardData || window.clipboardData).getData("text");
+      const cleanedText = pastedText.replace(/[^\p{L}\s]/gu, "");
+      const start = this.selectionStart;
+      const end = this.selectionEnd;
+
+      this.value =
+        this.value.substring(0, start) + cleanedText + this.value.substring(end);
+
+      this.setSelectionRange(start + cleanedText.length, start + cleanedText.length);
+    });
+  });
+}
+
+function initHistoryImageModal() {
+  const historyModal = document.getElementById("historyImageModal");
+  if (!historyModal || typeof $ !== "function") return;
+
+  $("#historyImageModal").on("show.bs.modal", (event) => {
+    const trigger = event.relatedTarget;
+    const src = trigger ? trigger.getAttribute("data-image-src") : "";
+    const title = trigger ? trigger.getAttribute("data-image-title") : "Ảnh kiểm tra";
+    const modalTitle = document.getElementById("historyImageModalTitle");
+    const modalImage = document.getElementById("historyImageModalImg");
+    const emptyState = historyModal.querySelector(".history-image-modal__empty");
+
+    if (modalTitle) modalTitle.textContent = title || "Ảnh kiểm tra";
+    if (emptyState) emptyState.style.display = "none";
+
+    if (!modalImage) return;
+
+    modalImage.style.display = "block";
+    modalImage.alt = title || "Ảnh kiểm tra";
+    modalImage.onerror = () => {
+      modalImage.style.display = "none";
+      if (emptyState) emptyState.style.display = "flex";
+    };
+    modalImage.src = src ? `${src}${String(src).includes("?") ? "&" : "?"}t=${Date.now()}` : "";
+  });
+
+  $("#historyImageModal").on("hidden.bs.modal", () => {
+    const modalImage = document.getElementById("historyImageModalImg");
+
+    if (!modalImage) return;
+
+    modalImage.onerror = null;
+    modalImage.removeAttribute("src");
+  });
+}
+
+socket.on("connect", () => {
+  sessionStorage.removeItem("last_internal_navigation_at");
+
+  if (hasMonitorContext()) {
+    socket.emit("join_monitor", {
+      conveyor_id: getCurrentConveyorCode(),
+    });
+  }
+});
+
+socket.on("session_rejected", (payload) => {
+  alert(payload.message || "Phiên đăng nhập không hợp lệ.");
+  window.location.href = "/login";
+});
+
 socket.on("mqtt_status", (data) => {
-  console.log("mqtt_status:", data);
   updateMqttStatus(data.status);
 });
 
 socket.on("inspection_result", (data) => {
-  console.log("inspection_result:", data);
   if (!hasMonitorContext()) return;
-  const resultConveyorCode = String(data.conveyor_id || "").trim().toUpperCase();
+
+  const resultConveyorCode = normalizeCode(data.conveyor_id);
   if (resultConveyorCode && resultConveyorCode !== getCurrentConveyorCode()) return;
+
   inspectionSessionActive = true;
   renderInspectionResult(data);
   setAiStatus("connected", "Hệ thống đang chạy");
@@ -431,45 +496,45 @@ socket.on("inspection_result", (data) => {
 });
 
 socket.on("control_ack", (ack) => {
-  console.log("control_ack:", ack);
   updateControlAckBox(ack);
 
   if (ack.status === "SUCCESS") {
     showToast(`${commandLabel(ack.command)} thành công`, "success");
+
     if (ack.command === "START_SYSTEM") {
       inspectionSessionActive = true;
       setAiStatus("warning", "Đang khởi động hệ thống...");
     }
+
     if (ack.command === "STOP_SYSTEM") {
       inspectionSessionActive = false;
       clearInspectionResult();
       setAiStatus("warning", "Đang dừng hệ thống...");
     }
-    if (ack.command === "GET_STATUS") setAiStatus("connected", "Đã nhận trạng thái hệ thống");
+
+    if (ack.command === "GET_STATUS") {
+      setAiStatus("connected", "Đã nhận trạng thái hệ thống");
+    }
   }
 
   if (ack.status === "ERROR") {
     const message = userMessage(ack.message, "Thao tác không thực hiện được.");
+
     showToast(`${commandLabel(ack.command)} thất bại: ${message}`, "error");
     setAiStatus("disconnected", `Lỗi: ${message}`);
   }
 });
 
 socket.on("system_status", (status) => {
-  console.log("system_status:", status);
-
-  const dbStatus = String(status.db_status || status.status || "").toUpperCase();
+  const dbStatus = normalizeCode(status.db_status || status.status);
   const running = status.running === true || dbStatus === "RUNNING";
 
-  if (running) {
+  if (running || dbStatus === "STARTING") {
     inspectionSessionActive = true;
-    setAiStatus("connected", "Hệ thống đang chạy");
-    return;
-  }
-
-  if (dbStatus === "STARTING") {
-    inspectionSessionActive = true;
-    setAiStatus("warning", "Đang khởi động hệ thống...");
+    setAiStatus(
+      running ? "connected" : "warning",
+      running ? "Hệ thống đang chạy" : "Đang khởi động hệ thống..."
+    );
     return;
   }
 
@@ -500,112 +565,34 @@ socket.on("system_status", (status) => {
 });
 
 socket.on("system_error", (payload) => {
-  console.error("system_error:", payload);
   const message = userMessage(payload.message, "Hệ thống AI gặp lỗi.");
+
   setAiStatus("disconnected", `Lỗi: ${message}`);
   showToast(message, "error");
 });
 
-/* ================= INITIALIZATION ================= */
+[
+  ["user_disconnected", "error"],
+  ["user_session_expired", "error"],
+  ["auto_stop_triggered", "error"],
+  ["user_reconnected", "success"],
+  ["auto_stop_cancelled", "success"],
+].forEach(([eventName, type]) => {
+  socket.on(eventName, (payload) => {
+    showToast(payload.message, payload.auto_stopped ? "info" : type);
+  });
+});
+
 document.addEventListener("DOMContentLoaded", () => {
   if (window.__LATEST_INSPECTION__) {
     renderInspectionResult(window.__LATEST_INSPECTION__);
   }
-  const fullnameInputs = document.querySelectorAll(".js-fullname-only");
 
-  fullnameInputs.forEach((input) => {
-    input.addEventListener("input", function () {
-      this.value = this.value.replace(/[^\p{L}\s]/gu, "");
-    });
+  initSerialPortSelect();
+  initFullnameValidation();
+  initHistoryImageModal();
 
-    input.addEventListener("paste", function (event) {
-      event.preventDefault();
-
-      const pastedText = (event.clipboardData || window.clipboardData).getData("text");
-      const cleanedText = pastedText.replace(/[^\p{L}\s]/gu, "");
-
-      const start = this.selectionStart;
-      const end = this.selectionEnd;
-
-      this.value =
-        this.value.substring(0, start) +
-        cleanedText +
-        this.value.substring(end);
-
-      this.setSelectionRange(start + cleanedText.length, start + cleanedText.length);
-    });
-  });
-
-  const historyModal = document.getElementById("historyImageModal");
-  if (historyModal && typeof $ === "function") {
-    $("#historyImageModal").on("show.bs.modal", (event) => {
-      const trigger = event.relatedTarget;
-      const src = trigger ? trigger.getAttribute("data-image-src") : "";
-      const title = trigger ? trigger.getAttribute("data-image-title") : "Ảnh kiểm tra";
-      const modalTitle = document.getElementById("historyImageModalTitle");
-      const modalImage = document.getElementById("historyImageModalImg");
-      const emptyState = historyModal.querySelector(".history-image-modal__empty");
-
-      if (modalTitle) modalTitle.textContent = title || "Ảnh kiểm tra";
-      if (emptyState) emptyState.style.display = "none";
-
-      if (modalImage) {
-        modalImage.style.display = "block";
-        modalImage.alt = title || "Ảnh kiểm tra";
-        modalImage.onerror = () => {
-          modalImage.style.display = "none";
-          if (emptyState) emptyState.style.display = "flex";
-        };
-        modalImage.src = src ? `${src}${String(src).includes("?") ? "&" : "?"}t=${Date.now()}` : "";
-      }
-    });
-
-    $("#historyImageModal").on("hidden.bs.modal", () => {
-      const modalImage = document.getElementById("historyImageModalImg");
-      if (modalImage) {
-        modalImage.onerror = null;
-        modalImage.removeAttribute("src");
-      }
-    });
-  }
-
-  if (document.querySelector("[data-conveyor-code]")) {
+  if (hasMonitorContext()) {
     setTimeout(() => sendControlCommand("GET_STATUS"), 600);
   }
-<<<<<<< HEAD
-<<<<<<< HEAD
-
-  
-});
-socket.on("session_rejected", (payload) => {
-  alert(payload.message || "Phiên đăng nhập không hợp lệ.");
-  window.location.href = "/login";
-});
-if (hasMonitorContext() && socket) {
-  socket.emit("join_monitor", {
-    conveyor_id: getCurrentConveyorCode(),
-  });
-}
-socket.on("user_disconnected", function (payload) {
-  showToast(payload.message, "error");
-});
-
-socket.on("user_reconnected", function (payload) {
-  showToast(payload.message, payload.auto_stopped ? "info" : "success");
-});
-
-socket.on("user_session_expired", function (payload) {
-  showToast(payload.message, "error");
-});
-
-socket.on("auto_stop_cancelled", function (payload) {
-  showToast(payload.message, "success");
-});
-
-socket.on("auto_stop_triggered", function (payload) {
-  showToast(payload.message, "error");
-=======
->>>>>>> origin/main
-=======
->>>>>>> origin/main
 });

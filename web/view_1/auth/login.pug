@@ -1,0 +1,27 @@
+doctype html
+html(lang="vi")
+  head
+    title= title || "Đăng nhập"
+    meta(charset="utf-8")
+    meta(name="viewport" content="width=device-width, initial-scale=1")
+    link(rel="stylesheet" href="/style.css")
+
+  body
+    .login-page
+      .login-card
+        h1.login-card__title Đăng nhập
+        p.login-card__subtitle Hệ thống kiểm tra sản phẩm bằng AI
+
+        if error
+          .login-error= error
+
+        form.login-form(method="POST" action="/login")
+          .field
+            label.field__label(for="username") Tài khoản
+            input#username.field__control(type="text" name="username" required)
+
+          .field
+            label.field__label(for="password") Mật khẩu
+            input#password.field__control(type="password" name="password" required)
+
+          button.btn.btn--primary(type="submit") Đăng nhập

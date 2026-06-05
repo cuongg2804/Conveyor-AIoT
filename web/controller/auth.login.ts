@@ -12,7 +12,6 @@ export const login = async (req: Request, res: Response) => {
 }
 export const loginPost = async (req: Request, res: Response) => {
     try {
-        
         const { username, password } = req.body;
         if(!username || !password) {
         return res.render("auth/login", {
@@ -22,7 +21,7 @@ export const loginPost = async (req: Request, res: Response) => {
         }
         const user = await User.findOne({
             username: String(username).trim(),
-        }).lean();
+        }).lean<any>();
         if (!user) {
             return res.render("auth/login", {
                 title: "Đăng nhập hệ thống",

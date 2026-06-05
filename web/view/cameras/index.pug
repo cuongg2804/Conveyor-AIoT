@@ -8,7 +8,7 @@ block main
                 p.dashboard_subtitle Tạo, cập nhật, xóa camera trong hệ thống
 
             .dashboard-actions
-                a.btn.btn-primary(href="/cameras/create") Thêm camera mới
+                a.btn.btn--primary(href="/cameras/create") Thêm camera mới
 
     if error
       .alert.alert--error
@@ -32,7 +32,7 @@ block main
                     option(value="IN_USE" selected=filters.status === "IN_USE") Đang sử dụng
             .history-filters__actions
                 button.btn.btn--primary(type="submit") Lọc
-                a.btn.btn-secondary(href="/cameras") Xóa
+                a.btn.btn--secondary(href="/cameras") Xóa
 
 
 
@@ -57,16 +57,8 @@ block main
                             td
                                 if item.status === "AVAILABLE"
                                     | Sẵn sàng
-<<<<<<< HEAD
-<<<<<<< HEAD
-                                else if item.status === "IN_USE" 
-                                    | Đang vận hành
-=======
-=======
->>>>>>> origin/main
                                 else if item.status === "IN_USE"
-                                    | Đang sử dụng
->>>>>>> origin/main
+                                    | Đang vận hành
                                 else
                                     | #{item.status || "-"}
                             td=item.conveyor_name

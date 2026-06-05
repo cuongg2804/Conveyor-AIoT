@@ -1,16 +1,11 @@
 extend ../layout/default.pug
 
 block main
-<<<<<<< HEAD
-<<<<<<< HEAD
   - const currentTab = selectedTab || "production"
   - const currentMode = currentTab === "test" ? "TEST" : "PRODUCTION"
-  - const isRunning = String(conveyor.status || "").toUpperCase() === "RUNNING"
+  - const runningStatuses = ["STARTING", "RUNNING", "STOPPING"]
+  - const isRunning = runningStatuses.includes(String(conveyor.status || "").toUpperCase())
   - const isTestModelLocked = currentTab === "test" && config.config_mode === "TEST" && config.model_id && isTestingModelLocked
-
-=======
-=======
->>>>>>> origin/main
   -
     const safeSpeedPresets = speedPresets || [
       { level: 1, key: "VERY_SLOW", label: "Very Slow", pwm: 153, rpm: 7.95 },
@@ -20,1248 +15,261 @@ block main
       { level: 5, key: "MAX", label: "Max", pwm: 255, rpm: 12.00 }
     ];
     const safeArduinoConfig = arduinoConfig || {
-      speed_low_level: 2,
-      speed_high_level: 5,
-      servo_home_angle: 0,
-      servo_gate_angle: 130,
-      light_min_lux: 1000,
-      light_max_lux: 2000
+      speed_low_level: config.arduino_speed_low_level || 2,
+      speed_high_level: config.arduino_speed_high_level || 5,
+      servo_home_angle: config.arduino_servo_home_angle || 0,
+      servo_gate_angle: config.arduino_servo_gate_angle || 130,
+      light_min_lux: config.arduino_light_min_lux || 1000,
+      light_max_lux: config.arduino_light_max_lux || 2000
     };
-<<<<<<< HEAD
->>>>>>> origin/main
-=======
->>>>>>> origin/main
-  .page
+
+  .page.settings-grid
     .dashboard__header
       .dashboard__heading
-        h1.dashboard__title= title || "Cấu hình băng tải"
-        p.dashboard__subtitle Cấu hình thông số vận hành, camera và model AI cho băng tải.
-
+        h1.dashboard__title Cấu hình #{conveyor.name || conveyor.conveyor_id}
+        p.dashboard__subtitle= currentTab === "test" ? "Kiểm thử model AI - không tính vào sản lượng thật" : "Vận hành chính thức - lưu kết quả sản xuất"
 
       .dashboard-actions
-        a.btn.btn--secondary(href=dashboardUrl || "/dashboard") Quay lại danh sách
-        if monitorUrl
-          a.btn.btn--primary(href=`${monitorUrl}?mode=${currentMode}`) Giám sát
+        a.btn.btn--secondary(href=dashboardUrl || "/dashboard") Quay lại
+        a.btn.btn--primary(href=monitorUrl || `/inspection/monitor/${conveyor.conveyor_id}`) Giám sát
 
     if error
-      .alert.alert--error #{error}
-
+      .alert.alert--error= error
     if updated
-      .alert.alert--success Cập nhật cấu hình thành công.
-
+      .alert.alert--success Đã lưu cấu hình.
     if configSynced
-      .alert.alert--success Đã đồng bộ cấu hình.
-
+      .alert.alert--success Đã gửi cấu hình xuống Arduino.
     if configSyncFailed
-      .alert.alert--error Không thể đồng bộ cấu hình.
-
+      .alert.alert--error Đã lưu cấu hình nhưng chưa gửi được xuống Arduino.
     if approved
-      .alert.alert--success Model kiểm thử đã đạt và được chuyển sang model vận hành thật.
-
+      .alert.alert--success Model kiểm thử đã được phê duyệt.
     if rejected
       .alert.alert--error Model kiểm thử đã được đánh dấu không đạt.
-    
+
     if isConfigLocked
-      .alert.alert--error #{configLockMessage}
+      .alert.alert--error= configLockMessage || "Không thể cấu hình khi băng tải đang vận hành. Vui lòng dừng hệ thống trước."
 
     .history-shift-tabs
       a.history-shift-tab(
-        class=currentTab === "production" ? "active" : ""
         href=`/settings/${conveyor.conveyor_id}?tab=production`
+        class=currentTab === "production" ? "active" : ""
       ) Vận hành thật
-
       a.history-shift-tab(
-        class=currentTab === "test" ? "active" : ""
         href=`/settings/${conveyor.conveyor_id}?tab=test`
+        class=currentTab === "test" ? "active" : ""
       ) Kiểm thử model
 
-    .card.settings-card
-      form.settings-form(method="POST" action=formAction)
-        fieldset(disabled=isConfigLocked)
-          input(type="hidden" name="tab" value=currentTab)
+    form.settings-form(method="POST" action=formAction || `/settings/${conveyor.conveyor_id}?tab=${currentTab}`)
+      input(type="hidden" name="tab" value=currentTab)
 
-          .settings-section
-            .settings-section__head
-              h3.settings-section__title Băng tải
-              p.settings-section__desc Cấu hình thông tin băng tải, tốc độ, cổng Serial và cơ cấu gạt.
+      .settings-section
+        .settings-section__head
+          h3.settings-section__title Băng tải
+          p.settings-section__desc Thông tin định danh, người vận hành, tốc độ và góc servo cơ bản.
 
-            .settings-section-grid.settings-section-grid--two
-              .field
-                label.field__label(for="name") Tên băng tải
-                input#name.field__control(
-                  type="text"
-                  name="name"
-                  value=conveyor.name
-                  required
-                )
+        .settings-section-grid.settings-section-grid--two
+          .field
+            label.field__label(for="conveyor_id") Mã băng tải
+            input#conveyor_id.field__control(type="text" value=conveyor.conveyor_id disabled)
 
-              if user && user.role === "ADMIN"
-                .field
-                  label.field__label(for="user_id") Người vận hành
-                  select#user_id.field__control(name="user_id")
-                    option(value="" selected=!conveyor.user_id) -- Chưa phân công --
-                    each operator in operators
-                      option(value=operator.user_id selected=conveyor.user_id === operator.user_id)
-                        | #{operator.fullname || operator.username || operator.user_id}
-              else
-                input(type="hidden" name="user_id" value=conveyor.user_id || "")
+          .field
+            label.field__label(for="name") Tên băng tải
+            input#name.field__control(type="text" name="name" value=conveyor.name || "" required disabled=isConfigLocked)
 
-            .settings-section-grid.settings-section-grid--three
-              .field
-                label.field__label(for="status") Trạng thái
-                input#status(for="status").field__control(
-                  type="text"
-                  name="status"
-                  value=conveyor.status
-                  disabled
-                )
-                
-                //select#status.field__control(name="status" disabled)
-                  option(value="READY" selected=conveyor.status === "READY") READY
-                  option(value="RUNNING" selected=conveyor.status === "RUNNING") RUNNING
-                  option(value="STOP" selected=conveyor.status === "STOP") STOP
-                  option(value="ERROR" selected=conveyor.status === "ERROR") ERROR
-                  option(value="OFFLINE" selected=conveyor.status === "OFFLINE") OFFLINE
+          if user && user.role === "ADMIN"
+            .field
+              label.field__label(for="user_id") Người vận hành
+              select#user_id.field__control(name="user_id" disabled=isConfigLocked)
+                option(value="" selected=!conveyor.user_id) -- Chưa phân công --
+                each operator in operators
+                  option(value=operator.user_id selected=conveyor.user_id === operator.user_id)
+                    | #{operator.fullname || operator.username || operator.user_id}
+          else
+            input(type="hidden" name="user_id" value=conveyor.user_id || "")
 
-              .field
-                label.field__label(for="speed") Tốc độ băng tải PWM
-                input#speed.field__control(
-                  type="number"
-                  name="speed"
-                  min="0"
-                  max="255"
-                  step="1"
-                  value=config.speed || 150
-                  required
-                )
+          .field
+            label.field__label(for="status") Trạng thái
+            input#status.field__control(type="text" value=conveyor.status || "-" disabled)
 
-              .field
-                label.field__label(for="serial_port") Cổng kết nối
-                select#serial_port.field__control(name="serial_port")
-                  option(value=config.serial_port selected=config.serial_port)= config.serial_port || "-- Chưa chọn cổng --"
+          .field
+            label.field__label(for="speed") Tốc độ băng tải PWM
+            input#speed.field__control(type="number" name="speed" min="0" max="255" step="1" value=config.speed || 150 required disabled=isConfigLocked)
 
-            .settings-section-grid.settings-section-grid--three
-              .field
-                label.field__label(for="baud_rate") Tốc độ truyền Serial
-                input#baud_rate.field__control(
-                  type="number"
-                  name="baud_rate"
-                  min="1200"
-                  max="115200"
-                  step="1"
-                  value=config.baud_rate || 9600
-                  required
-                )
+          .field
+            label.field__label(for="goc_home") Góc home servo
+            input#goc_home.field__control(type="number" name="goc_home" min="0" max="180" step="1" value=config.goc_home || 0 required disabled=isConfigLocked)
 
-              .field
-                label.field__label(for="goc_home") Góc home servo
-                input#goc_home.field__control(
-                  type="number"
-                  name="goc_home"
-                  min="0"
-                  max="180"
-                  step="1"
-                  value=config.goc_home || 0
-                  required
-                )
+          .field
+            label.field__label(for="goc_gat") Góc gạt servo
+            input#goc_gat.field__control(type="number" name="goc_gat" min="0" max="180" step="1" value=config.goc_gat || 120 required disabled=isConfigLocked)
 
-              .field
-                label.field__label(for="goc_gat") Góc gạt servo
-                input#goc_gat.field__control(
-                  type="number"
-                  name="goc_gat"
-                  min="0"
-                  max="180"
-                  step="1"
-                  value=config.goc_gat || 120
-                  required
-                )
+        .field.settings-section-full
+          label.field__label(for="description") Mô tả
+          textarea#description.field__control(name="description" disabled=isConfigLocked)= conveyor.description || ""
+
+      .settings-section
+        .settings-section__head
+          h3.settings-section__title Camera
+          p.settings-section__desc Chọn nguồn camera và độ trễ kích hoạt chụp ảnh.
+
+        .settings-section-grid.settings-section-grid--two
+          .field
+            label.field__label(for="camera_id") Nguồn camera
+            select#camera_id.field__control(name="camera_id" disabled=isConfigLocked)
+              option(value="" selected=!config.camera_id) -- Chưa chọn camera --
+              each camera in cameras
+                option(value=camera.camera_id selected=config.camera_id === camera.camera_id)
+                  | #{camera.camera_name} - #{camera.camera_id}
+
+          .field
+            label.field__label(for="camera_trigger_delay") Độ trễ kích hoạt camera ms
+            input#camera_trigger_delay.field__control(
+              type="number"
+              name="camera_trigger_delay"
+              min="0"
+              max="10000"
+              step="1"
+              value=(config.camera_trigger_delay_ms !== undefined ? config.camera_trigger_delay_ms : config.camera_trigger_delay || 0)
+              disabled=isConfigLocked
+            )
+
+      .settings-section
+        .settings-section__head
+          h3.settings-section__title Bộ điều khiển Arduino
+          p.settings-section__desc Cấu hình cổng Serial, baud rate, tốc độ mức LOW/HIGH, góc servo và ngưỡng ánh sáng.
+
+        .settings-section-grid.settings-section-grid--two
+          .field
+            label.field__label(for="serial_port") Cổng kết nối
+            select#serial_port.field__control(name="serial_port" data-current=config.serial_port || "" disabled=isConfigLocked)
+              option(value=config.serial_port selected=config.serial_port)= config.serial_port || "-- Chưa chọn cổng --"
+
+          .field
+            label.field__label(for="baud_rate") Tốc độ truyền Serial
+            input#baud_rate.field__control(type="number" name="baud_rate" min="1200" max="115200" step="1" value=config.baud_rate || 9600 required disabled=isConfigLocked)
+
+        .settings-subsection
+          .settings-subsection__head
+            h4.settings-subsection__title Tốc độ băng tải
+            p.settings-subsection__desc Chọn hai mức tốc độ hợp lệ để Arduino chuyển đổi LOW/HIGH khi vận hành.
+
+          .settings-section-grid.settings-section-grid--two
+            .field
+              label.field__label(for="arduino_speed_low_level") Tốc độ LOW
+              select#arduino_speed_low_level.field__control(name="arduino_speed_low_level" disabled=isConfigLocked)
+                each preset in safeSpeedPresets
+                  option(value=preset.level selected=Number(safeArduinoConfig.speed_low_level) === Number(preset.level))
+                    | Level #{preset.level} - #{preset.label} - PWM #{preset.pwm}
 
             .field
-              label.field__label(for="description") Mô tả
-              textarea#description.field__control(name="description")= conveyor.description || ""
+              label.field__label(for="arduino_speed_high_level") Tốc độ HIGH
+              select#arduino_speed_high_level.field__control(name="arduino_speed_high_level" disabled=isConfigLocked)
+                each preset in safeSpeedPresets
+                  option(value=preset.level selected=Number(safeArduinoConfig.speed_high_level) === Number(preset.level))
+                    | Level #{preset.level} - #{preset.label} - PWM #{preset.pwm}
 
-          .settings-section
-            .settings-section__head
-              h3.settings-section__title Camera
-              p.settings-section__desc Chọn nguồn camera và thiết lập độ trễ kích hoạt chụp ảnh.
+        .settings-subsection
+          .settings-subsection__head
+            h4.settings-subsection__title Servo gạt sản phẩm
+            
 
-            .settings-section-grid.settings-section-grid--two
-              .field
-                label.field__label(for="camera_id") Nguồn camera
-                select#camera_id.field__control(name="camera_id")
-                  option(value="" selected=!config.camera_id) -- Chưa chọn camera --
-                  each camera in cameras
-                    option(value=camera.camera_id selected=config.camera_id === camera.camera_id)
-                      | #{camera.camera_name} - #{camera.camera_id}
-
-              .field
-                label.field__label(for="camera_trigger_delay") Độ trễ kích hoạt camera ms
-                input#camera_trigger_delay.field__control(
-                  type="number"
-                  name="camera_trigger_delay"
-                  min="0"
-                  max="10000"
-                  step="1"
-                  value=config.camera_trigger_delay || 0
-                )
-
-<<<<<<< HEAD
-          .settings-section
-            .settings-section__head
-              h3.settings-section__title Model AI
-              if currentTab === "test"
-                p.settings-section__desc Chọn model ở trạng thái testing để kiểm thử. Khi đã chọn, model sẽ bị khóa cho đến khi phê duyệt Đạt hoặc Không đạt.
-              else
-                p.settings-section__desc Chọn model đã được phê duyệt active để vận hành thật.
-
-            .settings-section-grid.settings-section-grid--two
-              .field
-                label.field__label(for="model_id") Model AI
-=======
-        .settings-section
-          .settings-section__head
-<<<<<<< HEAD
-=======
-            h3.settings-section__title Camera
-            p.settings-section__desc Chọn camera và thiết lập độ trễ kích hoạt chụp ảnh
-
-          .settings-section-grid
+          .settings-section-grid.settings-section-grid--two
             .field
-              label.field__label(for="camera_id") Nguồn camera
-              select#camera_id.field__control(name="camera_id")
-                option(value="" selected=!config.camera_id) -- Chưa chọn camera --
-                each camera in cameras
-                  option(value=camera.camera_id selected=config.camera_id === camera.camera_id)
-                    | #{camera.camera_name} - #{camera.camera_id}
+              label.field__label(for="arduino_servo_home_angle") Góc servo HOME
+              input#arduino_servo_home_angle.field__control(type="number" name="arduino_servo_home_angle" min="0" max="180" value=safeArduinoConfig.servo_home_angle required disabled=isConfigLocked)
 
             .field
-              label.field__label(for="camera_trigger_delay") Độ trễ kích hoạt
-              input#camera_trigger_delay.field__control(type="number" name="camera_trigger_delay" value=config.camera_trigger_delay || 0)
+              label.field__label(for="arduino_servo_gate_angle") Góc servo GẠT
+              input#arduino_servo_gate_angle.field__control(type="number" name="arduino_servo_gate_angle" min="0" max="180" value=safeArduinoConfig.servo_gate_angle required disabled=isConfigLocked)
 
-        .settings-section
-          .settings-section__head
->>>>>>> origin/main
-            h3.settings-section__title Bộ điều khiển Arduino
-            p.settings-section__desc Cấu hình kết nối serial, tốc độ băng tải, góc servo và ngưỡng ánh sáng
+        .settings-subsection
+          .settings-subsection__head
+            h4.settings-subsection__title Ngưỡng ánh sáng
+            p.settings-subsection__desc Xác định khoảng lux hợp lệ trước khi chụp ảnh.
 
-          .settings-section-grid.settings-section-grid--control
+          .settings-section-grid.settings-section-grid--two
             .field
-              label.field__label(for="serial_port") Cổng kết nối
-              select#serial_port.field__control(name="serial_port")
-                option(value=config.serial_port selected=config.serial_port)= config.serial_port || "-- Chưa chọn cổng --"
-              button#scan_serial_ports.btn.btn--secondary(type="button") Quét cổng
-<<<<<<< HEAD
->>>>>>> origin/main
-=======
->>>>>>> origin/main
-
-                if currentTab === "test" && isTestModelLocked
-                  select#model_id.field__control(name="model_id" disabled)
-                    if selectedModel
-                      option(value=selectedModel.model_id selected)
-                        | #{selectedModel.model_name} - #{selectedModel.version} - #{selectedModel.product_code}
-                    else
-                      option(value="" selected) Model đang kiểm thử không còn tồn tại
-
-<<<<<<< HEAD
-                  input(type="hidden" name="model_id" value=String(config.model_id))
-
-                  p.field__hint Model kiểm thử đang được khóa. Hãy phê duyệt Đạt hoặc Không đạt trước khi chọn model khác.
-=======
-          .settings-subsection
-            .settings-subsection__head
-              h4.settings-subsection__title Tốc độ băng tải
-              p.settings-subsection__desc Chọn hai mức tốc độ hợp lệ để Arduino chuyển đổi LOW/HIGH khi vận hành
-
-            .settings-section-grid
-              .field
-                label.field__label(for="arduino_speed_low_level") Tốc độ LOW
-                select#arduino_speed_low_level.field__control(name="arduino_speed_low_level" data-selected=safeArduinoConfig.speed_low_level required)
-
-              .field
-                label.field__label(for="arduino_speed_high_level") Tốc độ HIGH
-                select#arduino_speed_high_level.field__control(name="arduino_speed_high_level" data-selected=safeArduinoConfig.speed_high_level required)
-
-          .settings-subsection
-            .settings-subsection__head
-              h4.settings-subsection__title Servo gạt sản phẩm
-              p.settings-subsection__desc Chỉ cấu hình vị trí HOME và vị trí GẠT, các timing còn lại do Arduino tự xử lý
-
-            .settings-section-grid
-              .field
-                label.field__label(for="arduino_servo_home_angle") Góc servo HOME
-                input#arduino_servo_home_angle.field__control(type="number" name="arduino_servo_home_angle" min="0" max="180" value=(safeArduinoConfig.servo_home_angle !== undefined ? safeArduinoConfig.servo_home_angle : 0) required)
-
-              .field
-                label.field__label(for="arduino_servo_gate_angle") Góc servo GẠT
-                input#arduino_servo_gate_angle.field__control(type="number" name="arduino_servo_gate_angle" min="0" max="180" value=(safeArduinoConfig.servo_gate_angle !== undefined ? safeArduinoConfig.servo_gate_angle : 130) required)
-
-          .settings-subsection
-            .settings-subsection__head
-              h4.settings-subsection__title Ngưỡng ánh sáng
-              p.settings-subsection__desc Xác định khoảng lux hợp lệ để kiểm tra điều kiện chiếu sáng trước khi chụp ảnh
-
-            .settings-section-grid
-              .field
-                label.field__label(for="arduino_light_min_lux") Lux tối thiểu chấp nhận
-                input#arduino_light_min_lux.field__control(type="number" name="arduino_light_min_lux" min="0" max="3000" value=(safeArduinoConfig.light_min_lux !== undefined ? safeArduinoConfig.light_min_lux : 1000) required)
-
-              .field
-                label.field__label(for="arduino_light_max_lux") Lux tối đa chấp nhận
-                input#arduino_light_max_lux.field__control(type="number" name="arduino_light_max_lux" min="0" max="3000" value=(safeArduinoConfig.light_max_lux !== undefined ? safeArduinoConfig.light_max_lux : 2000) required)
-
-            .light-preview
-              .light-preview__item
-                span DARK
-                strong#light_preview_dark 0 - 999 lux
-              .light-preview__item.light-preview__item--ok
-                span OK
-                strong#light_preview_ok 1000 - 2000 lux
-              .light-preview__item
-                span BRIGHT
-                strong#light_preview_bright 2001 - 3000 lux
-
-          .checkbox-field
-            label(for="save_arduino_default")
-              input#save_arduino_default(type="checkbox" name="save_arduino_default" value="1")
-              span Lưu cấu hình Arduino làm mặc định
-            p.form-note Chỉ áp dụng cho tốc độ, góc servo và ngưỡng ánh sáng. Nếu chọn, cấu hình sẽ được ghi vào EEPROM của Arduino.
-
-          .arduino-actions
-            button#read_arduino_config.btn.btn--secondary(type="button") Đọc cấu hình Arduino
-            button#run_light_check.btn.btn--secondary(type="button") Kiểm tra ánh sáng
-            button#reset_arduino_default.btn.btn--secondary(type="button") Khôi phục mặc định Arduino
-
-          .arduino-status-panel#arduino_status_panel
-            .arduino-status-panel__head
-              h4 Cấu hình Arduino hiện tại
-              span#arduino_status_badge Chưa đọc
-            .arduino-status-grid
-              .arduino-status-item
-                span Firmware
-                strong#arduino_fw -
-              .arduino-status-item
-                span Tốc độ LOW
-                strong#arduino_speed_low -
-              .arduino-status-item
-                span Tốc độ HIGH
-                strong#arduino_speed_high -
-              .arduino-status-item
-                span Chế độ hiện tại
-                strong#arduino_current_speed -
-              .arduino-status-item
-                span Servo HOME
-                strong#arduino_servo_home -
-              .arduino-status-item
-                span Servo GẠT
-                strong#arduino_servo_gate -
-              .arduino-status-item
-                span Ánh sáng OK
-                strong#arduino_light_range -
-              .arduino-status-item
-                span EEPROM
-                strong#arduino_saved -
-            .arduino-status-panel__subhead Kết quả kiểm tra ánh sáng
-            .arduino-status-grid.arduino-status-grid--light
-              .arduino-status-item
-                span Trung bình
-                strong#light_check_avg -
-              .arduino-status-item
-                span Thấp nhất
-                strong#light_check_min -
-              .arduino-status-item
-                span Cao nhất
-                strong#light_check_max -
-              .arduino-status-item
-                span Đánh giá
-                strong#light_check_status -
-            .arduino-status-panel__footer#arduino_status_message Chưa có dữ liệu từ Arduino.
-
-          .settings-subsection
-            .settings-subsection__head
-              h4.settings-subsection__title Tốc độ băng tải
-              p.settings-subsection__desc Chọn hai mức tốc độ hợp lệ để Arduino chuyển đổi LOW/HIGH khi vận hành
-
-            .settings-section-grid
-              .field
-                label.field__label(for="arduino_speed_low_level") Tốc độ LOW
-                select#arduino_speed_low_level.field__control(name="arduino_speed_low_level" data-selected=safeArduinoConfig.speed_low_level required)
-
-              .field
-                label.field__label(for="arduino_speed_high_level") Tốc độ HIGH
-                select#arduino_speed_high_level.field__control(name="arduino_speed_high_level" data-selected=safeArduinoConfig.speed_high_level required)
-
-          .settings-subsection
-            .settings-subsection__head
-              h4.settings-subsection__title Servo gạt sản phẩm
-              p.settings-subsection__desc Chỉ cấu hình vị trí HOME và vị trí GẠT, các timing còn lại do Arduino tự xử lý
-
-            .settings-section-grid
-              .field
-                label.field__label(for="arduino_servo_home_angle") Góc servo HOME
-                input#arduino_servo_home_angle.field__control(type="number" name="arduino_servo_home_angle" min="0" max="180" value=(safeArduinoConfig.servo_home_angle !== undefined ? safeArduinoConfig.servo_home_angle : 0) required)
-
-              .field
-                label.field__label(for="arduino_servo_gate_angle") Góc servo GẠT
-                input#arduino_servo_gate_angle.field__control(type="number" name="arduino_servo_gate_angle" min="0" max="180" value=(safeArduinoConfig.servo_gate_angle !== undefined ? safeArduinoConfig.servo_gate_angle : 130) required)
-
-          .settings-subsection
-            .settings-subsection__head
-              h4.settings-subsection__title Ngưỡng ánh sáng
-              p.settings-subsection__desc Xác định khoảng lux hợp lệ để kiểm tra điều kiện chiếu sáng trước khi chụp ảnh
-
-            .settings-section-grid
-              .field
-                label.field__label(for="arduino_light_min_lux") Lux tối thiểu chấp nhận
-                input#arduino_light_min_lux.field__control(type="number" name="arduino_light_min_lux" min="0" max="3000" value=(safeArduinoConfig.light_min_lux !== undefined ? safeArduinoConfig.light_min_lux : 1000) required)
-
-              .field
-                label.field__label(for="arduino_light_max_lux") Lux tối đa chấp nhận
-                input#arduino_light_max_lux.field__control(type="number" name="arduino_light_max_lux" min="0" max="3000" value=(safeArduinoConfig.light_max_lux !== undefined ? safeArduinoConfig.light_max_lux : 2000) required)
-
-            .light-preview
-              .light-preview__item
-                span DARK
-                strong#light_preview_dark 0 - 999 lux
-              .light-preview__item.light-preview__item--ok
-                span OK
-                strong#light_preview_ok 1000 - 2000 lux
-              .light-preview__item
-                span BRIGHT
-                strong#light_preview_bright 2001 - 3000 lux
-
-          .checkbox-field
-            label(for="save_arduino_default")
-              input#save_arduino_default(type="checkbox" name="save_arduino_default" value="1")
-              span Lưu cấu hình Arduino làm mặc định
-            p.form-note Chỉ áp dụng cho tốc độ, góc servo và ngưỡng ánh sáng. Nếu chọn, cấu hình sẽ được ghi vào EEPROM của Arduino.
-
-          .arduino-actions
-            button#read_arduino_config.btn.btn--secondary(type="button") Đọc cấu hình Arduino
-            button#run_light_check.btn.btn--secondary(type="button") Kiểm tra ánh sáng
-            button#reset_arduino_default.btn.btn--secondary(type="button") Khôi phục mặc định Arduino
-
-          .arduino-status-panel#arduino_status_panel
-            .arduino-status-panel__head
-              h4 Cấu hình Arduino hiện tại
-              span#arduino_status_badge Chưa đọc
-            .arduino-status-grid
-              .arduino-status-item
-                span Firmware
-                strong#arduino_fw -
-              .arduino-status-item
-                span Tốc độ LOW
-                strong#arduino_speed_low -
-              .arduino-status-item
-                span Tốc độ HIGH
-                strong#arduino_speed_high -
-              .arduino-status-item
-                span Chế độ hiện tại
-                strong#arduino_current_speed -
-              .arduino-status-item
-                span Servo HOME
-                strong#arduino_servo_home -
-              .arduino-status-item
-                span Servo GẠT
-                strong#arduino_servo_gate -
-              .arduino-status-item
-                span Ánh sáng OK
-                strong#arduino_light_range -
-              .arduino-status-item
-                span EEPROM
-                strong#arduino_saved -
-            .arduino-status-panel__subhead Kết quả kiểm tra ánh sáng
-            .arduino-status-grid.arduino-status-grid--light
-              .arduino-status-item
-                span Trung bình
-                strong#light_check_avg -
-              .arduino-status-item
-                span Thấp nhất
-                strong#light_check_min -
-              .arduino-status-item
-                span Cao nhất
-                strong#light_check_max -
-              .arduino-status-item
-                span Đánh giá
-                strong#light_check_status -
-            .arduino-status-panel__footer#arduino_status_message Chưa có dữ liệu từ Arduino.
-
-        .settings-section
-          .settings-section__head
-            h3.settings-section__title AI
-            p.settings-section__desc Thiết lập ngưỡng đánh giá phục vụ phân loại sản phẩm đạt/không đạt
-
-          .settings-section-grid
-            .field
-              label.field__label(for="model_id") Model AI
-              select#model_id.field__control(name="model_id")
-                option(value="" selected=!config.model_id) -- Chưa chọn model --
-                each model in ModelRegistryList
-                  option(value=model._id selected=String(config.model_id || "") === String(model._id))
-                    | #{model.model_name} - #{model.version || "N/A"} - #{model.product_code || ""}
+              label.field__label(for="arduino_light_min_lux") Lux tối thiểu chấp nhận
+              input#arduino_light_min_lux.field__control(type="number" name="arduino_light_min_lux" min="0" max="3000" value=safeArduinoConfig.light_min_lux required disabled=isConfigLocked)
 
             .field
-              label.field__label(for="ai_threshold") Ngưỡng đánh giá
-              input#ai_threshold.field__control(type="number" name="ai_threshold" step="0.000001" value=config.ai_threshold || 30.436506 required)
->>>>>>> origin/main
+              label.field__label(for="arduino_light_max_lux") Lux tối đa chấp nhận
+              input#arduino_light_max_lux.field__control(type="number" name="arduino_light_max_lux" min="0" max="3000" value=safeArduinoConfig.light_max_lux required disabled=isConfigLocked)
 
+          .light-preview
+            .light-preview__item
+              span DARK
+              strong 0 - #{Math.max(Number(safeArduinoConfig.light_min_lux || 1000) - 1, 0)} lux
+            .light-preview__item.light-preview__item--ok
+              span OK
+              strong #{safeArduinoConfig.light_min_lux} - #{safeArduinoConfig.light_max_lux} lux
+            .light-preview__item
+              span BRIGHT
+              strong #{Number(safeArduinoConfig.light_max_lux || 2000) + 1} - 3000 lux
+
+        .checkbox-field
+          label(for="save_arduino_default")
+            input#save_arduino_default(type="checkbox" name="save_arduino_default" value="1" disabled=isConfigLocked)
+            span Lưu cấu hình Arduino làm mặc định
+          p.form-note Nếu chọn, cấu hình sẽ được ghi vào EEPROM của Arduino.
+
+      .settings-section
+        .settings-section__head
+          h3.settings-section__title Model AI
+          if currentTab === "test"
+            p.settings-section__desc Chọn model ở trạng thái testing để kiểm thử. Model đang kiểm thử sẽ bị khóa đến khi phê duyệt Đạt hoặc Không đạt.
+          else
+            p.settings-section__desc Chọn model đã được phê duyệt active để vận hành thật.
+
+        .settings-section-grid.settings-section-grid--two
+          .field
+            label.field__label(for="model_id") Model AI
+
+            if isTestModelLocked
+              select#model_id.field__control(name="model_id" disabled)
+                if selectedModel
+                  option(value=selectedModel.model_id selected)
+                    | #{selectedModel.model_name} - #{selectedModel.version} - #{selectedModel.product_code}
                 else
-                  select#model_id.field__control(name="model_id" required)
-                    if currentTab === "test"
-                      option(value="") -- Chọn model chờ kiểm thử --
-                      each model in testingModels
-                        option(
-                          value=model.model_id
-                          selected=String(config.model_id || "") === String(model.model_id)
-                        ) #{model.model_name} - #{model.version} - #{model.product_code}
-                    else
-                      option(value="") -- Chọn model đã phê duyệt --
-                      each model in activeModels
-                        option(
-                          value=model.model_id
-                          selected=String(config.model_id || "") === String(model.model_id)
-                        ) #{model.model_name} - #{model.version} - #{model.product_code}
+                  option(value=config.model_id selected)= config.model_id
+              input(type="hidden" name="model_id" value=config.model_id)
+              p.field__hint Model kiểm thử đang được khóa. Hãy phê duyệt Đạt hoặc Không đạt trước khi chọn model khác.
+            else
+              select#model_id.field__control(name="model_id" required disabled=isConfigLocked)
+                if currentTab === "test"
+                  option(value="") -- Chọn model chờ kiểm thử --
+                  each model in testingModels
+                    option(value=model.model_id selected=String(config.model_id || "") === String(model.model_id))
+                      | #{model.model_name} - #{model.version} - #{model.product_code}
+                else
+                  option(value="") -- Chọn model đã phê duyệt --
+                  each model in activeModels
+                    option(value=model.model_id selected=String(config.model_id || "") === String(model.model_id))
+                      | #{model.model_name} - #{model.version} - #{model.product_code}
 
-              .field
-                label.field__label(for="ai_threshold") Ngưỡng đánh giá
-                input#ai_threshold.field__control(
-                  type="number"
-                  name="ai_threshold"
-                  step="0.000001"
-                  value=config.ai_threshold || 30.436506
-                  required
-                )
-        .settings-actions
-<<<<<<< HEAD
-            button.btn.btn--primary(type="submit") Lưu cấu hình
+          .field
+            label.field__label(for="ai_threshold") Ngưỡng đánh giá
+            input#ai_threshold.field__control(type="number" name="ai_threshold" step="0.000001" value=config.ai_threshold || 30.436506 required disabled=isConfigLocked)
 
+      .settings-actions
+        button.btn.btn--primary(type="submit" disabled=isConfigLocked) Lưu cấu hình
 
-=======
-          button.btn.btn--primary(type="submit") Lưu cấu hình
-block scripts
-<<<<<<< HEAD
->>>>>>> origin/main
-=======
->>>>>>> origin/main
+    if currentTab === "test" && config.model_id && config.config_mode === "TEST"
+      .settings-section
+        .settings-section__head
+          h3.settings-section__title Phê duyệt model kiểm thử
+          if isRunning
+            p.settings-section__desc Vui lòng dừng băng tải trước khi phê duyệt model.
+          else
+            p.settings-section__desc Chọn Đạt để chuyển model sang active, hoặc Không đạt để đánh dấu failed.
+
+        if isRunning
+          .alert.alert--error Chỉ được phê duyệt sau khi đã dừng kiểm thử.
+        else
+          form.btn-row(method="POST" action=`/settings/${conveyor.conveyor_id}/approve-model`)
+            button.btn.btn--success(type="submit" name="decision" value="PASS" onclick="return confirm('Xác nhận model này ĐẠT và được dùng cho vận hành thật?');") Đạt
+            button.btn.btn--danger(type="submit" name="decision" value="FAIL" onclick="return confirm('Xác nhận model này KHÔNG ĐẠT?');") Không đạt
+
   script.
     window.CONVEYOR_ID = "#{conveyor.conveyor_id}";
-    window.SPEED_PRESETS = !{JSON.stringify(safeSpeedPresets)};
-
-    document.addEventListener("DOMContentLoaded", function () {
-      const serialSelect = document.getElementById("serial_port");
-      const scanButton = document.getElementById("scan_serial_ports");
-      const currentSerialPort = "#{config.serial_port || ''}";
-      const baudRateInput = document.getElementById("baud_rate");
-      const lowSpeedSelect = document.getElementById("arduino_speed_low_level");
-      const highSpeedSelect = document.getElementById("arduino_speed_high_level");
-      const minLuxInput = document.getElementById("arduino_light_min_lux");
-      const maxLuxInput = document.getElementById("arduino_light_max_lux");
-      const readArduinoConfigButton = document.getElementById("read_arduino_config");
-      const runLightCheckButton = document.getElementById("run_light_check");
-      const resetArduinoDefaultButton = document.getElementById("reset_arduino_default");
-      const arduinoStatusBadge = document.getElementById("arduino_status_badge");
-      const arduinoStatusMessage = document.getElementById("arduino_status_message");
-      const presets = Array.isArray(window.SPEED_PRESETS) ? window.SPEED_PRESETS : [];
-      const pendingArduinoButtons = {};
-      let lightCheckCountdownTimer = null;
-      let lightCheckSecondsLeft = 0;
-
-      function renderPorts(ports) {
-        if (!serialSelect) return;
-
-        serialSelect.innerHTML = "";
-
-        const emptyOption = document.createElement("option");
-        emptyOption.value = "";
-        emptyOption.textContent = "-- Chưa chọn cổng --";
-        serialSelect.appendChild(emptyOption);
-
-        ports.forEach(function (port) {
-          const device = port.device || port.path || port.name || String(port);
-
-          const option = document.createElement("option");
-          option.value = device;
-          option.textContent = port.description
-            ? `${device} - ${port.description}`
-            : device;
-
-          if (currentSerialPort === device) {
-            option.selected = true;
-          }
-
-          serialSelect.appendChild(option);
-        });
-
-        if (currentSerialPort && !ports.some(function (p) {
-          const device = p.device || p.path || p.name || String(p);
-          return device === currentSerialPort;
-        })) {
-          const currentOption = document.createElement("option");
-          currentOption.value = currentSerialPort;
-          currentOption.textContent = `${currentSerialPort} - Cổng đã lưu`;
-          currentOption.selected = true;
-          serialSelect.appendChild(currentOption);
-        }
-      }
-
-<<<<<<< HEAD
-<<<<<<< HEAD
-      const socket = window.appSocket;
-
-      if (socket) {
-        socket.on("serial_ports", function (ports) {
-          renderPorts(Array.isArray(ports) ? ports : []);
-        });
-      }
-=======
-      function presetLabel(preset) {
-        return `Level ${preset.level}: ${preset.label} - PWM ${preset.pwm} - ${Number(preset.rpm).toFixed(2)} vòng/phút`;
-      }
-
-      function fillSpeedSelect(select, selectedLevel, filterFn) {
-        if (!select) return;
-
-        select.innerHTML = "";
-        presets.filter(filterFn).forEach(function (preset) {
-          const option = document.createElement("option");
-          option.value = String(preset.level);
-          option.textContent = presetLabel(preset);
-          if (Number(selectedLevel) === Number(preset.level)) {
-            option.selected = true;
-          }
-          select.appendChild(option);
-        });
-
-        if (!select.value && select.options.length > 0) {
-          select.options[0].selected = true;
-        }
-      }
-
-      function syncSpeedDropdowns(changedField) {
-        if (!lowSpeedSelect || !highSpeedSelect || presets.length === 0) return;
-
-        let lowLevel = Number(lowSpeedSelect.value || lowSpeedSelect.dataset.selected || 2);
-        let highLevel = Number(highSpeedSelect.value || highSpeedSelect.dataset.selected || 5);
-
-        if (!Number.isFinite(lowLevel)) lowLevel = 2;
-        if (!Number.isFinite(highLevel)) highLevel = 5;
-
-        if (lowLevel >= highLevel) {
-          if (changedField === "low") {
-            highLevel = Math.min(5, lowLevel + 1);
-          } else {
-            lowLevel = Math.max(1, highLevel - 1);
-          }
-        }
-
-        fillSpeedSelect(lowSpeedSelect, lowLevel, function (preset) {
-          return preset.level < highLevel;
-        });
-        fillSpeedSelect(highSpeedSelect, highLevel, function (preset) {
-          return preset.level > Number(lowSpeedSelect.value || lowLevel);
-        });
-      }
-
-      function updateLightPreview() {
-        const minLux = Number(minLuxInput ? minLuxInput.value : 1000);
-        const maxLux = Number(maxLuxInput ? maxLuxInput.value : 2000);
-        const darkText = document.getElementById("light_preview_dark");
-        const okText = document.getElementById("light_preview_ok");
-        const brightText = document.getElementById("light_preview_bright");
-        const valid = Number.isFinite(minLux) && Number.isFinite(maxLux) && minLux >= 0 && minLux < maxLux && maxLux <= 3000;
-
-        if (darkText) darkText.textContent = valid ? `0 - ${Math.max(0, minLux - 1)} lux` : "-";
-        if (okText) okText.textContent = valid ? `${minLux} - ${maxLux} lux` : "Giá trị chưa hợp lệ";
-        if (brightText) brightText.textContent = valid ? `${maxLux + 1} - 3000 lux` : "-";
-      }
-
-      function setText(id, value) {
-        const el = document.getElementById(id);
-        if (el) el.textContent = value === undefined || value === null || value === "" ? "-" : String(value);
-      }
-
-      function setArduinoStatusBadge(text, state) {
-        if (!arduinoStatusBadge) return;
-        arduinoStatusBadge.textContent = text;
-        arduinoStatusBadge.classList.remove("success", "error", "warning");
-        if (state) arduinoStatusBadge.classList.add(state);
-      }
-
-      function arduinoUserMessage(message) {
-        const raw = String(message || "").trim();
-        const normalized = raw.toLowerCase();
-
-        if (normalized.includes("permissionerror") || normalized.includes("access is denied")) {
-          return "COM đang bị chương trình khác giữ. Đóng Serial Monitor/Arduino IDE hoặc ứng dụng đang dùng COM rồi thử lại.";
-        }
-
-        return raw || "Không đọc được dữ liệu Arduino.";
-      }
-
-      function stopLightCheckCountdown() {
-        if (lightCheckCountdownTimer) {
-          window.clearInterval(lightCheckCountdownTimer);
-          lightCheckCountdownTimer = null;
-        }
-
-        if (runLightCheckButton) {
-          runLightCheckButton.disabled = false;
-          runLightCheckButton.textContent = "Kiểm tra ánh sáng";
-        }
-      }
-
-      function renderLightCheckCountdown() {
-        if (runLightCheckButton) {
-          runLightCheckButton.disabled = true;
-          runLightCheckButton.textContent = `Đang kiểm tra (${lightCheckSecondsLeft}s)`;
-        }
-
-        setArduinoStatusBadge("Đang kiểm tra", "warning");
-        if (arduinoStatusMessage) {
-          arduinoStatusMessage.textContent = `Arduino đang đo ánh sáng trong 10 giây. Còn ${lightCheckSecondsLeft} giây...`;
-        }
-      }
-
-      function startLightCheckCountdown() {
-        stopLightCheckCountdown();
-        lightCheckSecondsLeft = 10;
-        renderLightCheckCountdown();
-
-        lightCheckCountdownTimer = window.setInterval(function () {
-          lightCheckSecondsLeft = Math.max(0, lightCheckSecondsLeft - 1);
-          renderLightCheckCountdown();
-
-          if (lightCheckSecondsLeft <= 0) {
-            window.clearInterval(lightCheckCountdownTimer);
-            lightCheckCountdownTimer = null;
-            if (runLightCheckButton) {
-              runLightCheckButton.textContent = "Đang nhận kết quả...";
-            }
-          }
-        }, 1000);
-      }
-
-      function renderArduinoConfig(data, sourceText) {
-        const config = data && data.config ? data.config : {};
-        const lowLevel = config.speedLowLevel;
-        const lowPwm = config.speedLowPwm;
-        const highLevel = config.speedHighLevel;
-        const highPwm = config.speedHighPwm;
-        const currentMode = config.currentSpeedMode;
-        const currentLevel = config.currentSpeedLevel;
-        const currentPwm = config.currentPwm;
-        const luxMin = config.luxMin;
-        const luxMax = config.luxMax;
-
-        setText("arduino_fw", config.fw);
-        setText("arduino_speed_low", lowLevel ? `Level ${lowLevel} - PWM ${lowPwm}` : "-");
-        setText("arduino_speed_high", highLevel ? `Level ${highLevel} - PWM ${highPwm}` : "-");
-        setText("arduino_current_speed", currentMode ? `${currentMode} - Level ${currentLevel} - PWM ${currentPwm}` : "-");
-        setText("arduino_servo_home", config.gocHome !== undefined ? `${config.gocHome}°` : "-");
-        setText("arduino_servo_gate", config.gocGat !== undefined ? `${config.gocGat}°` : "-");
-        setText("arduino_light_range", luxMin !== undefined && luxMax !== undefined ? `${luxMin} - ${luxMax} lux` : "-");
-        setText("arduino_saved", data && data.saved === true ? "Đã ghi EEPROM" : "Theo cấu hình hiện tại");
-
-        setArduinoStatusBadge("Đã đọc", "success");
-        if (arduinoStatusMessage) {
-          arduinoStatusMessage.textContent = sourceText || "Đã nhận cấu hình từ Arduino.";
-        }
-      }
-
-      function renderLightCheck(data) {
-        const result = data && data.result ? data.result : {};
-        const status = result.status || "-";
-        const avg = result.avg !== undefined ? Number(result.avg).toFixed(1) : "-";
-        const min = result.min !== undefined ? Number(result.min).toFixed(1) : "-";
-        const max = result.max !== undefined ? Number(result.max).toFixed(1) : "-";
-
-        setText("light_check_avg", avg === "-" ? "-" : `${avg} lux`);
-        setText("light_check_min", min === "-" ? "-" : `${min} lux`);
-        setText("light_check_max", max === "-" ? "-" : `${max} lux`);
-        setText("light_check_status", status);
-        setArduinoStatusBadge(status === "OK" ? "Ánh sáng OK" : "Cần kiểm tra", status === "OK" ? "success" : "warning");
-        if (arduinoStatusMessage) {
-          arduinoStatusMessage.textContent = `Light check: avg ${avg} lux, min ${min} lux, max ${max} lux, status ${status}.`;
-        }
-      }
-
-      function handleArduinoAck(ack) {
-        if (!ack || !["GET_ARDUINO_CONFIG", "APPLY_ARDUINO_CONFIG", "LIGHT_CHECK", "RESET_ARDUINO_CONFIG_DEFAULT"].includes(ack.command)) return;
-
-        if (pendingArduinoButtons[ack.command]) {
-          pendingArduinoButtons[ack.command].disabled = false;
-          delete pendingArduinoButtons[ack.command];
-        }
-
-        if (ack.status === "ERROR") {
-          if (ack.command === "LIGHT_CHECK") stopLightCheckCountdown();
-          setArduinoStatusBadge("Lỗi", "error");
-          if (arduinoStatusMessage) arduinoStatusMessage.textContent = arduinoUserMessage(ack.message);
-          return;
-        }
-
-        if (ack.command === "LIGHT_CHECK") {
-          stopLightCheckCountdown();
-          renderLightCheck(ack.data || {});
-          return;
-        }
-
-        renderArduinoConfig(
-          ack.data || {},
-          ack.command === "RESET_ARDUINO_CONFIG_DEFAULT"
-            ? "Đã khôi phục cấu hình Arduino về mặc định và ghi EEPROM."
-            : ack.command === "APPLY_ARDUINO_CONFIG"
-            ? "Đã áp dụng và đọc lại cấu hình Arduino."
-            : "Đã đọc cấu hình từ Arduino."
-        );
-      }
-
-      function sendControlCommand(command, button) {
-        const ackCommands = ["GET_ARDUINO_CONFIG", "LIGHT_CHECK", "RESET_ARDUINO_CONFIG_DEFAULT"];
-
-        if (button) {
-          button.disabled = true;
-          if (ackCommands.includes(command)) {
-            pendingArduinoButtons[command] = button;
-          }
-        }
-
-        if (command === "GET_ARDUINO_CONFIG") {
-          setArduinoStatusBadge("Đang đọc", "warning");
-          if (arduinoStatusMessage) arduinoStatusMessage.textContent = "Đang đọc cấu hình trực tiếp từ Arduino...";
-        } else if (command === "RESET_ARDUINO_CONFIG_DEFAULT") {
-          setArduinoStatusBadge("Đang khôi phục", "warning");
-          if (arduinoStatusMessage) arduinoStatusMessage.textContent = "Đang khôi phục cấu hình mặc định trên Arduino...";
-        }
-
-        fetch("/control/command", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            command,
-            payload: {
-              conveyor_id: window.CONVEYOR_ID,
-              conveyor_code: window.CONVEYOR_ID,
-              serial_port: serialSelect ? serialSelect.value : "",
-              baud_rate: baudRateInput ? baudRateInput.value : 9600,
-            },
-          }),
-        })
-          .then(function (res) {
-            return res.json().then(function (result) {
-              if (!res.ok) {
-                throw new Error(result && result.message ? result.message : "Không gửi được lệnh Arduino.");
-              }
-              return result;
-            });
-          })
-          .catch(function (err) {
-            if (button) {
-              button.disabled = false;
-              delete pendingArduinoButtons[command];
-            }
-            setArduinoStatusBadge("Lỗi", "error");
-            if (arduinoStatusMessage) arduinoStatusMessage.textContent = arduinoUserMessage(err.message);
-            console.error(`${command} error:`, err);
-          })
-          .finally(function () {
-            if (button && !ackCommands.includes(command)) {
-              button.disabled = false;
-            }
-          });
-      }
-
-      const settingsSocket = io();
-
-      settingsSocket.on("control_ack", handleArduinoAck);
-
-      settingsSocket.on("serial_ports", function (ports) {
-        renderPorts(Array.isArray(ports) ? ports : []);
-        if (scanButton) {
-          scanButton.disabled = false;
-          scanButton.textContent = "Quét cổng";
-        }
-      });
->>>>>>> origin/main
-
-      function scanSerialPorts() {
-        if (scanButton) {
-          scanButton.disabled = true;
-          scanButton.textContent = "Đang quét...";
-        }
-
-        fetch("/settings/serial-ports")
-          .then(function (res) { return res.json(); })
-          .then(function (result) {
-            if (!result.success && scanButton) {
-              scanButton.disabled = false;
-              scanButton.textContent = "Quét cổng";
-            }
-          })
-          .catch(function (err) {
-            if (scanButton) {
-              scanButton.disabled = false;
-              scanButton.textContent = "Quét cổng";
-            }
-            console.error("Scan serial ports error:", err);
-          });
-      }
-
-      if (scanButton) {
-        scanButton.addEventListener("click", scanSerialPorts);
-      }
-
-      if (lowSpeedSelect) {
-        lowSpeedSelect.addEventListener("change", function () {
-          syncSpeedDropdowns("low");
-        });
-      }
-=======
-      function presetLabel(preset) {
-        return `Level ${preset.level}: ${preset.label} - PWM ${preset.pwm} - ${Number(preset.rpm).toFixed(2)} vòng/phút`;
-      }
-
-      function fillSpeedSelect(select, selectedLevel, filterFn) {
-        if (!select) return;
-
-        select.innerHTML = "";
-        presets.filter(filterFn).forEach(function (preset) {
-          const option = document.createElement("option");
-          option.value = String(preset.level);
-          option.textContent = presetLabel(preset);
-          if (Number(selectedLevel) === Number(preset.level)) {
-            option.selected = true;
-          }
-          select.appendChild(option);
-        });
-
-        if (!select.value && select.options.length > 0) {
-          select.options[0].selected = true;
-        }
-      }
-
-      function syncSpeedDropdowns(changedField) {
-        if (!lowSpeedSelect || !highSpeedSelect || presets.length === 0) return;
-
-        let lowLevel = Number(lowSpeedSelect.value || lowSpeedSelect.dataset.selected || 2);
-        let highLevel = Number(highSpeedSelect.value || highSpeedSelect.dataset.selected || 5);
-
-        if (!Number.isFinite(lowLevel)) lowLevel = 2;
-        if (!Number.isFinite(highLevel)) highLevel = 5;
-
-        if (lowLevel >= highLevel) {
-          if (changedField === "low") {
-            highLevel = Math.min(5, lowLevel + 1);
-          } else {
-            lowLevel = Math.max(1, highLevel - 1);
-          }
-        }
-
-        fillSpeedSelect(lowSpeedSelect, lowLevel, function (preset) {
-          return preset.level < highLevel;
-        });
-        fillSpeedSelect(highSpeedSelect, highLevel, function (preset) {
-          return preset.level > Number(lowSpeedSelect.value || lowLevel);
-        });
-      }
-
-      function updateLightPreview() {
-        const minLux = Number(minLuxInput ? minLuxInput.value : 1000);
-        const maxLux = Number(maxLuxInput ? maxLuxInput.value : 2000);
-        const darkText = document.getElementById("light_preview_dark");
-        const okText = document.getElementById("light_preview_ok");
-        const brightText = document.getElementById("light_preview_bright");
-        const valid = Number.isFinite(minLux) && Number.isFinite(maxLux) && minLux >= 0 && minLux < maxLux && maxLux <= 3000;
-
-        if (darkText) darkText.textContent = valid ? `0 - ${Math.max(0, minLux - 1)} lux` : "-";
-        if (okText) okText.textContent = valid ? `${minLux} - ${maxLux} lux` : "Giá trị chưa hợp lệ";
-        if (brightText) brightText.textContent = valid ? `${maxLux + 1} - 3000 lux` : "-";
-      }
-
-      function setText(id, value) {
-        const el = document.getElementById(id);
-        if (el) el.textContent = value === undefined || value === null || value === "" ? "-" : String(value);
-      }
-
-      function setArduinoStatusBadge(text, state) {
-        if (!arduinoStatusBadge) return;
-        arduinoStatusBadge.textContent = text;
-        arduinoStatusBadge.classList.remove("success", "error", "warning");
-        if (state) arduinoStatusBadge.classList.add(state);
-      }
-
-      function arduinoUserMessage(message) {
-        const raw = String(message || "").trim();
-        const normalized = raw.toLowerCase();
-
-        if (normalized.includes("permissionerror") || normalized.includes("access is denied")) {
-          return "COM đang bị chương trình khác giữ. Đóng Serial Monitor/Arduino IDE hoặc ứng dụng đang dùng COM rồi thử lại.";
-        }
-
-        return raw || "Không đọc được dữ liệu Arduino.";
-      }
-
-      function stopLightCheckCountdown() {
-        if (lightCheckCountdownTimer) {
-          window.clearInterval(lightCheckCountdownTimer);
-          lightCheckCountdownTimer = null;
-        }
-
-        if (runLightCheckButton) {
-          runLightCheckButton.disabled = false;
-          runLightCheckButton.textContent = "Kiểm tra ánh sáng";
-        }
-      }
-
-      function renderLightCheckCountdown() {
-        if (runLightCheckButton) {
-          runLightCheckButton.disabled = true;
-          runLightCheckButton.textContent = `Đang kiểm tra (${lightCheckSecondsLeft}s)`;
-        }
-
-        setArduinoStatusBadge("Đang kiểm tra", "warning");
-        if (arduinoStatusMessage) {
-          arduinoStatusMessage.textContent = `Arduino đang đo ánh sáng trong 10 giây. Còn ${lightCheckSecondsLeft} giây...`;
-        }
-      }
-
-      function startLightCheckCountdown() {
-        stopLightCheckCountdown();
-        lightCheckSecondsLeft = 10;
-        renderLightCheckCountdown();
-
-        lightCheckCountdownTimer = window.setInterval(function () {
-          lightCheckSecondsLeft = Math.max(0, lightCheckSecondsLeft - 1);
-          renderLightCheckCountdown();
-
-          if (lightCheckSecondsLeft <= 0) {
-            window.clearInterval(lightCheckCountdownTimer);
-            lightCheckCountdownTimer = null;
-            if (runLightCheckButton) {
-              runLightCheckButton.textContent = "Đang nhận kết quả...";
-            }
-          }
-        }, 1000);
-      }
-
-      function renderArduinoConfig(data, sourceText) {
-        const config = data && data.config ? data.config : {};
-        const lowLevel = config.speedLowLevel;
-        const lowPwm = config.speedLowPwm;
-        const highLevel = config.speedHighLevel;
-        const highPwm = config.speedHighPwm;
-        const currentMode = config.currentSpeedMode;
-        const currentLevel = config.currentSpeedLevel;
-        const currentPwm = config.currentPwm;
-        const luxMin = config.luxMin;
-        const luxMax = config.luxMax;
-
-        setText("arduino_fw", config.fw);
-        setText("arduino_speed_low", lowLevel ? `Level ${lowLevel} - PWM ${lowPwm}` : "-");
-        setText("arduino_speed_high", highLevel ? `Level ${highLevel} - PWM ${highPwm}` : "-");
-        setText("arduino_current_speed", currentMode ? `${currentMode} - Level ${currentLevel} - PWM ${currentPwm}` : "-");
-        setText("arduino_servo_home", config.gocHome !== undefined ? `${config.gocHome}°` : "-");
-        setText("arduino_servo_gate", config.gocGat !== undefined ? `${config.gocGat}°` : "-");
-        setText("arduino_light_range", luxMin !== undefined && luxMax !== undefined ? `${luxMin} - ${luxMax} lux` : "-");
-        setText("arduino_saved", data && data.saved === true ? "Đã ghi EEPROM" : "Theo cấu hình hiện tại");
-
-        setArduinoStatusBadge("Đã đọc", "success");
-        if (arduinoStatusMessage) {
-          arduinoStatusMessage.textContent = sourceText || "Đã nhận cấu hình từ Arduino.";
-        }
-      }
-
-      function renderLightCheck(data) {
-        const result = data && data.result ? data.result : {};
-        const status = result.status || "-";
-        const avg = result.avg !== undefined ? Number(result.avg).toFixed(1) : "-";
-        const min = result.min !== undefined ? Number(result.min).toFixed(1) : "-";
-        const max = result.max !== undefined ? Number(result.max).toFixed(1) : "-";
-
-        setText("light_check_avg", avg === "-" ? "-" : `${avg} lux`);
-        setText("light_check_min", min === "-" ? "-" : `${min} lux`);
-        setText("light_check_max", max === "-" ? "-" : `${max} lux`);
-        setText("light_check_status", status);
-        setArduinoStatusBadge(status === "OK" ? "Ánh sáng OK" : "Cần kiểm tra", status === "OK" ? "success" : "warning");
-        if (arduinoStatusMessage) {
-          arduinoStatusMessage.textContent = `Light check: avg ${avg} lux, min ${min} lux, max ${max} lux, status ${status}.`;
-        }
-      }
-
-      function handleArduinoAck(ack) {
-        if (!ack || !["GET_ARDUINO_CONFIG", "APPLY_ARDUINO_CONFIG", "LIGHT_CHECK", "RESET_ARDUINO_CONFIG_DEFAULT"].includes(ack.command)) return;
-
-        if (pendingArduinoButtons[ack.command]) {
-          pendingArduinoButtons[ack.command].disabled = false;
-          delete pendingArduinoButtons[ack.command];
-        }
-
-        if (ack.status === "ERROR") {
-          if (ack.command === "LIGHT_CHECK") stopLightCheckCountdown();
-          setArduinoStatusBadge("Lỗi", "error");
-          if (arduinoStatusMessage) arduinoStatusMessage.textContent = arduinoUserMessage(ack.message);
-          return;
-        }
-
-        if (ack.command === "LIGHT_CHECK") {
-          stopLightCheckCountdown();
-          renderLightCheck(ack.data || {});
-          return;
-        }
-
-        renderArduinoConfig(
-          ack.data || {},
-          ack.command === "RESET_ARDUINO_CONFIG_DEFAULT"
-            ? "Đã khôi phục cấu hình Arduino về mặc định và ghi EEPROM."
-            : ack.command === "APPLY_ARDUINO_CONFIG"
-            ? "Đã áp dụng và đọc lại cấu hình Arduino."
-            : "Đã đọc cấu hình từ Arduino."
-        );
-      }
-
-      function sendControlCommand(command, button) {
-        const ackCommands = ["GET_ARDUINO_CONFIG", "LIGHT_CHECK", "RESET_ARDUINO_CONFIG_DEFAULT"];
-
-        if (button) {
-          button.disabled = true;
-          if (ackCommands.includes(command)) {
-            pendingArduinoButtons[command] = button;
-          }
-        }
-
-        if (command === "GET_ARDUINO_CONFIG") {
-          setArduinoStatusBadge("Đang đọc", "warning");
-          if (arduinoStatusMessage) arduinoStatusMessage.textContent = "Đang đọc cấu hình trực tiếp từ Arduino...";
-        } else if (command === "RESET_ARDUINO_CONFIG_DEFAULT") {
-          setArduinoStatusBadge("Đang khôi phục", "warning");
-          if (arduinoStatusMessage) arduinoStatusMessage.textContent = "Đang khôi phục cấu hình mặc định trên Arduino...";
-        }
-
-        fetch("/control/command", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            command,
-            payload: {
-              conveyor_id: window.CONVEYOR_ID,
-              conveyor_code: window.CONVEYOR_ID,
-              serial_port: serialSelect ? serialSelect.value : "",
-              baud_rate: baudRateInput ? baudRateInput.value : 9600,
-            },
-          }),
-        })
-          .then(function (res) {
-            return res.json().then(function (result) {
-              if (!res.ok) {
-                throw new Error(result && result.message ? result.message : "Không gửi được lệnh Arduino.");
-              }
-              return result;
-            });
-          })
-          .catch(function (err) {
-            if (button) {
-              button.disabled = false;
-              delete pendingArduinoButtons[command];
-            }
-            setArduinoStatusBadge("Lỗi", "error");
-            if (arduinoStatusMessage) arduinoStatusMessage.textContent = arduinoUserMessage(err.message);
-            console.error(`${command} error:`, err);
-          })
-          .finally(function () {
-            if (button && !ackCommands.includes(command)) {
-              button.disabled = false;
-            }
-          });
-      }
-
-      const settingsSocket = io();
-
-      settingsSocket.on("control_ack", handleArduinoAck);
-
-      settingsSocket.on("serial_ports", function (ports) {
-        renderPorts(Array.isArray(ports) ? ports : []);
-        if (scanButton) {
-          scanButton.disabled = false;
-          scanButton.textContent = "Quét cổng";
-        }
-      });
-
-      function scanSerialPorts() {
-        if (scanButton) {
-          scanButton.disabled = true;
-          scanButton.textContent = "Đang quét...";
-        }
-
-        fetch("/settings/serial-ports")
-          .then(function (res) { return res.json(); })
-          .then(function (result) {
-            if (!result.success && scanButton) {
-              scanButton.disabled = false;
-              scanButton.textContent = "Quét cổng";
-            }
-          })
-          .catch(function (err) {
-            if (scanButton) {
-              scanButton.disabled = false;
-              scanButton.textContent = "Quét cổng";
-            }
-            console.error("Scan serial ports error:", err);
-          });
-      }
-
-      if (scanButton) {
-        scanButton.addEventListener("click", scanSerialPorts);
-      }
-
-      if (lowSpeedSelect) {
-        lowSpeedSelect.addEventListener("change", function () {
-          syncSpeedDropdowns("low");
-        });
-      }
->>>>>>> origin/main
-
-      if (highSpeedSelect) {
-        highSpeedSelect.addEventListener("change", function () {
-          syncSpeedDropdowns("high");
-        });
-      }
-
-      if (minLuxInput) {
-        minLuxInput.addEventListener("input", updateLightPreview);
-      }
-
-      if (maxLuxInput) {
-        maxLuxInput.addEventListener("input", updateLightPreview);
-      }
-
-      if (readArduinoConfigButton) {
-        readArduinoConfigButton.addEventListener("click", function () {
-          sendControlCommand("GET_ARDUINO_CONFIG", readArduinoConfigButton);
-        });
-      }
-
-      if (runLightCheckButton) {
-        runLightCheckButton.addEventListener("click", function () {
-          startLightCheckCountdown();
-          sendControlCommand("LIGHT_CHECK");
-        });
-      }
-
-      if (resetArduinoDefaultButton) {
-        resetArduinoDefaultButton.addEventListener("click", function () {
-          const ok = window.confirm("Khôi phục cấu hình Arduino về mặc định và ghi vào EEPROM?");
-          if (!ok) return;
-
-          sendControlCommand("RESET_ARDUINO_CONFIG_DEFAULT", resetArduinoDefaultButton);
-        });
-      }
-
-      syncSpeedDropdowns();
-      updateLightPreview();
-      scanSerialPorts();
-    });
+    window.__RUNTIME_MODE__ = "#{currentMode}";

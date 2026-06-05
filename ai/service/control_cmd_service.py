@@ -20,7 +20,7 @@ class ControlCommandService:
         self,
         start_handler: Callable[[dict], dict],
         stop_handler: Callable[[dict], dict],
-        status_handler: Callable[[], dict],
+        status_handler: Callable[[dict], dict],
         reload_config_handler: Optional[Callable[[dict], dict]] = None,
         log_handler: Optional[Callable[[str], None]] = None,
     ):
@@ -85,11 +85,13 @@ class ControlCommandService:
                 ack = self.success_ack(command_id, command, "Start command accepted", data)
 
             elif command == "STOP_SYSTEM":
+                self.require_conveyor_id(command_payload)
                 data = self.stop_handler(command_payload)
                 ack = self.success_ack(command_id, command, "Stop command accepted", data)
 
             elif command == "GET_STATUS":
-                data = self.status_handler()
+                self.require_conveyor_id(command_payload)
+                data = self.status_handler(command_payload)
                 ack = self.success_ack(command_id, command, "System status returned", data)
 
             elif command == "RELOAD_CONFIG":
@@ -132,8 +134,12 @@ class ControlCommandService:
     def publish_ack(self, ack: dict):
         self.mqtt.publish_json(MQTT_TOPIC_CONTROL_ACK, ack, qos=1)
 
-    def publish_status(self):
-        self.mqtt.publish_json(MQTT_TOPIC_SYSTEM_STATUS, self.status_handler(), qos=1)
+    def publish_status(self, payload=None):
+        self.mqtt.publish_json(
+            MQTT_TOPIC_SYSTEM_STATUS,
+            self.status_handler(payload or {}),
+            qos=1,
+        )
 
     def publish_error(self, source: str, message: str, payload=None):
         error_payload = {

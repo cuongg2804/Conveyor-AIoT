@@ -19,7 +19,7 @@ const control_logs_schema = new mongoose.Schema({
     cmd: {
         type: String,
         required: true,
-        enum: ["START", "STOP"]
+        trim: true,
     },
     status: {
         type: String,

@@ -151,12 +151,24 @@ const summarize = (items: any[]) => {
   const ok = items.filter((item) => item.label === "OK").length;
   const ng = items.filter((item) => item.label === "NG").length;
 
+  const scores = items
+    .map((item) =>
+      Number(item.avg_score ?? item.average_score ?? item.anomaly_score ?? item.score)
+    )
+    .filter((score) => Number.isFinite(score));
+
+  const avgScore =
+    scores.length > 0
+      ? scores.reduce((sum, score) => sum + score, 0) / scores.length
+      : null;
+
   return {
     total,
     ok,
     ng,
     okRate: total ? (ok / total) * 100 : 0,
     ngRate: total ? (ng / total) * 100 : 0,
+    avgScore,
   };
 };
 
@@ -451,7 +463,7 @@ export const exportPdf = async (req: Request, res: Response) => {
         safeText(item.conveyor_id),
         formatDateTime(item.timestamp),
         safeText(item.label),
-        formatScore(item.average_score, 3),
+        formatScore(item.avg_score ?? item.average_score, 3),
         formatScore(item.threshold, 3),
       ];
 
@@ -558,7 +570,7 @@ export const exportDetailPdf = async (req: Request, res: Response) => {
     drawKeyValue(doc, "Băng tải", inspection.conveyor_id);
     drawKeyValue(doc, "Thời gian", formatDateTime(inspection.timestamp));
     drawKeyValue(doc, "Kết quả", inspection.label);
-    drawKeyValue(doc, "Điểm trung bình", formatScore(inspection.average_score, 6));
+    drawKeyValue(doc, "Điểm trung bình", formatScore(inspection.avg_score ?? inspection.average_score, 6));
     drawKeyValue(doc, "Ngưỡng đánh giá", formatScore(inspection.threshold, 6));
     drawKeyValue(doc, "Số frame", frames.length);
 
@@ -876,18 +888,9 @@ export const index = async (req: Request, res: Response) => {
     // 7. Tao du lieu phan trang va link chuyen ca
     // commonQuery giu lai ngay va label hien tai khi bam chuyen ca hoac chuyen trang.
     const totalPages = Math.max(Math.ceil(total / PAGE_SIZE), 1);
-<<<<<<< HEAD
-<<<<<<< HEAD
+
     const commonQuery = { mode: selectedMode, statsDate: selectedDay.date, statsMonth: selectedMonthValue, statsYear: selectedYearValue, label: selectedLabel, conveyor_id: selectedConveyorId, inspectionMode: selectedInspectionMode };
-    
-=======
-    const commonQuery = { mode: selectedMode, statsDate: selectedDay.date, statsMonth: selectedMonthValue, statsYear: selectedYearValue, label: selectedLabel, conveyor_id: selectedConveyorId };
 
->>>>>>> origin/main
-=======
-    const commonQuery = { mode: selectedMode, statsDate: selectedDay.date, statsMonth: selectedMonthValue, statsYear: selectedYearValue, label: selectedLabel, conveyor_id: selectedConveyorId };
-
->>>>>>> origin/main
     const inspectionList = await Promise.all(
       listItems.map((item: any) => previewItem(item))
     );
@@ -986,7 +989,7 @@ export const detail = async (req: Request, res: Response) => {
             )
           : [],
       },
-      backUrl: `/history/inspectionMode=${selectedInspectionMode}`,
+      backUrl: `/history?inspectionMode=${selectedInspectionMode}`,
     });
   } catch (error) {
     console.error("History detail error:", error);

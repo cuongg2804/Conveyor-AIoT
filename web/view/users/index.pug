@@ -8,7 +8,7 @@ block main
                 p.dashboard_subtitle Phân quyền, tạo người dùng hệ thống
 
             .dashboard-actions
-                a.btn.btn-primary(href="/users/create") Thêm tài khoản mới
+                a.btn.btn--primary(href="/users/create") Thêm tài khoản mới
 
     if error
       .alert.alert--error
@@ -32,7 +32,7 @@ block main
                     option(value="USER" selected=filters.role === "USER") User
             .history-filters__actions
                 button.btn.btn--primary(type="submit") Lọc
-                a.btn.btn-secondary(href="/users") Xóa
+                a.btn.btn--secondary(href="/users") Xóa
 
     .card
         .table-wrap
@@ -51,20 +51,12 @@ block main
                             td=item.user_id
                             td=item.username
                             td=item.fullname
-<<<<<<< HEAD
-<<<<<<< HEAD
-                            td=item.role 
-                            td 
+                            td=item.role
+                            td
                                 if item.status === "ONLINE"
                                     span.badge.badge--success ONLINE
                                 else
                                     span.badge.badge--muted OFFLINE
-=======
-                            td=item.role
->>>>>>> origin/main
-=======
-                            td=item.role
->>>>>>> origin/main
                             td
                                 .table-actions
                                     a.btn.btn--secondary.btn--sm(href=`/users/edit/${item.user_id}`) Sửa

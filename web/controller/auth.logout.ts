@@ -1,41 +1,63 @@
 import { Request, Response } from "express";
 import User from "../model/user.model";
+import Conveyor from "../model/conveyor.model";
 
+const RUNNING_STATUSES = ["STARTING", "RUNNING", "STOPPING"];
 
-const conveyorStatuses = ["STARTING", "RUNNING", "STOPPING"];
 export const logout = async (req: Request, res: Response) => {
   try {
-    const currentUser = res.locals.user;
-    const userId = currentUser?.user_id;
     const token = req.cookies?.token;
+    const currentUser =
+      res.locals.user ||
+      (token ? await User.findOne({ token }, { password: 0 }).lean<any>() : null);
 
-    if(!userId) {
-      res.clearCookie("token");
-      return res.redirect("/login");
-    }
+    const userId = currentUser?.user_id;
 
-    const runningConveyors = await User.findOne({
-       user_id: userId,
-       status: {$in: conveyorStatuses},
-       is_active: true, 
-      }).lean()
-    if(runningConveyors) {
-      return res.redirect(`/inspection/${runningConveyors.conveyor_id}?error=logout_blocked`);
-    }
-    await User.updateOne({
-      userId: userId
-    },
-    {
-      $set: {
-        token: "",
-        status: "OFFLINE",
+    if (userId) {
+      const runningConveyor = await Conveyor.findOne({
+        user_id: userId,
+        status: { $in: RUNNING_STATUSES },
+        is_active: true,
+      }).lean<any>();
+
+      if (runningConveyor) {
+        return res.redirect(
+          `/inspection/monitor/${runningConveyor.conveyor_id}?error=logout_blocked`
+        );
       }
-    })
-    res.clearCookie("token");
-    res.clearCookie("connect.sid")
+    }
+
+    if (token || userId) {
+      await User.updateOne(
+        {
+          $or: [
+            ...(token ? [{ token }] : []),
+            ...(userId ? [{ user_id: userId }] : []),
+          ],
+        },
+        {
+          $set: {
+            token: "",
+            status: "OFFLINE",
+          },
+        }
+      );
+    }
+
+    res.clearCookie("token", {
+      httpOnly: true,
+      sameSite: "lax",
+    });
+
     return res.redirect("/login");
   } catch (error) {
-    console.log("Lỗi logout: ", error);
-    return res.redirect("/dashboard");
+    console.error("Logout error:", error);
+
+    res.clearCookie("token", {
+      httpOnly: true,
+      sameSite: "lax",
+    });
+
+    return res.redirect("/login");
   }
 };

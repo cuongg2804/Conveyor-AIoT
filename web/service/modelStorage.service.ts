@@ -90,19 +90,21 @@ export const listModels = async () => {
   return ModelRegistry.find({}).sort({ created_at: -1 }).lean();
 };
 
-export const getModelById = async (id: string) => {
-  return ModelRegistry.findById(id).lean();
+export const getModelById = async (modelId: string) => {
+  return ModelRegistry.findOne({
+    model_id: String(modelId || "").trim(),
+  }).lean();
 };
 
 export const buildRegistryUpdate = (body: any): ModelRegistryUpdate => {
   const threshold = Number(body.threshold);
   if (!Number.isFinite(threshold)) {
-    throw new Error("Threshold phai la so.");
+    throw new Error("Threshold phải là số.");
   }
 
   const status = String(body.status || "testing").trim();
   if (!allowedStatuses.includes(status)) {
-    throw new Error("Status khong hop le.");
+    throw new Error("Status không hợp lệ.");
   }
 
   return {
@@ -115,26 +117,35 @@ export const buildRegistryUpdate = (body: any): ModelRegistryUpdate => {
   };
 };
 
-export const updateModelRegistry = async (id: string, update: ModelRegistryUpdate) => {
-  const model = await ModelRegistry.findByIdAndUpdate(id, update, {
-    new: true,
-    runValidators: true,
-  }).lean();
+export const updateModelRegistry = async (modelId: string, update: ModelRegistryUpdate) => {
+  const model = await ModelRegistry.findByIdAndUpdate(
+    {
+      model_id: String(modelId || "").trim(),
+    },
+    { $set: update },
+    {
+      new: true,
+      runValidators: true,
+    }).lean();
 
   if (!model) {
-    throw new Error("Khong tim thay model.");
+    throw new Error("Không tìm thấy model.");
   }
 
   return model;
 };
 
-export const deleteModelRegistry = async (id: string) => {
-  const model = await ModelRegistry.findById(id);
+export const deleteModelRegistry = async (modelId: string) => {
+  const model = await ModelRegistry.findOne({
+    model_id: String(modelId || "").trim(),
+  });
   if (!model) {
-    throw new Error("Khong tim thay model.");
+    throw new Error("Không tìm thấy model.");
   }
 
-  await ModelRegistry.deleteOne({ _id: id });
+  await ModelRegistry.deleteOne({
+    model_id: String(modelId || "").trim(),
+  });
 
   if (model.storage_type === "minio" && model.bucket && model.object_key) {
     await minioClient.removeObject(model.bucket, model.object_key).catch(() => undefined);
@@ -148,7 +159,7 @@ export const validateModelFile = (file: Express.Multer.File) => {
   const extension = path.extname(originalName).toLowerCase();
 
   if (!allowedModelExtensions.includes(extension)) {
-    throw new Error("Model file phai co dinh dang .ckpt hoac .onnx.");
+    throw new Error("Model file phải có định dạng .ckpt hoặc .onnx.");
   }
 
   return {
@@ -161,19 +172,19 @@ export const validateModelFile = (file: Express.Multer.File) => {
 export const parseModelInfo = (file: Express.Multer.File): ModelRegistryInput => {
   const extension = path.extname(file.originalname).toLowerCase();
   if (extension !== ".json") {
-    throw new Error("Metadata file phai co dinh dang .json.");
+    throw new Error("Metadata file phải có định dạng .json.");
   }
 
   let metadata: any;
   try {
     metadata = JSON.parse(file.buffer.toString("utf8"));
   } catch {
-    throw new Error("model_info.json khong dung dinh dang JSON.");
+    throw new Error("model_info.json không đúng định dạng JSON.");
   }
 
   const threshold = Number(metadata.threshold);
   if (!Number.isFinite(threshold)) {
-    throw new Error("model_info.json thieu threshold hoac threshold khong phai so.");
+    throw new Error("model_info.json thiếu threshold hoặc threshold không phải là số.");
   }
 
   return {
@@ -205,7 +216,7 @@ export const uploadModelFile = async (
   await ensureBucket();
 
   if (registryInput.model_format && registryInput.model_format !== modelFile.modelFormat) {
-    throw new Error("model_format trong metadata khong khop voi duoi file model.");
+    throw new Error("model_format trong metadata không khớp với đuôi file model.");
   }
 
   const modelFileName = `${slugFileName(registryInput.model_name)}.${modelFormat}`;
@@ -232,15 +243,8 @@ export const uploadModelFile = async (
   try {
     const registry = await ModelRegistry.create({
       ...registryInput,
-<<<<<<< HEAD
-<<<<<<< HEAD
       model_id: modelId,
-=======
       model_format: modelFormat,
->>>>>>> origin/main
-=======
-      model_format: modelFormat,
->>>>>>> origin/main
       status: "testing",
       storage_type: "minio",
       bucket: MINIO_BUCKET,
@@ -249,15 +253,8 @@ export const uploadModelFile = async (
 
     return {
       ...registryInput,
-<<<<<<< HEAD
-<<<<<<< HEAD
       model_id: modelId,
-=======
       model_format: modelFormat,
->>>>>>> origin/main
-=======
-      model_format: modelFormat,
->>>>>>> origin/main
       status: "testing",
       storage_type: "minio",
       bucket: MINIO_BUCKET,

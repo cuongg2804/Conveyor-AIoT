@@ -1,0 +1,139 @@
+extends ../layout/default.pug
+
+block main
+  - const statusLabels = { READY: "Sẵn sàng", STARTING: "Đang khởi động", RUNNING: "Đang chạy", STOPPING: "Đang dừng", STOPPED: "Đã dừng", ERROR: "Đang lỗi" }
+  - const conveyorStatusText = statusLabels[conveyor.status] || "Đang chờ dữ liệu"
+  - const currentMode = runtimeMode || "PRODUCTION"
+  - const isTestMode = currentMode === "TEST"
+  - const runningStatuses = ["STARTING", "RUNNING", "STOPPING"]
+  - const isRunning = runningStatuses.includes(String(conveyor.status || "").toUpperCase())
+  .dashboard(data-conveyor-code=conveyor.conveyor_id)
+    .dashboard__header
+      .dashboard__heading
+        h1.dashboard__title #{conveyor.name}
+        p.dashboard__subtitle= isTestMode ? "Giám sát kiểm thử model AI" : "Giám sát vận hành chinh thức"
+
+      .dashboard-actions
+        a.btn.btn--secondary(href=dashboardUrl) Quay lại
+        a.btn.btn--primary(href=settingsUrl) Cấu hình
+
+      .dashboard__status-pill(class=conveyor.status)
+        span.status-dot
+        span#systemStatusText #{conveyorStatusText}
+
+    .inspection-layout
+      .preview-panel.card
+        .card__head.preview-panel__head
+          div
+            h2.card__title Ảnh kiểm tra
+            p.card__desc Hiển thị ảnh đại diện của lượt kiểm tra mới nhất
+          .preview-frame-meta
+            span Khung hình 2
+            strong#framePreviewScore -
+
+        .main-preview
+          .main-preview__label Ảnh khoanh vùng lỗi
+          .main-preview__image
+            img#overlayPreviewImage(src="" alt="Ảnh khoanh vùng lỗi")
+            .image-placeholder Chưa có ảnh khoanh vùng lỗi
+
+        .thumb-grid.thumb-grid--one
+          .thumb-box
+            .thumb-box__title Ảnh sản phẩm
+            .thumb-box__image
+              img#roiPreviewImage(src="" alt="Ảnh sản phẩm")
+              .image-placeholder Chưa có ảnh sản phẩm
+
+      .side-panel
+        .card.control-card
+          .card__head
+            h2.card__title Điều khiển nhanh
+            p.card__desc Điều khiển hệ thống kiểm tra
+
+          .btn-row
+            button.btn.btn--success(type="button" onclick="sendControlCommand('START_SYSTEM')") Khởi động
+            button.btn.btn--danger(type="button" onclick="sendControlCommand('STOP_SYSTEM')") Dừng
+            button.btn.btn--secondary(type="button" onclick="sendControlCommand('GET_STATUS')") Kiểm tra trạng thái
+
+          .control-ack-box
+            p#lastControlAck Chưa có phản hồi từ hệ thống
+
+        if isTestMode
+          .card
+            .card__head
+              h2.card__title Phê duyệt model kiểm thử
+              if isRunning
+                p.card__desc Vui lòng bấm Dừng trước khi phê duyệt model.
+              else
+                p.card__desc Chọn Đạt để chuyển model sang active, hoặc Không đạt để đánh dấu failed.
+
+            if isRunning
+              .alert.alert--error Chỉ được phê duyệt sau khi đã dừng kiểm thử.
+            else
+              form.btn-row(method="POST" action=`/settings/${conveyor.conveyor_id}/approve-model`)
+                button.btn.btn--success(
+                  type="submit"
+                  name="decision"
+                  value="PASS"
+                  onclick="return confirm('Xác nhận model này ĐẠT và được dùng cho vận hành thật?');"
+                ) Đạt
+
+                button.btn.btn--danger(
+                  type="submit"
+                  name="decision"
+                  value="FAIL"
+                  onclick="return confirm('Xác nhận model này KHÔNG ĐẠT?');"
+                ) Không đạt
+
+        .result-card.card
+          .card__head
+            h2.card__title Kết quả kiểm tra
+            p.card__desc Kết quả mới nhất từ hệ thống kiểm tra
+
+          .result-main
+            span#resultLabel.result-badge -
+
+          .inspection-summary
+            .summary-row
+              span.summary-label Mã lượt kiểm tra
+<<<<<<< HEAD
+              span#stt.summary-value -
+=======
+              span#jobId.summary-value -
+
+            .summary-row
+              span.summary-label Kết quả khung hình
+              span#framePreviewLabel.summary-value -
+
+            .summary-row
+              span.summary-label Thời gian
+              span#resultTimestamp.summary-value -
+
+        .card
+          .card__head
+            h2.card__title Trạng thái hệ thống
+            p.card__desc Kết nối máy chủ, bộ điều khiển và hệ thống kiểm tra
+
+          .system-status
+            span.system-status__label Kết nối điều khiển
+            span#systemStatus.system-status__value
+              span.status-dot
+              | Chưa kết nối
+
+          .system-status
+            span.system-status__label Hệ thống kiểm tra
+            span#aiStatus.system-status__value(class=conveyor.status)
+              span.status-dot
+              | #{conveyorStatusText}
+
+          .system-status
+            span.system-status__label Máy chủ WEB
+            span.system-status__value.connected
+              span.status-dot
+              | Đang chạy
+
+  script.
+    window.__CONVEYOR_ID__ = !{JSON.stringify(conveyor.conveyor_id || "")};
+    window.__RUNTIME_MODE__ = !{JSON.stringify(runtimeMode || "PRODUCTION")};
+    window.__CONVEYOR_STATUS__ = !{JSON.stringify(conveyor.status || null)};
+    window.__LATEST_INSPECTION__ = !{JSON.stringify(latestInspection || null)};

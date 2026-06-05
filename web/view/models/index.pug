@@ -4,30 +4,14 @@ block main
   .page
     .dashboard__header
       .dashboard__heading
-<<<<<<< HEAD
         h1.dashboard__title Quản lý model AI
-        p.dashboard__subtitle Upload file checkpoint .ckpt lên MinIO để lưu trữ model
-=======
-        h1.dashboard__title Quan ly model AI
-        p.dashboard__subtitle Upload file model .ckpt hoac .onnx len MinIO de luu tru model
-<<<<<<< HEAD
->>>>>>> origin/main
-=======
->>>>>>> origin/main
+        p.dashboard__subtitle Upload file model .ckpt hoặc .onnx lên MinIO để lưu trữ model
 
     .model-upload-layout
       .card
         .card__head
           h2.card__title Upload model package
-<<<<<<< HEAD
-<<<<<<< HEAD
-          p.card__desc Chọn checkpoint .ckpt và model_info.json xuất từ Kaggle.
-=======
-          p.card__desc Chon model .ckpt/.onnx va model_info.json.
->>>>>>> origin/main
-=======
-          p.card__desc Chon model .ckpt/.onnx va model_info.json.
->>>>>>> origin/main
+          p.card__desc Chọn model .ckpt/.onnx và model_info.json.
 
         form.model-upload-form(method="POST" action="/models/upload" enctype="multipart/form-data")
           .field
@@ -70,7 +54,7 @@ block main
               strong #{uploadedModel.product_code} / #{uploadedModel.model_name} / #{uploadedModel.version}
             .upload-result__row
               span Format
-              strong= uploadedModel.model_format
+              strong= uploadedModel.model_format || (uploadedModel.object_key || "").split(".").pop()
             .upload-result__row
               span Threshold
               strong= uploadedModel.threshold
@@ -82,7 +66,7 @@ block main
               strong= uploadedModel.originalName
             .upload-result__row
               span Dung lượng
-              strong #{(uploadedModel.size / 1024 / 1024).toFixed(2)} MB
+              strong #{uploadedModel.size ? (uploadedModel.size / 1024 / 1024).toFixed(2) : 0} MB
         else
           .empty-state
             h3 Chưa có model được upload
@@ -121,8 +105,8 @@ block main
                     span.model-object-key= item.object_key
                   td
                     .table-actions
-                      a.btn.btn--secondary.btn--sm(href=`/models/${item._id}/edit`) Sửa
-                      form(method="POST" action=`/models/${item._id}/delete`)
+                      a.btn.btn--secondary.btn--sm(href=`/models/${item.model_id}/edit`) Sửa
+                      form(method="POST" action=`/models/${item.model_id}/delete`)
                         button.btn.btn--danger.btn--sm(
                           type="submit"
                           onclick="return confirm('Bạn có chắc muốn xóa model này không?');"

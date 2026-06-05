@@ -62,19 +62,54 @@ class ArduinoComm:
 
         return max(min_value, min(number, max_value))
 
-    def apply_config(self, speed=150, goc_home=0, goc_gat=120):
-        speed = self.clamp_int(speed, 150, 0, 255)
-        goc_home = self.clamp_int(goc_home, 0, 0, 180)
-        goc_gat = self.clamp_int(goc_gat, 120, 0, 180)
+    def apply_config(
+        self,
+        speed_low_level=2,
+        speed_high_level=5,
+        servo_home_angle=0,
+        servo_gate_angle=130,
+        light_min_lux=1000,
+        light_max_lux=2000,
+        save_default=False,
+    ):
+        speed_low_level = self.clamp_int(speed_low_level, 2, 1, 5)
+        speed_high_level = self.clamp_int(speed_high_level, 5, 1, 5)
 
-        command = f"CFG:SPEED={speed};HOME={goc_home};PUSH={goc_gat}"
-        self.send_line(command)
+        if speed_low_level >= speed_high_level:
+            raise RuntimeError("speed_low_level must be smaller than speed_high_level")
+
+        servo_home_angle = self.clamp_int(servo_home_angle, 0, 0, 180)
+        servo_gate_angle = self.clamp_int(servo_gate_angle, 130, 0, 180)
+
+        light_min_lux = self.clamp_int(light_min_lux, 1000, 0, 3000)
+        light_max_lux = self.clamp_int(light_max_lux, 2000, 0, 3000)
+
+        if light_min_lux >= light_max_lux:
+            raise RuntimeError("light_min_lux must be smaller than light_max_lux")
+
+        commands = [
+            f"SET_SPEED_RANGE:{speed_low_level},{speed_high_level}",
+            f"SET_SERVO_HOME:{servo_home_angle}",
+            f"SET_SERVO_GATE:{servo_gate_angle}",
+            f"SET_LIGHT_RANGE:{light_min_lux},{light_max_lux}",
+        ]
+
+        if save_default:
+            commands.append("SAVE_CONFIG")
+
+        for command in commands:
+            self.send_line(command)
+            time.sleep(0.05)
 
         return {
-            "speed": speed,
-            "goc_home": goc_home,
-            "goc_gat": goc_gat,
-            "command": command,
+            "speed_low_level": speed_low_level,
+            "speed_high_level": speed_high_level,
+            "servo_home_angle": servo_home_angle,
+            "servo_gate_angle": servo_gate_angle,
+            "light_min_lux": light_min_lux,
+            "light_max_lux": light_max_lux,
+            "save_default": save_default,
+            "commands": commands,
         }
 
     def read_line(self):

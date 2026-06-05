@@ -6,12 +6,9 @@ import User from "../model/user.model";
 import ModelRegistry from "../model/modelRegister.model";
 import ConfigLog from "../model/config_logs.model";
 import { publishControlCommand } from "../service/mqtt.service";
-import mongoose from "mongoose";
-import ModelRegistry from "../model/modelRegister.model";
 import {
   canAccessConveyor,
   canConfigureByStatus,
-  CONFIG_LOCKED_STATUSES,
 } from "../helper/conveyorAccess.helper";
 
 type ConveyorView = {
@@ -32,16 +29,9 @@ type ConveyorConfigView = {
   serial_port?: string;
   baud_rate?: number;
   ai_threshold?: number;
-<<<<<<< HEAD
-<<<<<<< HEAD
-  speed?: number;
-  goc_home?: number;
-  goc_gat?: number;
-  model_id?: string;
-  config_mode?: "PRODUCTION" | "TEST";
-=======
-=======
->>>>>>> origin/main
+  // speed?: number;
+  // goc_home?: number;
+  // goc_gat?: number;
   arduino_speed_low_level?: number;
   arduino_speed_high_level?: number;
   arduino_servo_home_angle?: number;
@@ -49,15 +39,41 @@ type ConveyorConfigView = {
   arduino_light_min_lux?: number;
   arduino_light_max_lux?: number;
   threshold_override?: number | null;
-  mode?: string;
-  model_id?: any;
-<<<<<<< HEAD
->>>>>>> origin/main
-=======
->>>>>>> origin/main
+  // mode?: string;
+  model_id?: string;
+  config_mode?: "PRODUCTION" | "TEST";
 };
 
 const normalizeCode = (value: any) => String(value || "").trim().toUpperCase();
+
+const toNumberInRange = (
+  value: any,
+  defaultValue: number,
+  min: number,
+  max: number
+) => {
+  const num = Number(value);
+
+  if (Number.isNaN(num)) return defaultValue;
+
+  return Math.min(Math.max(num, min), max);
+};
+
+const optionalNumber = (value: any) => {
+  if (value === undefined || value === null || value === "") return null;
+
+  const number = Number(value);
+
+  return Number.isFinite(number) ? number : null;
+};
+
+const readNumber = (value: any, fallback: number) => {
+  if (value === undefined || value === null || value === "") return fallback;
+
+  const number = Number(value);
+
+  return Number.isFinite(number) ? number : fallback;
+};
 
 const speedPresets = [
   { level: 1, key: "VERY_SLOW", label: "Very Slow", pwm: 153, rpm: 7.95 },
@@ -76,25 +92,31 @@ const defaultArduinoConfig = {
   light_max_lux: 2000,
 };
 
-const optionalNumber = (value: any) => {
-  if (value === undefined || value === null || value === "") return null;
-  const number = Number(value);
-  return Number.isFinite(number) ? number : null;
-};
-
-const readNumber = (value: any, fallback: number) => {
-  if (value === undefined || value === null || value === "") return fallback;
-  const number = Number(value);
-  return Number.isFinite(number) ? number : fallback;
-};
-
 const buildArduinoConfig = (config?: ConveyorConfigView | null) => ({
-  speed_low_level: readNumber(config?.arduino_speed_low_level, defaultArduinoConfig.speed_low_level),
-  speed_high_level: readNumber(config?.arduino_speed_high_level, defaultArduinoConfig.speed_high_level),
-  servo_home_angle: readNumber(config?.arduino_servo_home_angle, defaultArduinoConfig.servo_home_angle),
-  servo_gate_angle: readNumber(config?.arduino_servo_gate_angle, defaultArduinoConfig.servo_gate_angle),
-  light_min_lux: readNumber(config?.arduino_light_min_lux, defaultArduinoConfig.light_min_lux),
-  light_max_lux: readNumber(config?.arduino_light_max_lux, defaultArduinoConfig.light_max_lux),
+  speed_low_level: readNumber(
+    config?.arduino_speed_low_level,
+    defaultArduinoConfig.speed_low_level
+  ),
+  speed_high_level: readNumber(
+    config?.arduino_speed_high_level,
+    defaultArduinoConfig.speed_high_level
+  ),
+  servo_home_angle: readNumber(
+    config?.arduino_servo_home_angle,
+    defaultArduinoConfig.servo_home_angle
+  ),
+  servo_gate_angle: readNumber(
+    config?.arduino_servo_gate_angle,
+    defaultArduinoConfig.servo_gate_angle
+  ),
+  light_min_lux: readNumber(
+    config?.arduino_light_min_lux,
+    defaultArduinoConfig.light_min_lux
+  ),
+  light_max_lux: readNumber(
+    config?.arduino_light_max_lux,
+    defaultArduinoConfig.light_max_lux
+  ),
 });
 
 const validateArduinoConfig = (config: typeof defaultArduinoConfig) => {
@@ -105,7 +127,7 @@ const validateArduinoConfig = (config: typeof defaultArduinoConfig) => {
     config.speed_high_level > 5 ||
     config.speed_low_level >= config.speed_high_level
   ) {
-    return "Toc do LOW phai nho hon toc do HIGH va nam trong khoang level 1-5.";
+    return "Tốc độ LOW phải nhỏ hơn tốc độ HIGH và nằm trong khoảng level 1-5.";
   }
 
   if (
@@ -114,7 +136,7 @@ const validateArduinoConfig = (config: typeof defaultArduinoConfig) => {
     config.servo_gate_angle < 0 ||
     config.servo_gate_angle > 180
   ) {
-    return "Goc servo HOME/GAT phai nam trong khoang 0-180 do.";
+    return "Góc servo HOME/GẠT phải nằm trong khoảng 0-180 độ.";
   }
 
   if (
@@ -122,53 +144,45 @@ const validateArduinoConfig = (config: typeof defaultArduinoConfig) => {
     config.light_max_lux > 3000 ||
     config.light_min_lux >= config.light_max_lux
   ) {
-    return "Nguong anh sang phai thoa 0 <= minLux < maxLux <= 3000.";
+    return "Ngưỡng ánh sáng phải thỏa 0 <= minLux < maxLux <= 3000.";
   }
 
   return null;
 };
-<<<<<<< HEAD
-
-const toNumberInRange = (
-  value: any,
-  defaultValue: number,
-  min: number,
-  max: number
-) => {
-  const num = Number(value);
-
-  if (Number.isNaN(num)) return defaultValue;
-
-  return Math.min(Math.max(num, min), max);
-};
-=======
->>>>>>> origin/main
 
 export const settings = async (req: Request, res: Response) => {
   try {
-    const conveyorId = normalizeCode(req.params.conveyor_id || req.params.conveyorCode);
+    const conveyorId = normalizeCode(
+      req.params.conveyor_id || req.params.conveyorCode
+    );
 
-    const conveyor = await Conveyor.findOne({ conveyor_id: conveyorId })
-      .lean<ConveyorView | null>();
+    const conveyor = await Conveyor.findOne({ conveyor_id: conveyorId }).lean<
+      ConveyorView | null
+    >();
 
-    const config = await ConveyorConfig.findOne({ conveyor_id: conveyorId })
-      .lean<ConveyorConfigView | null>();
-
-    const modelRegistryList = await ModelRegistry.find({
-      status: "active",
-    }).lean();
+    const config = await ConveyorConfig.findOne({ conveyor_id: conveyorId }).lean<
+      ConveyorConfigView | null
+    >();
 
     if (!conveyor || !config) {
-      return res.status(404).send("Khong tim thay bang tai hoac cau hinh.");
+      return res.status(404).send("Không tìm thấy băng tải hoặc cấu hình.");
     }
 
     const currentUser = res.locals.user;
-
     const allowed = await canAccessConveyor(currentUser, conveyorId);
 
     if (!allowed) {
-      return res.status(403).send("Bạn không được phân công vận hành băng tải này.");
+      return res
+        .status(403)
+        .send("Bạn không được phân công vận hành băng tải này.");
     }
+
+    const selectedTab =
+      String(req.query.tab || "production").toLowerCase() === "test"
+        ? "test"
+        : "production";
+
+    const selectedConfigMode = selectedTab === "test" ? "TEST" : "PRODUCTION";
 
     const isConfigLocked = !canConfigureByStatus(conveyor.status);
 
@@ -186,37 +200,14 @@ export const settings = async (req: Request, res: Response) => {
       ],
     }).lean();
 
-    const selectedTab =
-      String(req.query.tab || "production").toLowerCase() === "test"
-        ? "test"
-        : "production";
-    const selectedConfigMode = selectedTab === "test" ? "TEST" : "PRODUCTION";
-
-    const usedOperatorIds = await Conveyor.find({
+    const usedUserIds = await Conveyor.find({
       conveyor_id: { $ne: conveyorId },
-<<<<<<< HEAD
-<<<<<<< HEAD
-      user_id: { $ne: ""}
-      }).distinct("user_id");
-      const operators = await User.find(
-        {
-          user_id: { $nin: usedOperatorIds },
-        },
-        {
-          _id: 0,
-          user_id: 1,
-          fullname: 1,
-        }
-      ).lean();
-=======
-=======
->>>>>>> origin/main
-      operator_id: { $ne: "" },
-    }).distinct("operator_id");
+      user_id: { $exists: true, $ne: "" },
+    }).distinct("user_id");
 
     const operators = await User.find(
       {
-        user_id: { $nin: usedOperatorIds },
+        user_id: { $nin: usedUserIds },
       },
       {
         _id: 0,
@@ -225,8 +216,6 @@ export const settings = async (req: Request, res: Response) => {
         fullname: 1,
       }
     ).lean();
-<<<<<<< HEAD
->>>>>>> origin/main
 
     const activeModels = await ModelRegistry.find({ status: "active" })
       .sort({ created_at: -1 })
@@ -235,32 +224,40 @@ export const settings = async (req: Request, res: Response) => {
     const testingModels = await ModelRegistry.find({ status: "testing" })
       .sort({ created_at: -1 })
       .lean();
+
     const selectedModel = config.model_id
       ? await ModelRegistry.findOne({ model_id: config.model_id }).lean()
       : null;
+
     const isTestingModelLocked =
       selectedTab === "test" &&
       config.config_mode === "TEST" &&
       !!config.model_id &&
-      selectedModel?.status === "testing";
-=======
->>>>>>> origin/main
+      (selectedModel as any)?.status === "testing";
 
     return res.render("setting/settings", {
-      title: "Cau hinh bang tai",
+      title: "Cấu hình băng tải",
       conveyor,
       config,
       cameras,
       operators,
 
       selectedTab,
+      selectedConfigMode,
       activeModels,
       testingModels,
-      selectedConfigMode,
       selectedModel,
       isTestingModelLocked,
+
+      ModelRegistryList: activeModels,
+
+      speedPresets,
+      arduinoConfig: buildArduinoConfig(config),
+
       isConfigLocked,
-      configLockMessage: isConfigLocked ? "Không thể cấu hình băng tải khi đang vận hành." : null,
+      configLockMessage: isConfigLocked
+        ? "Không thể cấu hình băng tải khi đang vận hành."
+        : null,
       error,
 
       updated: req.query.updated === "1",
@@ -273,105 +270,77 @@ export const settings = async (req: Request, res: Response) => {
 
       monitorUrl: `/inspection/monitor/${conveyor.conveyor_id}`,
       dashboardUrl: "/dashboard",
-<<<<<<< HEAD
-      formAction: `/settings/${conveyor.conveyor_id}?tab=${selectedTab}`
-=======
-      formAction: req.originalUrl.split("?")[0],
-      ModelRegistryList: modelRegistryList,
-      speedPresets,
-      arduinoConfig: buildArduinoConfig(config),
-<<<<<<< HEAD
->>>>>>> origin/main
-=======
->>>>>>> origin/main
+      formAction: `/settings/${conveyor.conveyor_id}?tab=${selectedTab}`,
     });
   } catch (error) {
-    console.error("Loi render:", error);
-    return res.status(500).send("Khong the tai trang cau hinh.");
+    console.error("Lỗi render settings:", error);
+    return res.status(500).send("Không thể tải trang cấu hình.");
   }
 };
 
 export const scanPorts = async (_req: Request, res: Response) => {
   try {
     const command = publishControlCommand("GET_SERIAL_PORTS", {});
+
     return res.json({
       success: true,
       command_id: command.command_id,
-      message: "Da gui yeu cau scan",
+      message: "Đã gửi yêu cầu scan cổng Serial.",
     });
   } catch (error) {
+    console.error("Scan ports error:", error);
+
     return res.status(500).json({
       success: false,
-      message: "Khong the gui yeu cau scan",
+      message: "Không thể gửi yêu cầu scan cổng Serial.",
     });
   }
 };
 
 export const updateSettings = async (req: Request, res: Response) => {
   try {
-<<<<<<< HEAD
-<<<<<<< HEAD
-    const getConveyorId = (req: Request) =>
-    normalizeCode(req.params.conveyor_id || req.params.conveyorCode);
-    const conveyorId = getConveyorId(req);
-    const conveyor : any = await Conveyor.findOne({ conveyor_id: conveyorId }).lean();
+    const conveyorId = normalizeCode(
+      req.params.conveyor_id || req.params.conveyorCode
+    );
+
+    const conveyor = await Conveyor.findOne({ conveyor_id: conveyorId }).lean<
+      ConveyorView | null
+    >();
+
+    if (!conveyor) {
+      return res.status(404).send("Không tìm thấy băng tải.");
+    }
 
     const currentUser = res.locals.user;
-
     const allowed = await canAccessConveyor(currentUser, conveyorId);
 
     if (!allowed) {
       return res.status(403).send("Bạn không có quyền cấu hình băng tải này.");
     }
 
-    
-
     const selectedTab =
-      String(req.query.tab || req.body.tab || "production").toLowerCase() === "test"
+      String(req.query.tab || req.body.tab || "production").toLowerCase() ===
+      "test"
         ? "test"
         : "production";
+
     if (!canConfigureByStatus(conveyor.status)) {
       return res.redirect(
         `/settings/${conveyorId}?tab=${selectedTab}&error=config_locked`
       );
     }
 
-    const selectedModelId = String(req.body.model_id || "").trim();
-
-    console.log("[SETTINGS] Submit model:", {
-      selectedTab,
-      selectedModelId,
-      bodyModelId: req.body.model_id,
-    });
-=======
-=======
->>>>>>> origin/main
-    const conveyorId = normalizeCode(req.params.conveyor_id || req.params.conveyorCode);
-    const conveyor = await Conveyor.findOne({ conveyor_id: conveyorId }).lean<ConveyorView | null>();
->>>>>>> origin/main
-
-    if (!conveyor) {
-      return res.status(404).send("Khong tim thay bang tai.");
-    }
-
-    const oldConfig = await ConveyorConfig.findOne({ conveyor_id: conveyorId })
-      .lean<ConveyorConfigView | null>();
+    const oldConfig = await ConveyorConfig.findOne({
+      conveyor_id: conveyorId,
+    }).lean<ConveyorConfigView | null>();
 
     if (!oldConfig) {
-      return res.status(404).send("Khong tim thay cau hinh bang tai.");
+      return res.status(404).send("Không tìm thấy cấu hình băng tải.");
     }
 
     const {
       name,
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
       line_id,
->>>>>>> origin/main
-=======
-      line_id,
->>>>>>> origin/main
-      status,
       user_id,
       description,
       camera_id,
@@ -380,14 +349,9 @@ export const updateSettings = async (req: Request, res: Response) => {
       serial_port,
       baud_rate,
       ai_threshold,
-<<<<<<< HEAD
-<<<<<<< HEAD
       speed,
       goc_home,
       goc_gat,
-=======
-=======
->>>>>>> origin/main
       threshold_override,
       mode,
       model_id,
@@ -398,45 +362,67 @@ export const updateSettings = async (req: Request, res: Response) => {
       arduino_light_min_lux,
       arduino_light_max_lux,
       save_arduino_default,
-<<<<<<< HEAD
->>>>>>> origin/main
-=======
->>>>>>> origin/main
     } = req.body;
 
+    const selectedModelId = String(model_id || "").trim();
+
     const arduinoConfig = {
-      speed_low_level: readNumber(arduino_speed_low_level, defaultArduinoConfig.speed_low_level),
-      speed_high_level: readNumber(arduino_speed_high_level, defaultArduinoConfig.speed_high_level),
-      servo_home_angle: readNumber(arduino_servo_home_angle, defaultArduinoConfig.servo_home_angle),
-      servo_gate_angle: readNumber(arduino_servo_gate_angle, defaultArduinoConfig.servo_gate_angle),
-      light_min_lux: readNumber(arduino_light_min_lux, defaultArduinoConfig.light_min_lux),
-      light_max_lux: readNumber(arduino_light_max_lux, defaultArduinoConfig.light_max_lux),
+      speed_low_level: readNumber(
+        arduino_speed_low_level,
+        defaultArduinoConfig.speed_low_level
+      ),
+      speed_high_level: readNumber(
+        arduino_speed_high_level,
+        defaultArduinoConfig.speed_high_level
+      ),
+      servo_home_angle: readNumber(
+        arduino_servo_home_angle,
+        defaultArduinoConfig.servo_home_angle
+      ),
+      servo_gate_angle: readNumber(
+        arduino_servo_gate_angle,
+        defaultArduinoConfig.servo_gate_angle
+      ),
+      light_min_lux: readNumber(
+        arduino_light_min_lux,
+        defaultArduinoConfig.light_min_lux
+      ),
+      light_max_lux: readNumber(
+        arduino_light_max_lux,
+        defaultArduinoConfig.light_max_lux
+      ),
     };
 
     const arduinoConfigError = validateArduinoConfig(arduinoConfig);
+
     if (arduinoConfigError) {
       return res.status(400).send(arduinoConfigError);
     }
 
-    const selectedModelId = String(model_id || "").trim();
-    if (selectedModelId) {
-      const model = await ModelRegistry.findById(selectedModelId).lean();
-      if (!model) {
-        return res.status(400).send("Model khong ton tai.");
-      }
-    }
-
     const newCameraId = normalizeCode(camera_id);
     const oldCameraId = normalizeCode(oldConfig.camera_id);
+
     const newSpeed = toNumberInRange(speed, 150, 0, 255);
     const newGocHome = toNumberInRange(goc_home, 0, 0, 180);
     const newGocGat = toNumberInRange(goc_gat, 120, 0, 180);
     const newBaudRate = toNumberInRange(baud_rate, 9600, 1200, 115200);
-    const newCameraTriggerDelay = toNumberInRange(camera_trigger_delay, 0, 0, 10000);
-    const newAiThreshold = Number(ai_threshold || 30.436506);
+    const newCameraTriggerDelay = toNumberInRange(
+      camera_trigger_delay_ms ?? camera_trigger_delay,
+      0,
+      0,
+      10000
+    );
+
+    const thresholdOverride = optionalNumber(threshold_override);
+    const newAiThreshold =
+      thresholdOverride !== null
+        ? thresholdOverride
+        : Number(ai_threshold || oldConfig.ai_threshold || 30.436506);
 
     let nextModelId = String(oldConfig.model_id || "").trim();
-    let nextConfigMode = String(oldConfig.config_mode || "PRODUCTION").toUpperCase();
+    let nextConfigMode = String(
+      oldConfig.config_mode || "PRODUCTION"
+    ).toUpperCase();
 
     const currentModel = oldConfig.model_id
       ? await ModelRegistry.findOne({ model_id: oldConfig.model_id }).lean()
@@ -446,7 +432,7 @@ export const updateSettings = async (req: Request, res: Response) => {
       selectedTab === "test" &&
       oldConfig.config_mode === "TEST" &&
       !!oldConfig.model_id &&
-      currentModel?.status === "testing";
+      (currentModel as any)?.status === "testing";
 
     if (selectedTab === "production") {
       if (!selectedModelId) {
@@ -456,7 +442,7 @@ export const updateSettings = async (req: Request, res: Response) => {
       const activeModel = await ModelRegistry.findOne({
         model_id: selectedModelId,
         status: "active",
-      }).lean();
+      }).lean<any>();
 
       if (!activeModel) {
         return res
@@ -480,12 +466,14 @@ export const updateSettings = async (req: Request, res: Response) => {
         const testingModel = await ModelRegistry.findOne({
           model_id: selectedModelId,
           status: "testing",
-        }).lean();
+        }).lean<any>();
 
         if (!testingModel) {
           return res
             .status(400)
-            .send("Model kiểm thử không tồn tại hoặc không ở trạng thái testing.");
+            .send(
+              "Model kiểm thử không tồn tại hoặc không ở trạng thái testing."
+            );
         }
 
         nextModelId = testingModel.model_id;
@@ -499,14 +487,12 @@ export const updateSettings = async (req: Request, res: Response) => {
         {
           $set: {
             status: "AVAILABLE",
+            conveyor_id: "",
           },
         }
       );
     }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-    
     if (newCameraId) {
       const newCamera = await Camera.findOne({ camera_id: newCameraId }).lean<any>();
 
@@ -518,33 +504,9 @@ export const updateSettings = async (req: Request, res: Response) => {
         newCamera.status === "IN_USE" &&
         normalizeCode(newCamera.conveyor_id) !== conveyorId
       ) {
-        return res.status(400).send("Camera này đang được gán cho băng tải khác.");
-      }
-    }
-    if (newCameraId) {
-      await Camera.updateOne(
-        { camera_id: newCameraId },
-        {
-          $set: {
-            status: "IN_USE",
-          },
-        }
-      );
-    }
-    const changes: any = {};
-=======
-    if (newCameraId) {
-      const newCamera = await Camera.findOne({ camera_id: newCameraId }).lean<any>();
-
-      if (!newCamera) {
-        return res.status(400).send("Camera khong ton tai.");
-      }
-
-      if (
-        newCamera.status === "IN_USE" &&
-        normalizeCode(newCamera.conveyor_id) !== conveyorId
-      ) {
-        return res.status(400).send("Camera nay dang duoc gan cho bang tai khac.");
+        return res
+          .status(400)
+          .send("Camera này đang được gán cho băng tải khác.");
       }
 
       await Camera.updateOne(
@@ -558,45 +520,8 @@ export const updateSettings = async (req: Request, res: Response) => {
       );
     }
 
-    const cameraDelay = Number(camera_trigger_delay_ms ?? camera_trigger_delay ?? 0);
-    const thresholdOverride = optionalNumber(threshold_override);
-    const legacyThreshold =
-      thresholdOverride !== null ? thresholdOverride : Number(ai_threshold || 30.436506);
->>>>>>> origin/main
-
-=======
-    if (newCameraId) {
-      const newCamera = await Camera.findOne({ camera_id: newCameraId }).lean<any>();
-
-      if (!newCamera) {
-        return res.status(400).send("Camera khong ton tai.");
-      }
-
-      if (
-        newCamera.status === "IN_USE" &&
-        normalizeCode(newCamera.conveyor_id) !== conveyorId
-      ) {
-        return res.status(400).send("Camera nay dang duoc gan cho bang tai khac.");
-      }
-
-      await Camera.updateOne(
-        { camera_id: newCameraId },
-        {
-          $set: {
-            status: "IN_USE",
-            conveyor_id: conveyorId,
-          },
-        }
-      );
-    }
-
-    const cameraDelay = Number(camera_trigger_delay_ms ?? camera_trigger_delay ?? 0);
-    const thresholdOverride = optionalNumber(threshold_override);
-    const legacyThreshold =
-      thresholdOverride !== null ? thresholdOverride : Number(ai_threshold || 30.436506);
-
->>>>>>> origin/main
     const changes: Record<string, { old: any; new: any }> = {};
+
     const addChange = (field: string, oldValue: any, newValue: any) => {
       if (String(oldValue ?? "") !== String(newValue ?? "")) {
         changes[field] = {
@@ -608,43 +533,64 @@ export const updateSettings = async (req: Request, res: Response) => {
 
     addChange("name", conveyor.name, name);
     addChange("line_id", conveyor.line_id, line_id);
-    addChange("status", conveyor.status, normalizeCode(status || "ONLINE"));
-    addChange("operator_id", conveyor.operator_id, operator_id);
+    addChange("user_id", conveyor.user_id, user_id);
     addChange("description", conveyor.description, description);
+
     addChange("camera_id", oldConfig.camera_id, newCameraId);
     addChange(
       "camera_trigger_delay_ms",
       oldConfig.camera_trigger_delay_ms ?? oldConfig.camera_trigger_delay,
-      cameraDelay
+      newCameraTriggerDelay
     );
     addChange("serial_port", oldConfig.serial_port, serial_port);
-    addChange("baud_rate", oldConfig.baud_rate, Number(baud_rate || 9600));
-    addChange("arduino_speed_low_level", oldConfig.arduino_speed_low_level, arduinoConfig.speed_low_level);
-    addChange("arduino_speed_high_level", oldConfig.arduino_speed_high_level, arduinoConfig.speed_high_level);
-    addChange("arduino_servo_home_angle", oldConfig.arduino_servo_home_angle, arduinoConfig.servo_home_angle);
-    addChange("arduino_servo_gate_angle", oldConfig.arduino_servo_gate_angle, arduinoConfig.servo_gate_angle);
-    addChange("arduino_light_min_lux", oldConfig.arduino_light_min_lux, arduinoConfig.light_min_lux);
-    addChange("arduino_light_max_lux", oldConfig.arduino_light_max_lux, arduinoConfig.light_max_lux);
+    addChange("baud_rate", oldConfig.baud_rate, newBaudRate);
+    // addChange("speed", oldConfig.speed, newSpeed);
+    // addChange("goc_home", oldConfig.goc_home, newGocHome);
+    // addChange("goc_gat", oldConfig.goc_gat, newGocGat);
+    addChange("ai_threshold", oldConfig.ai_threshold, newAiThreshold);
     addChange("threshold_override", oldConfig.threshold_override, thresholdOverride);
-    addChange("mode", oldConfig.mode, normalizeCode(mode || "AUTO"));
-    addChange("model_id", oldConfig.model_id, selectedModelId);
+    //addChange("mode", oldConfig.mode, normalizeCode(mode || "AUTO"));
+    addChange("model_id", oldConfig.model_id, nextModelId);
+    addChange("config_mode", oldConfig.config_mode, nextConfigMode);
+
+    addChange(
+      "arduino_speed_low_level",
+      oldConfig.arduino_speed_low_level,
+      arduinoConfig.speed_low_level
+    );
+    addChange(
+      "arduino_speed_high_level",
+      oldConfig.arduino_speed_high_level,
+      arduinoConfig.speed_high_level
+    );
+    addChange(
+      "arduino_servo_home_angle",
+      oldConfig.arduino_servo_home_angle,
+      arduinoConfig.servo_home_angle
+    );
+    addChange(
+      "arduino_servo_gate_angle",
+      oldConfig.arduino_servo_gate_angle,
+      arduinoConfig.servo_gate_angle
+    );
+    addChange(
+      "arduino_light_min_lux",
+      oldConfig.arduino_light_min_lux,
+      arduinoConfig.light_min_lux
+    );
+    addChange(
+      "arduino_light_max_lux",
+      oldConfig.arduino_light_max_lux,
+      arduinoConfig.light_max_lux
+    );
 
     await Conveyor.updateOne(
       { conveyor_id: conveyorId },
       {
         $set: {
           name: String(name || "").trim(),
-<<<<<<< HEAD
-<<<<<<< HEAD
-          //status: normalizeCode(status || "ONLINE"),
-          user_id: String(user_id || "").trim(),
-=======
-=======
->>>>>>> origin/main
           line_id: String(line_id || "").trim(),
-          status: normalizeCode(status || "ONLINE"),
-          operator_id: String(operator_id || "").trim(),
->>>>>>> origin/main
+          user_id: String(user_id || "").trim(),
           description: String(description || "").trim(),
         },
       }
@@ -655,120 +601,73 @@ export const updateSettings = async (req: Request, res: Response) => {
       {
         $set: {
           camera_id: newCameraId,
-<<<<<<< HEAD
-<<<<<<< HEAD
           camera_trigger_delay: newCameraTriggerDelay,
+          camera_trigger_delay_ms: newCameraTriggerDelay,
           serial_port: String(serial_port || "").trim(),
           baud_rate: newBaudRate,
           ai_threshold: newAiThreshold,
-          speed: newSpeed,
-          goc_home: newGocHome,
-          goc_gat: newGocGat,
-          model_id: nextModelId,
-          config_mode: nextConfigMode,
-=======
-=======
->>>>>>> origin/main
-          camera_trigger_delay: cameraDelay,
-          camera_trigger_delay_ms: cameraDelay,
-          serial_port: String(serial_port || "").trim(),
-          baud_rate: Number(baud_rate || 9600),
+          // speed: newSpeed,
+          // goc_home: newGocHome,
+          // goc_gat: newGocGat,
+
           arduino_speed_low_level: arduinoConfig.speed_low_level,
           arduino_speed_high_level: arduinoConfig.speed_high_level,
           arduino_servo_home_angle: arduinoConfig.servo_home_angle,
           arduino_servo_gate_angle: arduinoConfig.servo_gate_angle,
           arduino_light_min_lux: arduinoConfig.light_min_lux,
           arduino_light_max_lux: arduinoConfig.light_max_lux,
-          ai_threshold: legacyThreshold,
+
           threshold_override: thresholdOverride,
-          mode: normalizeCode(mode || "AUTO"),
-          model_id: selectedModelId || null,
-<<<<<<< HEAD
->>>>>>> origin/main
-=======
->>>>>>> origin/main
+          //mode: normalizeCode(mode || "AUTO"),
+
+          model_id: nextModelId,
+          config_mode: nextConfigMode,
         },
       }
     );
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-    
-    addChange("user_id", conveyor.user_id, user_id);
-    addChange("camera_id", oldConfig.camera_id, newCameraId);
-    addChange("serial_port", oldConfig.serial_port, serial_port);
-    addChange("name", conveyor.name, name);
-    addChange("status", conveyor.status, normalizeCode(status || "ONLINE"));
-    addChange("description", conveyor.description, description);
-    addChange("baud_rate", oldConfig.baud_rate, newBaudRate);
-    addChange("speed", oldConfig.speed, newSpeed);
-    addChange("goc_home", oldConfig.goc_home, newGocHome);
-    addChange("goc_gat", oldConfig.goc_gat, newGocGat);
-    addChange("ai_threshold", oldConfig.ai_threshold, newAiThreshold);
-    addChange("model_id", oldConfig.model_id, nextModelId);
-    addChange("config_mode", oldConfig.config_mode, nextConfigMode);
-
-    
-
-=======
->>>>>>> origin/main
-=======
->>>>>>> origin/main
     if (Object.keys(changes).length > 0) {
       await ConfigLog.create({
         config_log_id: `CFG_${Date.now()}`,
         conveyor_id: conveyorId,
-        user_id: res.locals.user?.user_id || req.cookies?.user_id || "UNKNOWN",
+        user_id: res.locals.user?.user_id || "UNKNOWN",
         action: "UPDATE_CONFIG",
         changes,
-        message: String(description || "").trim() || "Cap nhat cau hinh bang tai",
+        message:
+          String(description || "").trim() || "Cập nhật cấu hình băng tải",
       });
     }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
     let synced = "1";
 
     try {
-      publishControlCommand("RELOAD_CONFIG", {
-        conveyor_id: conveyorId,
-      });
-    } catch (mqttError) {
-      synced = "0";
-      console.error("[MQTT] RELOAD_CONFIG lỗi:", mqttError);
-    }
-
-    return res.redirect(`/settings/${conveyorId}?tab=${selectedTab}&updated=1&synced=${synced}`);
-=======
-=======
->>>>>>> origin/main
-    try {
       publishControlCommand("APPLY_ARDUINO_CONFIG", {
         conveyor_id: conveyorId,
-        conveyor_code: conveyorId,
+        //conveyor_code: conveyorId,
         speed_low_level: arduinoConfig.speed_low_level,
         speed_high_level: arduinoConfig.speed_high_level,
         servo_home_angle: arduinoConfig.servo_home_angle,
         servo_gate_angle: arduinoConfig.servo_gate_angle,
         light_min_lux: arduinoConfig.light_min_lux,
         light_max_lux: arduinoConfig.light_max_lux,
-        save_default: save_arduino_default === "1" || save_arduino_default === "on" || save_arduino_default === true,
+        save_default:
+          save_arduino_default === "1" ||
+          save_arduino_default === "on" ||
+          save_arduino_default === true,
       });
-    } catch (error) {
-      console.error("Publish APPLY_ARDUINO_CONFIG failed:", error);
-      return res.redirect(`/settings/${conveyorId}?updated=1&synced=0`);
+    } catch (mqttError) {
+      synced = "0";
+      console.error("[MQTT] APPLY_ARDUINO_CONFIG lỗi:", mqttError);
     }
 
-    return res.redirect(`/settings/${conveyorId}?updated=1`);
->>>>>>> origin/main
+    return res.redirect(
+      `/settings/${conveyorId}?tab=${selectedTab}&updated=1&synced=${synced}`
+    );
   } catch (error) {
-    console.error("Update settings khong thanh cong:", error);
-    return res.status(500).send("Khong the cap nhat cau hinh.");
+    console.error("Update settings không thành công:", error);
+    return res.status(500).send("Không thể cập nhật cấu hình.");
   }
 };
-<<<<<<< HEAD
-<<<<<<< HEAD
-
 
 export const approveModel = async (req: Request, res: Response) => {
   try {
@@ -788,13 +687,24 @@ export const approveModel = async (req: Request, res: Response) => {
       return res.status(404).send("Không tìm thấy băng tải.");
     }
 
-    if (String(conveyor.status || "").toUpperCase() === "RUNNING") {
+    const currentUser = res.locals.user;
+    const allowed = await canAccessConveyor(currentUser, conveyorId);
+
+    if (!allowed) {
+      return res
+        .status(403)
+        .send("Bạn không có quyền phê duyệt model cho băng tải này.");
+    }
+
+    if (!canConfigureByStatus(conveyor.status)) {
       return res
         .status(400)
         .send("Chỉ được phê duyệt model sau khi đã dừng kiểm thử.");
     }
 
-    const config = await ConveyorConfig.findOne({ conveyor_id: conveyorId }).lean<any>();
+    const config = await ConveyorConfig.findOne({
+      conveyor_id: conveyorId,
+    }).lean<any>();
 
     if (!config || !config.model_id || config.config_mode !== "TEST") {
       return res.status(400).send("Không có model kiểm thử đang chờ phê duyệt.");
@@ -803,7 +713,7 @@ export const approveModel = async (req: Request, res: Response) => {
     const model = await ModelRegistry.findOne({
       model_id: config.model_id,
       status: "testing",
-    }).lean();
+    }).lean<any>();
 
     if (!model) {
       return res
@@ -859,7 +769,3 @@ export const approveModel = async (req: Request, res: Response) => {
     return res.status(500).send("Không thể phê duyệt model.");
   }
 };
-=======
->>>>>>> origin/main
-=======
->>>>>>> origin/main

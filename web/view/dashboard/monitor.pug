@@ -1,21 +1,22 @@
 extends ../layout/default.pug
 
 block main
-  - const statusLabels = { READY: "Sẵn sàng", STARTING: "Đang khởi động", RUNNING: "Đang chạy", STOPPING: "Đang dừng", STOPPED: "Đã dừng", ERROR: "Đang lỗi" }
-  - const conveyorStatusText = statusLabels[conveyor.status] || "Đang chờ dữ liệu"
+  - const statusLabels = { READY: "Sẵn sàng", STARTING: "Đang khởi động", RUNNING: "Đang chạy", STOPPING: "Đang dừng", STOPPED: "Đã dừng", STOP: "Đã dừng", ERROR: "Đang lỗi", OFFLINE: "Offline" }
+  - const conveyorStatusText = statusLabels[String(conveyor.status || "").toUpperCase()] || "Đang chờ dữ liệu"
   - const currentMode = runtimeMode || "PRODUCTION"
   - const isTestMode = currentMode === "TEST"
   - const runningStatuses = ["STARTING", "RUNNING", "STOPPING"]
   - const isRunning = runningStatuses.includes(String(conveyor.status || "").toUpperCase())
+
   .dashboard(data-conveyor-code=conveyor.conveyor_id)
     .dashboard__header
       .dashboard__heading
         h1.dashboard__title #{conveyor.name}
-        p.dashboard__subtitle= isTestMode ? "Giám sát kiểm thử model AI" : "Giám sát vận hành chinh thức"
+        p.dashboard__subtitle= isTestMode ? "Giám sát kiểm thử model AI" : "Giám sát vận hành chính thức"
 
       .dashboard-actions
-        a.btn.btn--secondary(href=dashboardUrl) Quay lại
-        a.btn.btn--primary(href=settingsUrl) Cấu hình
+        a.btn.btn--secondary(href=dashboardUrl || "/dashboard") Quay lại
+        a.btn.btn--primary(href=settingsUrl || `/settings/${conveyor.conveyor_id}`) Cấu hình
 
       .dashboard__status-pill(class=conveyor.status)
         span.status-dot
@@ -28,7 +29,7 @@ block main
             h2.card__title Ảnh kiểm tra
             p.card__desc Hiển thị ảnh đại diện của lượt kiểm tra mới nhất
           .preview-frame-meta
-            span Khung hình 2
+            span Khung hình
             strong#framePreviewScore -
 
         .main-preview
@@ -96,11 +97,8 @@ block main
           .inspection-summary
             .summary-row
               span.summary-label Mã lượt kiểm tra
-<<<<<<< HEAD
               span#stt.summary-value -
-=======
-              span#jobId.summary-value -
->>>>>>> origin/main
+              span#jobId.summary-value(style="display:none") -
 
             .summary-row
               span.summary-label Kết quả khung hình

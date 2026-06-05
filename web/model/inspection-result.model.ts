@@ -43,12 +43,13 @@ const inspectionResultSchema = new mongoose.Schema(
       enum: ["OK", "NG", "UNKNOWN"],
       required: true,
     },
-    ng_count: {
-      type: Number,
-      default: 0,
-    },
     threshold: {
       type: Number,
+    },
+    average_score: {
+      type: Number,
+      default: null,
+      index: true,
     },
     frames: { 
       type: [inspectionFrameSchema],
@@ -62,8 +63,12 @@ const inspectionResultSchema = new mongoose.Schema(
     },
   },
   {
+    timestamps: {
+      createdAt: "created_at",
+      updatedAt: "updated_at",
+    },
     versionKey: false,
-  }
+  },
 );
 
 const InspectionResult =

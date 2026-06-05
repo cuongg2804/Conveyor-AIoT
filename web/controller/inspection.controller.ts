@@ -2,15 +2,8 @@ import { Request, Response } from "express";
 import { Server } from "socket.io";
 import InspectionResult from "../model/inspection-result.model";
 import Conveyor from "../model/conveyor.model";
-<<<<<<< HEAD
-<<<<<<< HEAD
+import { withPublicFrameImageUrls, withPublicInspectionImageUrls } from "../helper/image-url";
 import { canAccessConveyor } from "../helper/conveyorAccess.helper";
-=======
-import { withPublicFrameImageUrls, withPublicInspectionImageUrls } from "../helper/image-url";
->>>>>>> origin/main
-=======
-import { withPublicFrameImageUrls, withPublicInspectionImageUrls } from "../helper/image-url";
->>>>>>> origin/main
 
 const normalizeConveyorCode = (value: any) =>
   String(value || "").trim().toUpperCase();
@@ -128,16 +121,26 @@ export const handleInspectionResultMessage = async (payload: any, io: Server) =>
       ? payload.frames.map(normalizeFrame)
       : [];
 
+    const frameScores = frames
+      .map((frame: any) => Number(frame.predicted_score))
+      .filter((score: number) => Number.isFinite(score));
+
+    const avgScore =
+      frameScores.length > 0
+        ? frameScores.reduce((sum: number, score: number) => sum + score, 0) /
+          frameScores.length
+        : null;
+
     const document = {
       inspection_id: inspectionId,
       stt,
       conveyor_id: conveyorId,
       timestamp: Number(payload.timestamp || Date.now() / 1000),
       label: String(payload.label || "UNKNOWN").toUpperCase(),
-      ng_count: Number(payload.ng_count || 0),
+      avg_score: avgScore,
       threshold: Number(payload.threshold || 0),
       frames,
-      mode
+      mode,
     };
 
     await InspectionResult.updateOne(

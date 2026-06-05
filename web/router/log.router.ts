@@ -4,7 +4,7 @@ import { requireAuth, requireRole } from "../middleware/auth.middleware"
 
 const router = Router()
 
-router.use(requireAuth, requireRole("ADMIN"))
+router.use(requireAuth, requireRole("ADMIN", "USER"))
 
 router.get("/", logController.index)
 

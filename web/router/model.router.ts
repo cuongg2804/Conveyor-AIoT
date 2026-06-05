@@ -1,7 +1,7 @@
 import { Router } from "express";
 import multer from "multer";
 import * as modelController from "../controller/model.controller";
-import { requireAuth, requireRole } from "../middleware/auth.middleware";
+import { requireRole } from "../middleware/auth.middleware";
 
 const router = Router();
 
@@ -12,12 +12,10 @@ const upload = multer({
   },
 });
 
-router.use(requireAuth, requireRole("ADMIN"));
+router.use(requireRole("ADMIN"));
 
 router.get("/", modelController.index);
-router.get("/:id/edit", modelController.edit);
-router.post("/:id/edit", modelController.update);
-router.post("/:id/delete", modelController.remove);
+
 router.post(
   "/upload",
   upload.fields([
@@ -26,5 +24,9 @@ router.post(
   ]),
   modelController.uploadModel
 );
+
+router.get("/:model_id/edit", modelController.edit);
+router.post("/:model_id/edit", modelController.update);
+router.post("/:model_id/delete", modelController.remove);
 
 export default router;

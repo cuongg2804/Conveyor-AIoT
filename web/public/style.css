@@ -831,8 +831,32 @@ img[src]:not([src=""]) + .image-placeholder {
 }
 
 /* =========================================================
-   ALERTS
+   SETTINGS PAGE
 ========================================================= */
+.settings-grid {
+  max-width: 900px;
+}
+
+.settings-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+
+.settings-form .checkbox-field,
+.settings-form .divider,
+.settings-form .section-title,
+.settings-actions {
+  grid-column: 1 / -1;
+}
+
+.settings-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
 .alert {
   margin-bottom: 16px;
   padding: 13px 15px;
@@ -1948,7 +1972,7 @@ img[src]:not([src=""]) + .image-placeholder {
 .form-card form,
 .create-form-card form,
 .edit-form-card form,
-.card form:not(.history-filters):not(.login-form):not(.model-upload-form):not(.settings-form) {
+.card form:not(.history-filters):not(.login-form):not(.model-upload-form) {
   display: flex;
   flex-direction: column;
   gap: 18px;
@@ -1969,15 +1993,16 @@ img[src]:not([src=""]) + .image-placeholder {
   margin-top: 8px;
 }
 
-.card form:not(.history-filters):not(.login-form):not(.model-upload-form):not(.settings-form) > .btn,
-.card form:not(.history-filters):not(.login-form):not(.model-upload-form):not(.settings-form) > button[type="submit"] {
+.card form:not(.history-filters):not(.login-form):not(.model-upload-form) > .btn,
+.card form:not(.history-filters):not(.login-form):not(.model-upload-form) > button[type="submit"] {
   width: fit-content;
   margin-top: 10px;
 }
 
 /* =========================================================
-   SETTINGS PAGE
+   SETTINGS SECTION GROUP
 ========================================================= */
+
 .settings-grid {
   max-width: 1040px;
 }
@@ -2019,236 +2044,20 @@ img[src]:not([src=""]) + .image-placeholder {
 
 .settings-section-grid {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
 }
 
-.settings-section-grid--two {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+.settings-section-grid + .settings-section-grid {
+  margin-top: 14px;
 }
 
 .settings-section-grid--three {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-.settings-section-grid + .settings-section-grid {
-  margin-top: 14px;
-}
-
-.settings-section-grid > .field {
-  grid-column: auto;
-}
-
-.settings-section > .field,
-=======
-=======
->>>>>>> origin/main
-.settings-subsection {
-  margin-top: 18px;
-  padding-top: 16px;
-  border-top: 1px solid #eef2f7;
-}
-
-.settings-subsection__head {
-  margin-bottom: 12px;
-}
-
-.settings-subsection__title {
-  margin: 0;
-  color: var(--text);
-  font-size: 15px;
-  font-weight: 950;
-}
-
-.settings-subsection__desc {
-  margin: 5px 0 0;
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1.45;
-}
-
-.form-note {
-  margin: 7px 0 0 28px;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1.45;
-}
-
-.settings-section .checkbox-field {
-  margin-top: 18px;
-}
-
-.settings-section .checkbox-field input {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--primary);
-}
-
-.light-preview {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 12px;
-}
-
-.light-preview__item {
-  padding: 12px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: var(--surface-soft);
-}
-
-.light-preview__item span {
-  display: block;
-  margin-bottom: 5px;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 950;
-  text-transform: uppercase;
-}
-
-.light-preview__item strong {
-  display: block;
-  color: var(--text);
-  font-size: 14px;
-  font-weight: 950;
-}
-
-.light-preview__item--ok {
-  background: var(--success-bg);
-  border-color: #bbf7d0;
-}
-
-.light-preview__item--ok span,
-.light-preview__item--ok strong {
-  color: var(--success-text);
-}
-
-.arduino-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 16px;
-}
-
-.arduino-status-panel {
-  margin-top: 14px;
-  padding: 14px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: var(--surface-soft);
-}
-
-.arduino-status-panel__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
-.arduino-status-panel__head h4 {
-  margin: 0;
-  color: var(--text);
-  font-size: 15px;
-  font-weight: 950;
-}
-
-#arduino_status_badge {
-  flex: 0 0 auto;
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: #e2e8f0;
-  color: #475569;
-  font-size: 12px;
-  font-weight: 950;
-}
-
-#arduino_status_badge.success {
-  background: #dcfce7;
-  color: #166534;
-}
-
-#arduino_status_badge.warning {
-  background: #fef3c7;
-  color: #92400e;
-}
-
-#arduino_status_badge.error {
-  background: #fee2e2;
-  color: #991b1b;
-}
-
-.arduino-status-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.arduino-status-grid--light {
-  margin-top: 8px;
-}
-
-.arduino-status-item {
-  min-width: 0;
-  padding: 11px 12px;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  background: #ffffff;
-}
-
-.arduino-status-item span {
-  display: block;
-  margin-bottom: 5px;
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 950;
-  text-transform: uppercase;
-}
-
-.arduino-status-item strong {
-  display: block;
-  overflow-wrap: anywhere;
-  color: var(--text);
-  font-size: 13px;
-  font-weight: 950;
-  line-height: 1.35;
-}
-
-.arduino-status-panel__subhead {
-  margin-top: 12px;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 950;
-  text-transform: uppercase;
-}
-
-.arduino-status-panel__footer {
-  margin-top: 10px;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 800;
-  line-height: 1.45;
-}
-
-<<<<<<< HEAD
->>>>>>> origin/main
-=======
->>>>>>> origin/main
 .settings-section-full {
   margin-top: 16px;
-  grid-column: 1 / -1;
-}
-
-.field__hint {
-  margin: 0;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 750;
-  line-height: 1.45;
 }
 
 .settings-actions {
@@ -2263,21 +2072,7 @@ img[src]:not([src=""]) + .image-placeholder {
 
 @media (max-width: 900px) {
   .settings-section-grid,
-  .settings-section-grid--two,
   .settings-section-grid--three {
-    grid-template-columns: 1fr;
-  }
-
-  .light-preview {
-    grid-template-columns: 1fr;
-  }
-
-  .arduino-status-panel__head {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .arduino-status-grid {
     grid-template-columns: 1fr;
   }
 
@@ -2294,7 +2089,14 @@ img[src]:not([src=""]) + .image-placeholder {
   }
 }
 
-/* Sidebar submenu */
+.conveyor-meta__item strong {
+  display: block;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 950;
+  min-height: 1.2em;
+}
+
 .sider .inner-menu ul li.has-submenu .submenu {
   margin: 4px 0 4px 18px;
   padding: 0;
@@ -2307,7 +2109,11 @@ img[src]:not([src=""]) + .image-placeholder {
   opacity: 0.88;
 }
 
-/* Optional test status colors */
+.conveyor-status.RUNNING {
+  background: var(--warning-bg);
+  color: var(--warning-text);
+}
+
 .conveyor-status.COMPLETED {
   background: var(--success-bg);
   color: var(--success-text);
@@ -2318,9 +2124,43 @@ img[src]:not([src=""]) + .image-placeholder {
   color: var(--danger-text);
 }
 
+
 /* =========================================================
-   TABLE ACTION BUTTONS - SAME ROW
+   UTILITIES AFTER MERGE
 ========================================================= */
+.settings-section-grid--two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: grid;
+  gap: 20px;
+}
+
+.settings-subsection {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid #eef2f7;
+}
+
+.settings-subsection__title {
+  margin: 0;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 950;
+}
+
+.settings-subsection__desc,
+.field__hint {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.light-preview {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
 
 .table-actions {
   display: flex;
@@ -2337,17 +2177,13 @@ img[src]:not([src=""]) + .image-placeholder {
   padding: 0;
 }
 
-.table-actions .btn {
-  min-width: 78px;
-}
-
 .btn--sm {
   height: 42px;
   min-height: 42px;
   padding: 0 18px;
   border-radius: 14px;
   font-size: 14px;
-<<<<<<< HEAD
+  font-weight: 950;
   line-height: 1;
 }
 
@@ -2355,23 +2191,54 @@ img[src]:not([src=""]) + .image-placeholder {
 .table td:last-child .table-actions form {
   margin-right: 0;
 }
+
+.table thead th:last-child,
 .table td:last-child {
-  min-width: 180px;
   text-align: center;
 }
 
-.table-actions form > button[type="submit"],
-.table-actions form > .btn {
-  margin-top: 0 !important;
+@media (max-width: 900px) {
+  .settings-section-grid--two,
+  .light-preview {
+    grid-template-columns: 1fr;
+  }
 }
-/* Căn giữa tiêu đề của cột cuối cùng (cột Thao tác) để thẳng hàng với nút */
-.table thead th:last-child {
-  text-align: center;
-=======
-  font-weight: 950;
-  min-height: 1.2em;
-<<<<<<< HEAD
->>>>>>> origin/main
-=======
->>>>>>> origin/main
+.table td .table-actions {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 12px !important;
+  white-space: nowrap !important;
+}
+
+.card .table td .table-actions form,
+.card form.table-action-form {
+  display: inline-flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.card .table td .table-actions .btn,
+.card .table td .table-actions form > .btn,
+.card .table td .table-actions form > button[type="submit"] {
+  width: 88px !important;
+  min-width: 88px !important;
+  height: 42px !important;
+  min-height: 42px !important;
+  margin: 0 !important;
+  padding: 0 18px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  line-height: 1 !important;
+  vertical-align: middle !important;
+}
+
+.table td:last-child {
+  text-align: center !important;
+  vertical-align: middle !important;
 }

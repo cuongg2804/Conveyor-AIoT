@@ -40,7 +40,7 @@ block main
           h2.card__title Metadata
           p.card__desc Cập nhật thông số đánh giá và trạng thái sử dụng.
 
-        form.model-upload-form(method="POST" action=`/models/${model._id}/edit`)
+        form.model-upload-form(method="POST" action=`/models/${model.model_id}/edit`)
           .field
             label.field__label(for="threshold") Threshold
             input#threshold.field__control(type="number" name="threshold" value=model.threshold step="0.000001" required)

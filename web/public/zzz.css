@@ -831,33 +831,8 @@ img[src]:not([src=""]) + .image-placeholder {
 }
 
 /* =========================================================
-   SETTINGS PAGE
+   ALERTS
 ========================================================= */
-.settings-grid {
-  max-width: 900px;
-}
-
-.settings-form {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
-}
-
-.settings-form .field:nth-child(3),
-.settings-form .field:nth-child(4),
-.settings-form .checkbox-field,
-.settings-form .divider,
-.settings-form .section-title,
-.settings-actions {
-  grid-column: 1 / -1;
-}
-
-.settings-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 4px;
-}
-
 .alert {
   margin-bottom: 16px;
   padding: 13px 15px;
@@ -1973,7 +1948,7 @@ img[src]:not([src=""]) + .image-placeholder {
 .form-card form,
 .create-form-card form,
 .edit-form-card form,
-.card form:not(.history-filters):not(.login-form):not(.model-upload-form) {
+.card form:not(.history-filters):not(.login-form):not(.model-upload-form):not(.settings-form) {
   display: flex;
   flex-direction: column;
   gap: 18px;
@@ -1994,16 +1969,15 @@ img[src]:not([src=""]) + .image-placeholder {
   margin-top: 8px;
 }
 
-.card form:not(.history-filters):not(.login-form):not(.model-upload-form) > .btn,
-.card form:not(.history-filters):not(.login-form):not(.model-upload-form) > button[type="submit"] {
+.card form:not(.history-filters):not(.login-form):not(.model-upload-form):not(.settings-form) > .btn,
+.card form:not(.history-filters):not(.login-form):not(.model-upload-form):not(.settings-form) > button[type="submit"] {
   width: fit-content;
   margin-top: 10px;
 }
 
 /* =========================================================
-   SETTINGS SECTION GROUP
+   SETTINGS PAGE
 ========================================================= */
-
 .settings-grid {
   max-width: 1040px;
 }
@@ -2045,20 +2019,90 @@ img[src]:not([src=""]) + .image-placeholder {
 
 .settings-section-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
 }
 
-.settings-section-grid + .settings-section-grid {
-  margin-top: 14px;
+.settings-section-grid--two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .settings-section-grid--three {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+.settings-section-grid + .settings-section-grid {
+  margin-top: 14px;
+}
+
+.settings-section-grid > .field {
+  grid-column: auto;
+}
+
+.settings-section > .field,
+=======
+=======
+>>>>>>> origin/main
+.settings-subsection {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid #eef2f7;
+}
+
+.settings-subsection__head {
+  margin-bottom: 12px;
+}
+
+.settings-subsection__title {
+  margin: 0;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 950;
+}
+
+.settings-subsection__desc {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.form-note {
+  margin: 7px 0 0 28px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.settings-section .checkbox-field {
+  margin-top: 18px;
+}
+
+.settings-section .checkbox-field input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary);
+}
+
+.light-preview {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .settings-section-full {
   margin-top: 16px;
+  grid-column: 1 / -1;
+}
+
+.field__hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.45;
 }
 
 .settings-actions {
@@ -2073,7 +2117,21 @@ img[src]:not([src=""]) + .image-placeholder {
 
 @media (max-width: 900px) {
   .settings-section-grid,
+  .settings-section-grid--two,
   .settings-section-grid--three {
+    grid-template-columns: 1fr;
+  }
+
+  .light-preview {
+    grid-template-columns: 1fr;
+  }
+
+  .arduino-status-panel__head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .arduino-status-grid {
     grid-template-columns: 1fr;
   }
 
@@ -2090,14 +2148,7 @@ img[src]:not([src=""]) + .image-placeholder {
   }
 }
 
-.conveyor-meta__item strong {
-  display: block;
-  color: var(--text);
-  font-size: 14px;
-  font-weight: 950;
-  min-height: 1.2em;
-}
-
+/* Sidebar submenu */
 .sider .inner-menu ul li.has-submenu .submenu {
   margin: 4px 0 4px 18px;
   padding: 0;
@@ -2110,11 +2161,7 @@ img[src]:not([src=""]) + .image-placeholder {
   opacity: 0.88;
 }
 
-.conveyor-status.RUNNING {
-  background: var(--warning-bg);
-  color: var(--warning-text);
-}
-
+/* Optional test status colors */
 .conveyor-status.COMPLETED {
   background: var(--success-bg);
   color: var(--success-text);
@@ -2124,6 +2171,7 @@ img[src]:not([src=""]) + .image-placeholder {
   background: var(--danger-bg);
   color: var(--danger-text);
 }
+
 /* =========================================================
    TABLE ACTION BUTTONS - SAME ROW
 ========================================================= */
@@ -2153,6 +2201,7 @@ img[src]:not([src=""]) + .image-placeholder {
   padding: 0 18px;
   border-radius: 14px;
   font-size: 14px;
+<<<<<<< HEAD
   line-height: 1;
 }
 
@@ -2172,4 +2221,12 @@ img[src]:not([src=""]) + .image-placeholder {
 /* Căn giữa tiêu đề của cột cuối cùng (cột Thao tác) để thẳng hàng với nút */
 .table thead th:last-child {
   text-align: center;
+=======
+  font-weight: 950;
+  min-height: 1.2em;
+<<<<<<< HEAD
+>>>>>>> origin/main
+=======
+>>>>>>> origin/main
 }
+

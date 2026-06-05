@@ -100,7 +100,7 @@ export const uploadModel = async (req: Request, res: Response) => {
 };
 
 export const edit = async (req: Request, res: Response) => {
-  const model = await getModelById(req.params.id);
+  const model = await getModelById(req.params.model_id);
   if (!model) {
     return res.status(404).send("Khong tim thay model.");
   }
@@ -115,10 +115,10 @@ export const edit = async (req: Request, res: Response) => {
 export const update = async (req: Request, res: Response) => {
   try {
     const updateInput = buildRegistryUpdate(req.body);
-    await updateModelRegistry(req.params.id, updateInput);
+    await updateModelRegistry(req.params.model_id, updateInput);
     return res.redirect("/models?updated=1");
   } catch (error: any) {
-    const model = await getModelById(req.params.id);
+    const model = await getModelById(req.params.model_id);
     if (!model) {
       return res.status(404).send("Khong tim thay model.");
     }
@@ -133,7 +133,7 @@ export const update = async (req: Request, res: Response) => {
 
 export const remove = async (req: Request, res: Response) => {
   try {
-    await deleteModelRegistry(req.params.id);
+    await deleteModelRegistry(req.params.model_id);
     return res.redirect("/models?deleted=1");
   } catch (error: any) {
     res.status(400);

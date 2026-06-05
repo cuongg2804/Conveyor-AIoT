@@ -25,16 +25,8 @@ class SystemController:
         storage=None,
         mqtt_topic_result=MQTT_TOPIC_INSPECTION_RESULT,
         callbacks=None,
-<<<<<<< HEAD
-<<<<<<< HEAD
         conveyor_id=None,
         config_service=None,
-=======
-        conveyor_code=None,
->>>>>>> origin/main
-=======
-        conveyor_code=None,
->>>>>>> origin/main
     ):
         self.pipeline = pipeline
         self.queue = queue
@@ -47,10 +39,10 @@ class SystemController:
         self.storage = storage
         self.mqtt_topic_result = mqtt_topic_result
         self.callbacks = callbacks or {}
-        self.conveyor_code = str(conveyor_code).strip().upper() if conveyor_code else None
+        self.conveyor_id = str(conveyor_id).strip().upper() if conveyor_id else None
 
         self.running = False
-        self.job_id = 0
+        self.stt = 0
         self.batch_count = 0
         self.last_batch_signature = None
         self.last_batch_fingerprint = None
@@ -65,7 +57,7 @@ class SystemController:
 
     def _queue_item_to_text(self, item):
         try:
-            return f"job_id={item['job_id']} | label={item['label']} | score={float(item['score']):.6f}"
+            return f"stt={item['stt']} | label={item['label']} | score={float(item['score']):.6f}"
         except Exception:
             return str(item)
 
@@ -167,9 +159,12 @@ class SystemController:
         self.cb(
             "log",
             "Loaded config: "
-            f"speed={config.get('speed')} | "
-            f"home={config.get('goc_home')} | "
-            f"push={config.get('goc_gat')}"
+            f"speed_low={config.get('arduino_speed_low_level')} | "
+            f"speed_high={config.get('arduino_speed_high_level')} | "
+            f"servo_home={config.get('arduino_servo_home_angle')} | "
+            f"servo_gate={config.get('arduino_servo_gate_angle')} | "
+            f"light_min={config.get('arduino_light_min_lux')} | "
+            f"light_max={config.get('arduino_light_max_lux')}"
         )
 
         return config
@@ -182,9 +177,12 @@ class SystemController:
         config = config or self.runtime_config or {}
 
         result = self.arduino.apply_config(
-            speed=config.get("speed", 150),
-            goc_home=config.get("goc_home", 0),
-            goc_gat=config.get("goc_gat", 120),
+            speed_low_level=config.get("arduino_speed_low_level", 2),
+            speed_high_level=config.get("arduino_speed_high_level", 5),
+            servo_home_angle=config.get("arduino_servo_home_angle", 0),
+            servo_gate_angle=config.get("arduino_servo_gate_angle", 130),
+            light_min_lux=config.get("arduino_light_min_lux", 1000),
+            light_max_lux=config.get("arduino_light_max_lux", 2000),
         )
 
         self.cb("log", f"Sent Arduino config: {result.get('command')}")
@@ -196,52 +194,55 @@ class SystemController:
 
         return {
             "conveyor_id": self.conveyor_id,
-            "speed": config.get("speed"),
-            "goc_home": config.get("goc_home"),
-            "goc_gat": config.get("goc_gat"),
+            "arduino_speed_low_level": config.get("arduino_speed_low_level"),
+            "arduino_speed_high_level": config.get("arduino_speed_high_level"),
+            "arduino_servo_home_angle": config.get("arduino_servo_home_angle"),
+            "arduino_servo_gate_angle": config.get("arduino_servo_gate_angle"),
+            "arduino_light_min_lux": config.get("arduino_light_min_lux"),
+            "arduino_light_max_lux": config.get("arduino_light_max_lux"),
             "arduino": arduino_result,
         }
+    
+    # def _apply_arduino_config(self, arduino, conveyor_config):
+    #     self.log("Ap dung cau hinh Arduino tu DB...")
+
+    #     result = arduino.apply_config(
+    #         speed_low_level=conveyor_config.get("arduino_speed_low_level", 2),
+    #         speed_high_level=conveyor_config.get("arduino_speed_high_level", 5),
+    #         servo_home_angle=conveyor_config.get("arduino_servo_home_angle", 0),
+    #         servo_gate_angle=conveyor_config.get("arduino_servo_gate_angle", 130),
+    #         light_min_lux=conveyor_config.get("arduino_light_min_lux", 1000),
+    #         light_max_lux=conveyor_config.get("arduino_light_max_lux", 2000),
+    #         save_default=False,
+    #     )
+
+    #     self.log(f"Da gui cau hinh Arduino: {result}")
+    #     return result
 
     def start(self):
         # Chặn start nếu đã đang chạy để tránh lỗi
         if self.running:
-<<<<<<< HEAD
-<<<<<<< HEAD
-            self.cb("log", "Hệ thống đã đang chạy.")
+            self.cb("log", "Hệ thống đang chạy.")
             return False
         self.running = True
-
-        try:
-            config = self.load_runtime_config()
-            self.apply_hardware_config(config)
-        except Exception as e:
-            self.cb("log", f"Lỗi cấu hình phần cứng: {e}")
-            self.running = False
-            return False
-
         if self.arduino is not None:
-=======
-=======
->>>>>>> origin/main
-            self.cb("log", "System is already running.")
-            return False
-
-        self.running = True
-        # Khởi tạo job_id từ database nếu có thể, để tránh trùng lặp khi restart
-        if self.mongo is not None and hasattr(self.mongo, "get_max_job_id"):
-<<<<<<< HEAD
->>>>>>> origin/main
-=======
->>>>>>> origin/main
             try:
-                self.job_id = self.mongo.get_max_job_id()
-                self.cb("log", f"Continue job_id from database: next={self.job_id + 1}")
+                self.arduino.send_line("START")
+                self.cb("log", "Gửi lệnh Start tới Arduino")
             except Exception as e:
-                print("[Controller] Cannot initialize job_id from database:", e)
-                self.cb("log", f"Cannot initialize job_id from database: {e}")
-        # 
+                self.cb("log", f"Lỗi: {e}")
+                self.running = False
+                return False
+        if self.mongo is not None and hasattr(self.mongo, "get_max_stt"):
+            try:
+                self.stt = self.mongo.get_max_stt()
+                self.cb("log", f"Continue stt from database: next={self.stt + 1}")
+            except Exception as e:
+                print("[Controller] Cannot initialize stt from database:", e)
+                self.cb("log", f"Cannot initialize stt from database: {e}")
+
         self.cb("set_status", "Dang chay")
-        self.cb("log", f"Start system conveyor={self.conveyor_code}...")
+        self.cb("log", f"Start system conveyor={self.conveyor_id}...")
 
         try:
             while self.running:
@@ -310,7 +311,7 @@ class SystemController:
                 "Duplicate-like batch detected, but live result is still handled.",
             )
 
-        self.job_id += 1
+        self.stt += 1
         self.batch_count += 1
         inspection_id = f"INS-{time.strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:6]}"
 
@@ -322,21 +323,21 @@ class SystemController:
             arduino_start = time.perf_counter()
             try:
                 self.arduino.send_result(final_label)
-                print(f"[Controller] Sent Arduino: job_id={self.job_id} | label={final_label}")
-                self.cb("log", f"Sent Arduino: job_id={self.job_id} | label={final_label}")
+                print(f"[Controller] Sent Arduino: stt={self.stt} | label={final_label}")
+                self.cb("log", f"Sent Arduino: stt={self.stt} | label={final_label}")
             except Exception as e:
                 print(f"[Controller] Arduino send error: {e}")
                 self.cb("log", f"Arduino send error: {e}")
             finally:
                 timings["arduino_ms"] = (time.perf_counter() - arduino_start) * 1000.0
         else:
-            print(f"[Controller] Arduino not configured; skip send: job_id={self.job_id} | label={final_label}")
-            self.cb("log", f"Arduino not configured; skip send: job_id={self.job_id} | label={final_label}")
+            print(f"[Controller] Arduino not configured; skip send: stt={self.stt} | label={final_label}")
+            self.cb("log", f"Arduino not configured; skip send: stt={self.stt} | label={final_label}")
 
         if self.queue is not None:
             queue_start = time.perf_counter()
             try:
-                self.queue.push({"job_id": self.job_id, "label": final_label, "score": avg_score})
+                self.queue.push({"stt": self.stt, "label": final_label, "score": avg_score})
                 self._push_queue_debug()
             except Exception as e:
                 self.cb("log", f"Queue update error: {e}")
@@ -352,7 +353,7 @@ class SystemController:
             if self.storage is not None:
                 try:
                     bundle = self.storage.save_frame_bundle(
-                        job_id=inspection_id,
+                        stt=inspection_id,
                         frame_index=idx,
                         roi_image=roi_frame,
                         overlay_image=display_mask,
@@ -377,11 +378,11 @@ class SystemController:
 
         mongo_document = {
             "inspection_id": inspection_id,
-            "job_id": self.job_id,
-            "conveyor_code": self.conveyor_code,
+            "stt": self.stt,
+            "conveyor_id": self.conveyor_id,
             "timestamp": timestamp,
             "label": final_label,
-            "average_score": avg_score,
+            "avg_score": avg_score,
             "threshold": threshold,
             "frames": frame_documents,
         }
@@ -398,8 +399,8 @@ class SystemController:
             mongo_start = time.perf_counter()
             try:
                 self.mongo.upsert_result(mongo_document)
-                print(f"[Controller] MongoDB saved: job_id={self.job_id}, frames={len(frame_documents)}")
-                self.cb("log", f"MongoDB saved: job_id={self.job_id}, frames={len(frame_documents)}")
+                print(f"[Controller] MongoDB saved: stt={self.stt}, frames={len(frame_documents)}")
+                self.cb("log", f"MongoDB saved: stt={self.stt}, frames={len(frame_documents)}")
             except Exception as e:
                 print("[Controller] Mongo upsert failed:", e)
                 print(traceback.format_exc())
@@ -415,7 +416,7 @@ class SystemController:
             try:
                 mqtt_payload = mongo_document.copy()
                 self.mqtt.publish(self.mqtt_topic_result, mqtt_payload, qos=1)
-                self.cb("log", f"Published MQTT job_id={self.job_id}")
+                self.cb("log", f"Published MQTT stt={self.stt}")
             except Exception as e:
                 print("[Controller] MQTT publish failed:", e)
                 print(traceback.format_exc())
@@ -434,9 +435,9 @@ class SystemController:
             try:
                 self.logger.log({
                     "timestamp": timestamp,
-                    "job_id": self.job_id,
+                    "stt": self.stt,
                     "inspection_id": inspection_id,
-                    "conveyor_code": self.conveyor_code,
+                    "conveyor_id": self.conveyor_id,
                     "label": final_label,
                     "avg_score": avg_score,
                     "threshold": threshold,

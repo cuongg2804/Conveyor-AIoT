@@ -27,7 +27,7 @@ class AnomalyGUI:
         self.startup_resources = []
         self.conveyor_config = None
         self.runtime_status = "STOPPED"
-        self.current_conveyor_code = None
+        self.current_conveyor_id = None
         self.log_file_path = os.path.join(BASE_DIR, "logs", "app.log")
         os.makedirs(os.path.dirname(self.log_file_path), exist_ok=True)
 
@@ -189,79 +189,79 @@ class AnomalyGUI:
     # Web MQTT command callbacks
     # =========================
     def handle_web_start_command(self, payload: dict):
-        conveyor_code = payload.get("conveyor_code")
+        conveyor_id = payload.get("conveyor_id")
 
-        if not conveyor_code:
-            raise RuntimeError("Thiếu conveyor_code trong MQTT payload")
+        if not conveyor_id:
+            raise RuntimeError("Thiếu conveyor_id trong MQTT payload")
 
-        conveyor_code = str(conveyor_code).strip().upper()
+        conveyor_id = str(conveyor_id).strip().upper()
 
-        self.current_conveyor_code = conveyor_code
+        self.current_conveyor_id = conveyor_id
         self.runtime_status = "STARTING"
         self.set_status("Đang khởi động")
 
-        self.log(f"[WEB COMMAND] START_SYSTEM received for {conveyor_code}")
+        self.log(f"[WEB COMMAND] START_SYSTEM received for {conveyor_id}")
 
         self.safe_ui(
             lambda: self.start_system(
                 show_message=False,
-                conveyor_code=conveyor_code,
+                conveyor_id=conveyor_id,
             )
         )
 
         return {
             "accepted": True,
-            "conveyor_code": conveyor_code,
+            "conveyor_id": conveyor_id,
             "message": "Start command scheduled on GUI main thread",
         }
     
     def handle_web_stop_command(self, payload: dict):
-        conveyor_code = payload.get("conveyor_code") or self.current_conveyor_code
+        conveyor_id = payload.get("conveyor_id") or self.current_conveyor_id
 
-        if conveyor_code:
-            conveyor_code = str(conveyor_code).strip().upper()
+        if conveyor_id:
+            conveyor_id = str(conveyor_id).strip().upper()
 
-        self.log(f"[WEB COMMAND] STOP_SYSTEM received for {conveyor_code}")
+        self.log(f"[WEB COMMAND] STOP_SYSTEM received for {conveyor_id}")
 
         self.safe_ui(lambda: self.stop_system())
 
         return {
             "accepted": True,
-            "conveyor_code": conveyor_code,
+            "conveyor_id": conveyor_id,
             "message": "Stop command scheduled on GUI main thread",
         }
     
     def handle_web_reload_config_command(self, payload: dict):
-        conveyor_code = payload.get("conveyor_code")
+        conveyor_id = payload.get("conveyor_id")
 
-        if not conveyor_code:
-            raise RuntimeError("Thiếu conveyor_code trong MQTT payload")
+        if not conveyor_id:
+            raise RuntimeError("Thiếu conveyor_id trong MQTT payload")
 
-        conveyor_code = str(conveyor_code).strip().upper()
-        self.log(f"[WEB COMMAND] RELOAD_CONFIG received for {conveyor_code}")
-        self.safe_ui(lambda: self.reload_runtime_config(conveyor_code))
+        conveyor_id = str(conveyor_id).strip().upper()
+        self.log(f"[WEB COMMAND] RELOAD_CONFIG received for {conveyor_id}")
+        self.safe_ui(lambda: self.reload_runtime_config(conveyor_id))
 
         return {
             "accepted": True,
-            "conveyor_code": conveyor_code,
+            "conveyor_id": conveyor_id,
             "message": "Reload config scheduled on GUI main thread",
         }
 
-    def reload_runtime_config(self, conveyor_code: str):
-        conveyor_code = str(conveyor_code).strip().upper()
+    def reload_runtime_config(self, conveyor_id: str):
+        conveyor_id = str(conveyor_id).strip().upper()
 
         try:
-            config = self.load_conveyor_config(conveyor_code)
+            config = self.load_conveyor_config(conveyor_id)
             self.conveyor_config = config
 
-            if self.current_conveyor_code and self.current_conveyor_code != conveyor_code:
+            if self.current_conveyor_id and self.current_conveyor_id != conveyor_id:
                 self.log(
-                    f"[CONFIG] Ignored reload for {conveyor_code}; current conveyor is {self.current_conveyor_code}"
+                    f"[CONFIG] Ignored reload for {conveyor_id}; current conveyor is {self.current_conveyor_id}"
                 )
                 self.publish_runtime_status()
                 return
 
-            self.current_conveyor_code = conveyor_code
+            self.current_conveyor_id = conveyor_id
 
             image_threshold = float(config["ai_threshold"])
             camera_trigger_delay = config.get("camera_trigger_delay")
@@ -271,7 +271,7 @@ class AnomalyGUI:
             self.threshold_var.set(str(image_threshold))
 
             if self.controller is None:
-                self.log(f"[CONFIG] Reloaded config for {conveyor_code}. Runtime will use it on next start.")
+                self.log(f"[CONFIG] Reloaded config for {conveyor_id}. Runtime will use it on next start.")
                 self.publish_runtime_status()
                 return
 
@@ -298,27 +298,8 @@ class AnomalyGUI:
                     self.controller.arduino.connect()
                     self.set_arduino_status(f"Đã kết nối ({serial_port})")
 
-<<<<<<< HEAD
-<<<<<<< HEAD
             self.controller.conveyor_id = conveyor_id
-            self.controller.runtime_config = config
-
-            try:
-                hardware_result = self.controller.apply_hardware_config(config)
-                self.log(f"[CONFIG] Runtime hardware config updated: {hardware_result}")
-            except Exception as e:
-                self.log(f"[CONFIG] Apply hardware config error: {e}")
-                raise
-
             self.log(f"[CONFIG] Runtime config reload completed for {conveyor_id}")
-=======
-            self.controller.conveyor_code = conveyor_code
-            self.log(f"[CONFIG] Runtime config reload completed for {conveyor_code}")
->>>>>>> origin/main
-=======
-            self.controller.conveyor_code = conveyor_code
-            self.log(f"[CONFIG] Runtime config reload completed for {conveyor_code}")
->>>>>>> origin/main
             self.publish_runtime_status()
 
         except Exception as e:
@@ -328,11 +309,11 @@ class AnomalyGUI:
             self.publish_runtime_error(
                 "RELOAD_CONFIG",
                 str(e),
-                {"payload": {"conveyor_code": conveyor_code}},
+                {"payload": {"conveyor_id": conveyor_id}},
             )
             self.publish_runtime_status()
 
-    def get_web_status(self):
+    def get_web_status(self, payload=None):
         controller_running = False
         thread_alive = False
 
@@ -359,7 +340,7 @@ class AnomalyGUI:
             camera_delay = None
 
         return {
-            "conveyor_code": self.current_conveyor_code,
+            "conveyor_id": self.current_conveyor_id,
             "running": running,
             "controller_ready": self.controller is not None,
             "thread_alive": thread_alive,
@@ -392,8 +373,8 @@ class AnomalyGUI:
     # =========================
     # Config from DB
     # =========================
-    def load_conveyor_config(self, conveyor_code: str):
-        return self.controller_factory.load_conveyor_config(conveyor_code)
+    def load_conveyor_config(self, conveyor_id: str):
+        return self.controller_factory.load_conveyor_config(conveyor_id)
 
     # =========================
     # UI
@@ -670,11 +651,9 @@ class AnomalyGUI:
     # Controller creation
     # =========================
     def cleanup_startup_resources(self):
-        # Startup cleanup is handled inside ControllerFactory.
-        pass
+        resources = list(getattr(self, "startup_resources", []))
+        self.startup_resources = []
 
-<<<<<<< HEAD
-<<<<<<< HEAD
         for name, obj, method in reversed(resources):
             try:
                 if obj is not None:
@@ -683,131 +662,119 @@ class AnomalyGUI:
             except Exception as e:
                 self.log(f"[RESET] Close {name} error: {e}")
 
-    def create_controller(self, image_threshold: float, conveyor_id: str):
-        self.startup_resources = []
-        self.set_status("Đang khởi động")
-        self.set_camera_status("Đang kết nối")
-        self.set_model_status("Đang tải")
-        self.set_arduino_status("Đang kết nối")
-        self.log("Bắt đầu khởi tạo hệ thống...")
+    # def create_controller(self, image_threshold: float, conveyor_id: str):
+    #     self.startup_resources = []
+    #     self.set_status("Đang khởi động")
+    #     self.set_camera_status("Đang kết nối")
+    #     self.set_model_status("Đang tải")
+    #     self.set_arduino_status("Đang kết nối")
+    #     self.log("Bắt đầu khởi tạo hệ thống...")
 
-        conveyor_id = str(conveyor_id).strip().upper()
+    #     conveyor_id = str(conveyor_id).strip().upper()
 
-        self.log(f"[CONFIG] Loading conveyor config: {conveyor_id}")
-        self.conveyor_config = self.load_conveyor_config(conveyor_id)
-        self.current_conveyor_id = conveyor_id
+    #     self.log(f"[CONFIG] Loading conveyor config: {conveyor_id}")
+    #     self.conveyor_config = self.load_conveyor_config(conveyor_id)
+    #     self.current_conveyor_id = conveyor_id
 
-        serial_port = str(self.conveyor_config["serial_port"])
-        baud_rate = int(self.conveyor_config["baud_rate"])
-        image_threshold = float(self.conveyor_config["ai_threshold"])
-        camera_trigger_delay = self.conveyor_config.get("camera_trigger_delay")
-        camera_source = self.conveyor_config.get("camera_source")
+    #     serial_port = str(self.conveyor_config["serial_port"])
+    #     baud_rate = int(self.conveyor_config["baud_rate"])
+    #     image_threshold = float(self.conveyor_config["ai_threshold"])
+    #     camera_trigger_delay = self.conveyor_config.get("camera_trigger_delay")
+    #     camera_source = self.conveyor_config.get("camera_source")
 
-        self.threshold_var.set(str(image_threshold))
+    #     self.threshold_var.set(str(image_threshold))
 
-        self.log(
-            f"[CONFIG] Loaded: conveyor={conveyor_id}, "
-            f"camera_source={camera_source}, "
-            f"serial={serial_port}, baud={baud_rate}, "
-            f"threshold={image_threshold}, "
-            f"camera_delay={camera_trigger_delay}"
-        )
+    #     self.log(
+    #         f"[CONFIG] Loaded: conveyor={conveyor_id}, "
+    #         f"camera_source={camera_source}, "
+    #         f"serial={serial_port}, baud={baud_rate}, "
+    #         f"threshold={image_threshold}, "
+    #         f"camera_delay={camera_trigger_delay}"
+    #     )
 
-        self.log("Load model...")
-        model = PatchCoreEngine(
-            CKPT_PATH,
-            device="cuda",
-            image_threshold=image_threshold,
-        )
-        self.set_model_status("Đã tải")
+    #     self.log("Load model...")
+    #     model = PatchCoreEngine(
+    #         CKPT_PATH,
+    #         device="cuda",
+    #         image_threshold=image_threshold,
+    #     )
+    #     self.set_model_status("Đã tải")
 
-        self.log("Kết nối Arduino...")
-        arduino = ArduinoComm(
-            port=serial_port,
-            baudrate=baud_rate,
-            timeout=1,
-        )
-        self.startup_resources.append(("Arduino", arduino, "close"))
-        arduino.connect()
-        self.set_arduino_status(f"Đã kết nối ({serial_port})")
+    #     self.log("Kết nối Arduino...")
+    #     arduino = ArduinoComm(
+    #         port=serial_port,
+    #         baudrate=baud_rate,
+    #         timeout=1,
+    #     )
+    #     self.startup_resources.append(("Arduino", arduino, "close"))
+    #     arduino.connect()
+    #     self.set_arduino_status(f"Đã kết nối ({serial_port})")
 
-        self.log("Khởi tạo camera...")
-        camera = HikCamera()
-        self.startup_resources.append(("Camera", camera, "stop"))
-        camera.start()
-        self.set_camera_status("Đang chạy")
+    #     self.log("Khởi tạo camera...")
+    #     camera = HikCamera()
+    #     self.startup_resources.append(("Camera", camera, "stop"))
+    #     camera.start()
+    #     self.set_camera_status("Đang chạy")
 
-        if camera_trigger_delay is not None:
-            try:
-                camera.set_trigger_delay(float(camera_trigger_delay))
-                self.log(f"Đã set camera trigger delay từ DB = {camera_trigger_delay}")
-            except Exception as e:
-                self.log(f"Không set được camera trigger delay từ DB: {e}")
+    #     if camera_trigger_delay is not None:
+    #         try:
+    #             camera.set_trigger_delay(float(camera_trigger_delay))
+    #             self.log(f"Đã set camera trigger delay từ DB = {camera_trigger_delay}")
+    #         except Exception as e:
+    #             self.log(f"Không set được camera trigger delay từ DB: {e}")
 
-        try:
-            delay_value = camera.get_trigger_delay()
-            self.set_camera_delay(str(delay_value))
-            self.log(f"Camera delay hiện tại = {delay_value}")
-        except Exception as e:
-            self.set_camera_delay("Không đọc được")
-            self.log(f"Không đọc được camera delay: {e}")
+    #     try:
+    #         delay_value = camera.get_trigger_delay()
+    #         self.set_camera_delay(str(delay_value))
+    #         self.log(f"Camera delay hiện tại = {delay_value}")
+    #     except Exception as e:
+    #         self.set_camera_delay("Không đọc được")
+    #         self.log(f"Không đọc được camera delay: {e}")
 
-        queue = ResultQueue()
-        logger = LatencyLogger()
-        storage = StorageService()
+    #     queue = ResultQueue()
+    #     logger = LatencyLogger()
+    #     storage = StorageService()
 
-        mongo = None
-        try:
-            mongo = MongoService()
-            self.startup_resources.append(("MongoDB", mongo, "close"))
-            self.log("MongoDB connected.")
-        except Exception as e:
-            self.log(f"Không kết nối được MongoDB, hệ thống vẫn chạy local: {e}")
+    #     mongo = None
+    #     try:
+    #         mongo = MongoService()
+    #         self.startup_resources.append(("MongoDB", mongo, "close"))
+    #         self.log("MongoDB connected.")
+    #     except Exception as e:
+    #         self.log(f"Không kết nối được MongoDB, hệ thống vẫn chạy local: {e}")
 
-        mqtt = None
-        try:
-            mqtt = MQTTService()
-            self.startup_resources.append(("MQTT", mqtt, "disconnect"))
-            mqtt.connect()
-            self.log("MQTT connected.")
-        except Exception as e:
-            self.log(f"Không kết nối được MQTT, hệ thống vẫn chạy local: {e}")
+    #     mqtt = None
+    #     try:
+    #         mqtt = MQTTService()
+    #         self.startup_resources.append(("MQTT", mqtt, "disconnect"))
+    #         mqtt.connect()
+    #         self.log("MQTT connected.")
+    #     except Exception as e:
+    #         self.log(f"Không kết nối được MQTT, hệ thống vẫn chạy local: {e}")
 
-        pipeline = PipelineService(
-            camera=camera,
-            model=model,
-        )
-        config_service = ConveyorConfigService()
-        self.startup_resources.append(("ConfigService", config_service, "close"))
-        self.controller = SystemController(
-            pipeline=pipeline,
-            queue=queue,
-            logger=logger,
-            camera=camera,
-            model=model,
-            arduino=arduino,
-            mqtt=mqtt,
-            mongo=mongo,
-            storage=storage,
-            mqtt_topic_result=MQTT_TOPIC_INSPECTION_RESULT,
-            callbacks=self.callbacks,
-            conveyor_id=conveyor_id,
-            config_service=config_service,
-        )
+    #     pipeline = PipelineService(
+    #         camera=camera,
+    #         model=model,
+    #     )
 
-        self.set_status("Đã khởi tạo")
-        self.startup_resources = []
-        self.log("Khởi tạo hệ thống hoàn tất.")
-=======
-    def create_controller(self, conveyor_code: str):
-        self.controller, self.conveyor_config = self.controller_factory.create(conveyor_code)
-        self.current_conveyor_code = str(conveyor_code).strip().upper()
->>>>>>> origin/main
-=======
-    def create_controller(self, conveyor_code: str):
-        self.controller, self.conveyor_config = self.controller_factory.create(conveyor_code)
-        self.current_conveyor_code = str(conveyor_code).strip().upper()
->>>>>>> origin/main
+    #     self.controller = SystemController(
+    #         pipeline=pipeline,
+    #         queue=queue,
+    #         logger=logger,
+    #         camera=camera,
+    #         model=model,
+    #         arduino=arduino,
+    #         mqtt=mqtt,
+    #         mongo=mongo,
+    #         storage=storage,
+    #         mqtt_topic_result=MQTT_TOPIC_INSPECTION_RESULT,
+    #         callbacks=self.callbacks,
+    #         conveyor_id=conveyor_id,
+    #     )
+
+    #     self.set_status("Đã khởi tạo")
+    #     self.startup_resources = []
+    #     self.log("Khởi tạo hệ thống hoàn tất.")
 
     # =========================
     # Control
@@ -815,7 +782,7 @@ class AnomalyGUI:
     def start_from_gui_warning(self):
         messagebox.showwarning(
             "Start từ Web",
-            "Hệ thống hiện lấy conveyor_code từ Web Monitor.\n"
+            "Hệ thống hiện lấy conveyor_id từ Web Monitor.\n"
             "Vui lòng bấm Start trên trang Web."
         )
 
@@ -840,7 +807,7 @@ class AnomalyGUI:
             self.threshold_var.set(str(value))
             self.log(f"Threshold tạm thời = {value}. Khi start sẽ ưu tiên đọc DB.")
 
-    def start_system(self, show_message=True, conveyor_code=None):
+    def start_system(self, show_message=True, conveyor_id=None):
         try:
             # Nếu hệ thống đang chạy thì không start lại
             if self.controller is not None and (
@@ -853,24 +820,22 @@ class AnomalyGUI:
                 self.publish_runtime_status()
                 return
 
-            # Bắt buộc phải có conveyor_code
-            if not conveyor_code:
-                raise RuntimeError("Thiếu conveyor_code.")
+            # Bắt buộc phải có conveyor_id
+            if not conveyor_id:
+                raise RuntimeError("Thiếu conveyor_id.")
 
-            conveyor_code = str(conveyor_code).strip().upper()
-            if not conveyor_code:
-                raise RuntimeError("conveyor_code không hợp lệ.")
-            # Lưu conveyor_code vào runtime để các phần khác có thể truy cập, đồng thời cũng là để publish status đúng ngay cả khi controller chưa kịp start và set conveyor_code.
-            self.current_conveyor_code = conveyor_code
+            conveyor_id = str(conveyor_id).strip().upper()
+            if not conveyor_id:
+                raise RuntimeError("conveyor_id không hợp lệ.")
+            # Lưu conveyor_id vào runtime để các phần khác có thể truy cập, đồng thời cũng là để publish status đúng ngay cả khi controller chưa kịp start và set conveyor_id.
+            self.current_conveyor_id = conveyor_id
             self.runtime_status = "STARTING"
             self.set_status("Đang khởi động")
 
-            self.log(f"[START] Starting system with conveyor_code={conveyor_code}")
+            self.log(f"[START] Starting system with conveyor_id={conveyor_id}")
 
-            # create_controller sẽ tự đọc config/threshold từ DB theo conveyor_code
-            self.create_controller(
-                conveyor_code=conveyor_code,
-            )
+            # create_controller sẽ tự đọc config/threshold từ DB theo conveyor_id
+            self.controller, self.conveyor_config = self.controller_factory.create(conveyor_id)
 
             # Chạy controller ở thread riêng để không block Tkinter GUI
             self.controller_thread = threading.Thread(
@@ -896,7 +861,7 @@ class AnomalyGUI:
                 str(e),
                 {
                     "payload": {
-                        "conveyor_code": conveyor_code or self.current_conveyor_code
+                        "conveyor_id": conveyor_id or self.current_conveyor_id
                     }
                 },
             )

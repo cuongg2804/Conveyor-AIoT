@@ -1,11 +1,10 @@
 import { Router } from "express";
 import * as cameraController from "../controller/camera";
 import { requireAuth, requireRole } from "../middleware/auth.middleware";
-import * as setting from "../controller/setting.controller"
 
 const router = Router()
 
-router.use(requireAuth, requireRole("ADMIN"))
+//router.use(requireAuth, requireRole("ADMIN"))
 
 router.get("/", cameraController.index);
 router.get("/create", cameraController.create);

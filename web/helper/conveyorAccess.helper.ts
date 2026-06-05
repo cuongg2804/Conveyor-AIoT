@@ -20,7 +20,7 @@ export const canAccessConveyor = async (user: any, conveyorId: string) => {
 
   if (!conveyor) return false;
 
-  return String(conveyor.operator_id || "") === String(user.user_id || "");
+  return String(conveyor.user_id || "") === String(user.user_id || "");
 };
 
 export const canConfigureByStatus = (status: any) => {
