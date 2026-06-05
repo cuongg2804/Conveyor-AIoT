@@ -503,7 +503,7 @@ export const exportPdf = async (req: Request, res: Response) => {
 
     doc.end();
   } catch (error) {
-    console.error("Export history PDF error:", error);
+    console.error("Lỗi xuất file PDF lịch sử kiểm tra:", error);
     return res.status(500).send("Không thể xuất file PDF lịch sử kiểm tra.");
   }
 };
@@ -641,7 +641,7 @@ export const exportDetailPdf = async (req: Request, res: Response) => {
 
     doc.end();
   } catch (error) {
-    console.error("Export history detail PDF error:", error);
+    console.error("Lỗi xuất file PDF chi tiết lượt kiểm tra:", error);
     return res.status(500).send("Không thể xuất file PDF chi tiết lượt kiểm tra.");
   }
 };
@@ -897,7 +897,7 @@ export const index = async (req: Request, res: Response) => {
     // 8. Dua du lieu ra giao dien
     // Cac ten bien o day phai khop voi file view/history/index.pug.
     return res.render("history/index", {
-      title: "Lich su kiem tra",
+      title: "Lịch sử kiểm tra",
 
       // Danh sach cac lan kiem tra hien thi trong bang.
       inspectionList,
@@ -947,7 +947,7 @@ export const index = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("History page error:", error);
-    return res.status(500).send("Khong the tai lich su kiem tra.");
+    return res.status(500).send("Không thể tải lịch sử kiểm tra.");
   }
 };
 
@@ -955,7 +955,7 @@ export const detail = async (req: Request, res: Response) => {
   try {
     // Lay stt tu URL /history/:stt.
     const stt = Number(req.params.stt);
-    if (!Number.isFinite(stt)) return res.status(400).send("Ma luot kiem tra khong hop le.");
+    if (!Number.isFinite(stt)) return res.status(400).send("Mã lượt kiểm tra không hợp lệ.");
 
     const selectedInspectionMode =
       String(req.query.inspectionMode || "PRODUCTION").toUpperCase() === "TEST"
@@ -975,7 +975,7 @@ export const detail = async (req: Request, res: Response) => {
       .sort({ timestamp: -1 })
       .lean();
 
-    if (!inspection) return res.status(404).send("Khong tim thay luot kiem tra.");
+    if (!inspection) return res.status(404).send("Không tìm thấy lượt kiểm tra.");
 
     // Sap xep frame theo frame_index truoc khi dua ra trang detail.
     return res.render("history/detail", {
@@ -993,6 +993,6 @@ export const detail = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("History detail error:", error);
-    return res.status(500).send("Khong the tai chi tiet luot kiem tra.");
+    return res.status(500).send("Không thể tải chi tiết lượt kiểm tra.");
   }
 };

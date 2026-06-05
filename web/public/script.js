@@ -397,7 +397,7 @@ function initSerialPortSelect() {
       const value = port.device || port.path || port.value || "";
 
       option.value = value;
-      option.textContent = `${value}${port.description ? ` - ${port.description}` : ""}`;
+      option.textContent = `Cổng kết nối ${value}${port.description ? ` - ${port.description}` : ""}`;
 
       if (value === currentPort) option.selected = true;
 
@@ -492,7 +492,7 @@ socket.on("inspection_result", (data) => {
   inspectionSessionActive = true;
   renderInspectionResult(data);
   setAiStatus("connected", "Hệ thống đang chạy");
-  showToast(`Đã nhận kết quả kiểm tra: ${resultLabel(data.label)}`, "info");
+  //showToast(`Đã nhận kết quả kiểm tra: ${resultLabel(data.label)}`, "info");
 });
 
 socket.on("control_ack", (ack) => {

@@ -1,20 +1,23 @@
 extend ../layout/default.pug
 
 block main
-  - const currentTab = selectedTab || "production"
-  - const currentMode = currentTab === "test" ? "TEST" : "PRODUCTION"
-  - const runningStatuses = ["STARTING", "RUNNING", "STOPPING"]
-  - const isRunning = runningStatuses.includes(String(conveyor.status || "").toUpperCase())
-  - const isTestModelLocked = currentTab === "test" && config.config_mode === "TEST" && config.model_id && isTestingModelLocked
   -
+    const currentTab = selectedTab || "production";
+    const currentMode = currentTab === "test" ? "TEST" : "PRODUCTION";
+    const statusText = String(conveyor.status || "").toUpperCase();
+    const isRunning = statusText === "RUNNING" || statusText === "STARTING";
+    const activeModelList = activeModels || models || [];
+    const testingModelList = testingModels || [];
+
     const safeSpeedPresets = speedPresets || [
       { level: 1, key: "VERY_SLOW", label: "Very Slow", pwm: 153, rpm: 7.95 },
       { level: 2, key: "SLOW", label: "Slow", pwm: 179, rpm: 9.07 },
       { level: 3, key: "NORMAL", label: "Normal", pwm: 204, rpm: 9.88 },
       { level: 4, key: "FAST", label: "Fast", pwm: 230, rpm: 10.54 },
-      { level: 5, key: "MAX", label: "Max", pwm: 255, rpm: 12.00 }
+      { level: 5, key: "MAX", label: "Max", pwm: 255, rpm: 12.0 }
     ];
-    const safeArduinoConfig = arduinoConfig || {
+
+    const safeArduinoConfig = {
       speed_low_level: config.arduino_speed_low_level || 2,
       speed_high_level: config.arduino_speed_high_level || 5,
       servo_home_angle: config.arduino_servo_home_angle || 0,
@@ -23,253 +26,370 @@ block main
       light_max_lux: config.arduino_light_max_lux || 2000
     };
 
-  .page.settings-grid
+  .page
     .dashboard__header
       .dashboard__heading
-        h1.dashboard__title Cấu hình #{conveyor.name || conveyor.conveyor_id}
-        p.dashboard__subtitle= currentTab === "test" ? "Kiểm thử model AI - không tính vào sản lượng thật" : "Vận hành chính thức - lưu kết quả sản xuất"
+        h1.dashboard__title= title || "Cấu hình băng tải"
+        p.dashboard__subtitle Cấu hình thông số vận hành, camera, model AI và Arduino.
 
       .dashboard-actions
-        a.btn.btn--secondary(href=dashboardUrl || "/dashboard") Quay lại
-        a.btn.btn--primary(href=monitorUrl || `/inspection/monitor/${conveyor.conveyor_id}`) Giám sát
+        a.btn.btn--secondary(href=dashboardUrl || "/dashboard") Quay lại danh sách
+        if monitorUrl
+          a.btn.btn--primary(href=`${monitorUrl}?mode=${currentMode}`) Giám sát
 
     if error
-      .alert.alert--error= error
+      .alert.alert--error #{error}
+
     if updated
-      .alert.alert--success Đã lưu cấu hình.
+      .alert.alert--success Cập nhật cấu hình thành công.
+
     if configSynced
-      .alert.alert--success Đã gửi cấu hình xuống Arduino.
+      .alert.alert--success Đã đồng bộ cấu hình.
+
     if configSyncFailed
-      .alert.alert--error Đã lưu cấu hình nhưng chưa gửi được xuống Arduino.
+      .alert.alert--error Không thể đồng bộ cấu hình.
+
     if approved
-      .alert.alert--success Model kiểm thử đã được phê duyệt.
+      .alert.alert--success Model kiểm thử đã đạt và được chuyển sang model vận hành thật.
+
     if rejected
       .alert.alert--error Model kiểm thử đã được đánh dấu không đạt.
 
     if isConfigLocked
-      .alert.alert--error= configLockMessage || "Không thể cấu hình khi băng tải đang vận hành. Vui lòng dừng hệ thống trước."
+      .alert.alert--error #{configLockMessage}
 
     .history-shift-tabs
       a.history-shift-tab(
-        href=`/settings/${conveyor.conveyor_id}?tab=production`
         class=currentTab === "production" ? "active" : ""
+        href=`/settings/${conveyor.conveyor_id}?tab=production`
       ) Vận hành thật
+
       a.history-shift-tab(
-        href=`/settings/${conveyor.conveyor_id}?tab=test`
         class=currentTab === "test" ? "active" : ""
+        href=`/settings/${conveyor.conveyor_id}?tab=test`
       ) Kiểm thử model
 
-    form.settings-form(method="POST" action=formAction || `/settings/${conveyor.conveyor_id}?tab=${currentTab}`)
-      input(type="hidden" name="tab" value=currentTab)
+    .card.settings-card
+      form.settings-form(method="POST" action=formAction)
+        input(type="hidden" name="tab" value=currentTab)
+        input(type="hidden" name="config_mode" value=currentMode)
 
-      .settings-section
-        .settings-section__head
-          h3.settings-section__title Băng tải
-          p.settings-section__desc Thông tin định danh, người vận hành, tốc độ và góc servo cơ bản.
+        fieldset(disabled=isConfigLocked)
+          .settings-section
+            .settings-section__head
+              h3.settings-section__title Băng tải
+              p.settings-section__desc Cấu hình thông tin băng tải và người vận hành.
 
-        .settings-section-grid.settings-section-grid--two
-          .field
-            label.field__label(for="conveyor_id") Mã băng tải
-            input#conveyor_id.field__control(type="text" value=conveyor.conveyor_id disabled)
+            .settings-section-grid.settings-section-grid--two
+              .field
+                label.field__label(for="conveyor_id") Mã băng tải
+                input#conveyor_id.field__control(
+                  type="text"
+                  value=conveyor.conveyor_id
+                  disabled
+                )
 
-          .field
-            label.field__label(for="name") Tên băng tải
-            input#name.field__control(type="text" name="name" value=conveyor.name || "" required disabled=isConfigLocked)
+              .field
+                label.field__label(for="name") Tên băng tải
+                input#name.field__control(
+                  type="text"
+                  name="name"
+                  value=conveyor.name || ""
+                  required
+                )
 
-          if user && user.role === "ADMIN"
-            .field
-              label.field__label(for="user_id") Người vận hành
-              select#user_id.field__control(name="user_id" disabled=isConfigLocked)
-                option(value="" selected=!conveyor.user_id) -- Chưa phân công --
-                each operator in operators
-                  option(value=operator.user_id selected=conveyor.user_id === operator.user_id)
-                    | #{operator.fullname || operator.username || operator.user_id}
-          else
-            input(type="hidden" name="user_id" value=conveyor.user_id || "")
+              if user && user.role === "ADMIN"
+                .field
+                  label.field__label(for="user_id") Người vận hành
+                  select#user_id.field__control(name="user_id")
+                    option(value="" selected=!conveyor.user_id) -- Chưa phân công --
+                    each operator in operators
+                      option(
+                        value=operator.user_id
+                        selected=String(conveyor.user_id || "") === String(operator.user_id)
+                      ) #{operator.fullname || operator.username || operator.user_id}
+              else
+                input(type="hidden" name="user_id" value=conveyor.user_id || "")
 
-          .field
-            label.field__label(for="status") Trạng thái
-            input#status.field__control(type="text" value=conveyor.status || "-" disabled)
+              .field
+                label.field__label(for="status") Trạng thái
+                input#status.field__control(
+                  type="text"
+                  value=conveyor.status || "-"
+                  disabled
+                )
 
-          .field
-            label.field__label(for="speed") Tốc độ băng tải PWM
-            input#speed.field__control(type="number" name="speed" min="0" max="255" step="1" value=config.speed || 150 required disabled=isConfigLocked)
+              .field
+                label.field__label(for="description") Mô tả
+                textarea#description.field__control(name="description")= conveyor.description || ""
 
-          .field
-            label.field__label(for="goc_home") Góc home servo
-            input#goc_home.field__control(type="number" name="goc_home" min="0" max="180" step="1" value=config.goc_home || 0 required disabled=isConfigLocked)
+          .settings-section
+            .settings-section__head
+              h3.settings-section__title Kết nối Serial
+              p.settings-section__desc Cấu hình cổng kết nối giữa Web/AI và Arduino.
 
-          .field
-            label.field__label(for="goc_gat") Góc gạt servo
-            input#goc_gat.field__control(type="number" name="goc_gat" min="0" max="180" step="1" value=config.goc_gat || 120 required disabled=isConfigLocked)
+            .settings-section-grid.settings-section-grid--two
+              .field
+                label.field__label(for="serial_port") Cổng kết nối
+                select#serial_port.field__control(
+                  name="serial_port"
+                  data-current=config.serial_port || ""
+                  required
+                )
+                  option(value="" selected=!config.serial_port) -- Chọn cổng kết nối Arduino--
+                  if config.serial_port
+                    option(value=config.serial_port selected=true)= `Cổng kết nối ${config.serial_port}`
 
-        .field.settings-section-full
-          label.field__label(for="description") Mô tả
-          textarea#description.field__control(name="description" disabled=isConfigLocked)= conveyor.description || ""
+              .field
+                label.field__label(for="baud_rate") Tốc độ truyền Serial
+                input#baud_rate.field__control(
+                  type="number"
+                  name="baud_rate"
+                  min="1200"
+                  max="115200"
+                  step="1"
+                  value=config.baud_rate || 9600
+                  required
+                )
 
-      .settings-section
-        .settings-section__head
-          h3.settings-section__title Camera
-          p.settings-section__desc Chọn nguồn camera và độ trễ kích hoạt chụp ảnh.
+          .settings-section
+            .settings-section__head
+              h3.settings-section__title Camera
+              p.settings-section__desc Chọn nguồn camera và thiết lập độ trễ kích hoạt chụp ảnh.
 
-        .settings-section-grid.settings-section-grid--two
-          .field
-            label.field__label(for="camera_id") Nguồn camera
-            select#camera_id.field__control(name="camera_id" disabled=isConfigLocked)
-              option(value="" selected=!config.camera_id) -- Chưa chọn camera --
-              each camera in cameras
-                option(value=camera.camera_id selected=config.camera_id === camera.camera_id)
-                  | #{camera.camera_name} - #{camera.camera_id}
+            .settings-section-grid.settings-section-grid--two
+              .field
+                label.field__label(for="camera_id") Nguồn camera
+                select#camera_id.field__control(name="camera_id")
+                  option(value="" selected=!config.camera_id) -- Chưa chọn camera --
+                  each camera in cameras
+                    option(
+                      value=camera.camera_id
+                      selected=String(config.camera_id || "") === String(camera.camera_id)
+                    ) #{camera.camera_name || camera.name || "Camera"} - #{camera.camera_id}
 
-          .field
-            label.field__label(for="camera_trigger_delay") Độ trễ kích hoạt camera ms
-            input#camera_trigger_delay.field__control(
-              type="number"
-              name="camera_trigger_delay"
-              min="0"
-              max="10000"
-              step="1"
-              value=(config.camera_trigger_delay_ms !== undefined ? config.camera_trigger_delay_ms : config.camera_trigger_delay || 0)
-              disabled=isConfigLocked
-            )
+              .field
+                label.field__label(for="camera_trigger_delay") Độ trễ kích hoạt camera ms
+                input#camera_trigger_delay.field__control(
+                  type="number"
+                  name="camera_trigger_delay"
+                  min="0"
+                  max="10000"
+                  step="1"
+                  value=config.camera_trigger_delay || config.camera_trigger_delay_ms || 0
+                )
 
-      .settings-section
-        .settings-section__head
-          h3.settings-section__title Bộ điều khiển Arduino
-          p.settings-section__desc Cấu hình cổng Serial, baud rate, tốc độ mức LOW/HIGH, góc servo và ngưỡng ánh sáng.
+          .settings-section
+            .settings-section__head
+              h3.settings-section__title Model AI
+              if currentTab === "test"
+                p.settings-section__desc Chọn model ở trạng thái testing để kiểm thử.
+              else
+                p.settings-section__desc Chọn model đã được phê duyệt active để vận hành thật.
 
-        .settings-section-grid.settings-section-grid--two
-          .field
-            label.field__label(for="serial_port") Cổng kết nối
-            select#serial_port.field__control(name="serial_port" data-current=config.serial_port || "" disabled=isConfigLocked)
-              option(value=config.serial_port selected=config.serial_port)= config.serial_port || "-- Chưa chọn cổng --"
+            .settings-section-grid.settings-section-grid--two
+              .field
+                label.field__label(for="model_id") Model AI
+                select#model_id.field__control(name="model_id" required)
+                  if currentTab === "test"
+                    option(value="" selected=!config.model_id) -- Chọn model chờ kiểm thử --
+                    each model in testingModelList
+                      option(
+                        value=model.model_id
+                        selected=String(config.model_id || "") === String(model.model_id)
+                      ) #{model.model_name || model.name} - #{model.version || "-"} - #{model.product_code || "-"}
+                  else
+                    option(value="" selected=!config.model_id) -- Chọn model đã phê duyệt --
+                    each model in activeModelList
+                      option(
+                        value=model.model_id
+                        selected=String(config.model_id || "") === String(model.model_id)
+                      ) #{model.model_name || model.name} - #{model.version || "-"} - #{model.product_code || "-"}
 
-          .field
-            label.field__label(for="baud_rate") Tốc độ truyền Serial
-            input#baud_rate.field__control(type="number" name="baud_rate" min="1200" max="115200" step="1" value=config.baud_rate || 9600 required disabled=isConfigLocked)
+              .field
+                label.field__label(for="ai_threshold") Ngưỡng đánh giá
+                input#ai_threshold.field__control(
+                  type="number"
+                  name="ai_threshold"
+                  step="0.000001"
+                  value=config.ai_threshold || 30.436506
+                  required
+                )
 
-        .settings-subsection
-          .settings-subsection__head
-            h4.settings-subsection__title Tốc độ băng tải
-            p.settings-subsection__desc Chọn hai mức tốc độ hợp lệ để Arduino chuyển đổi LOW/HIGH khi vận hành.
+          .settings-section
+            .settings-section__head
+              h3.settings-section__title Bộ điều khiển Arduino
+              p.settings-section__desc Cấu hình tốc độ LOW/HIGH, góc servo và ngưỡng ánh sáng.
 
-          .settings-section-grid.settings-section-grid--two
-            .field
-              label.field__label(for="arduino_speed_low_level") Tốc độ LOW
-              select#arduino_speed_low_level.field__control(name="arduino_speed_low_level" disabled=isConfigLocked)
-                each preset in safeSpeedPresets
-                  option(value=preset.level selected=Number(safeArduinoConfig.speed_low_level) === Number(preset.level))
-                    | Level #{preset.level} - #{preset.label} - PWM #{preset.pwm}
+            .settings-subsection
+              .settings-subsection__head
+                h4.settings-subsection__title Tốc độ băng tải
+                p.settings-subsection__desc Chọn hai mức tốc độ để Arduino chuyển đổi khi vận hành.
 
-            .field
-              label.field__label(for="arduino_speed_high_level") Tốc độ HIGH
-              select#arduino_speed_high_level.field__control(name="arduino_speed_high_level" disabled=isConfigLocked)
-                each preset in safeSpeedPresets
-                  option(value=preset.level selected=Number(safeArduinoConfig.speed_high_level) === Number(preset.level))
-                    | Level #{preset.level} - #{preset.label} - PWM #{preset.pwm}
+              .settings-section-grid.settings-section-grid--two
+                .field
+                  label.field__label(for="arduino_speed_low_level") Tốc độ LOW
+                  select#arduino_speed_low_level.field__control(
+                    name="arduino_speed_low_level"
+                    data-selected=safeArduinoConfig.speed_low_level
+                    required
+                  )
+                    each preset in safeSpeedPresets
+                      option(
+                        value=preset.level
+                        selected=Number(safeArduinoConfig.speed_low_level) === Number(preset.level)
+                      ) #{preset.level} - #{preset.label} | PWM #{preset.pwm} | RPM #{preset.rpm}
 
-        .settings-subsection
-          .settings-subsection__head
-            h4.settings-subsection__title Servo gạt sản phẩm
-            
+                .field
+                  label.field__label(for="arduino_speed_high_level") Tốc độ HIGH
+                  select#arduino_speed_high_level.field__control(
+                    name="arduino_speed_high_level"
+                    data-selected=safeArduinoConfig.speed_high_level
+                    required
+                  )
+                    each preset in safeSpeedPresets
+                      option(
+                        value=preset.level
+                        selected=Number(safeArduinoConfig.speed_high_level) === Number(preset.level)
+                      ) #{preset.level} - #{preset.label} | PWM #{preset.pwm} | RPM #{preset.rpm}
 
-          .settings-section-grid.settings-section-grid--two
-            .field
-              label.field__label(for="arduino_servo_home_angle") Góc servo HOME
-              input#arduino_servo_home_angle.field__control(type="number" name="arduino_servo_home_angle" min="0" max="180" value=safeArduinoConfig.servo_home_angle required disabled=isConfigLocked)
+            .settings-subsection
+              .settings-subsection__head
+                h4.settings-subsection__title Servo gạt sản phẩm
+                p.settings-subsection__desc Cấu hình vị trí HOME và vị trí GẠT của servo.
 
-            .field
-              label.field__label(for="arduino_servo_gate_angle") Góc servo GẠT
-              input#arduino_servo_gate_angle.field__control(type="number" name="arduino_servo_gate_angle" min="0" max="180" value=safeArduinoConfig.servo_gate_angle required disabled=isConfigLocked)
+              .settings-section-grid.settings-section-grid--two
+                .field
+                  label.field__label(for="arduino_servo_home_angle") Góc servo HOME
+                  input#arduino_servo_home_angle.field__control(
+                    type="number"
+                    name="arduino_servo_home_angle"
+                    min="0"
+                    max="180"
+                    step="1"
+                    value=safeArduinoConfig.servo_home_angle
+                    required
+                  )
 
-        .settings-subsection
-          .settings-subsection__head
-            h4.settings-subsection__title Ngưỡng ánh sáng
-            p.settings-subsection__desc Xác định khoảng lux hợp lệ trước khi chụp ảnh.
+                .field
+                  label.field__label(for="arduino_servo_gate_angle") Góc servo GẠT
+                  input#arduino_servo_gate_angle.field__control(
+                    type="number"
+                    name="arduino_servo_gate_angle"
+                    min="0"
+                    max="180"
+                    step="1"
+                    value=safeArduinoConfig.servo_gate_angle
+                    required
+                  )
 
-          .settings-section-grid.settings-section-grid--two
-            .field
-              label.field__label(for="arduino_light_min_lux") Lux tối thiểu chấp nhận
-              input#arduino_light_min_lux.field__control(type="number" name="arduino_light_min_lux" min="0" max="3000" value=safeArduinoConfig.light_min_lux required disabled=isConfigLocked)
+            .settings-subsection
+              .settings-subsection__head
+                h4.settings-subsection__title Ngưỡng ánh sáng
+                p.settings-subsection__desc Xác định khoảng lux hợp lệ trước khi chụp ảnh.
 
-            .field
-              label.field__label(for="arduino_light_max_lux") Lux tối đa chấp nhận
-              input#arduino_light_max_lux.field__control(type="number" name="arduino_light_max_lux" min="0" max="3000" value=safeArduinoConfig.light_max_lux required disabled=isConfigLocked)
+              .settings-section-grid.settings-section-grid--two
+                .field
+                  label.field__label(for="arduino_light_min_lux") Lux tối thiểu chấp nhận
+                  input#arduino_light_min_lux.field__control(
+                    type="number"
+                    name="arduino_light_min_lux"
+                    min="0"
+                    max="3000"
+                    step="1"
+                    value=safeArduinoConfig.light_min_lux
+                    required
+                  )
 
-          .light-preview
-            .light-preview__item
-              span DARK
-              strong 0 - #{Math.max(Number(safeArduinoConfig.light_min_lux || 1000) - 1, 0)} lux
-            .light-preview__item.light-preview__item--ok
-              span OK
-              strong #{safeArduinoConfig.light_min_lux} - #{safeArduinoConfig.light_max_lux} lux
-            .light-preview__item
-              span BRIGHT
-              strong #{Number(safeArduinoConfig.light_max_lux || 2000) + 1} - 3000 lux
+                .field
+                  label.field__label(for="arduino_light_max_lux") Lux tối đa chấp nhận
+                  input#arduino_light_max_lux.field__control(
+                    type="number"
+                    name="arduino_light_max_lux"
+                    min="0"
+                    max="3000"
+                    step="1"
+                    value=safeArduinoConfig.light_max_lux
+                    required
+                  )
 
-        .checkbox-field
-          label(for="save_arduino_default")
-            input#save_arduino_default(type="checkbox" name="save_arduino_default" value="1" disabled=isConfigLocked)
-            span Lưu cấu hình Arduino làm mặc định
-          p.form-note Nếu chọn, cấu hình sẽ được ghi vào EEPROM của Arduino.
+              .light-preview
+                .light-preview__item
+                  span DARK
+                  strong#light_preview_dark 0 - 999 lux
+                .light-preview__item.light-preview__item--ok
+                  span OK
+                  strong#light_preview_ok 1000 - 2000 lux
+                .light-preview__item
+                  span BRIGHT
+                  strong#light_preview_bright 2001 - 3000 lux
 
-      .settings-section
-        .settings-section__head
-          h3.settings-section__title Model AI
-          if currentTab === "test"
-            p.settings-section__desc Chọn model ở trạng thái testing để kiểm thử. Model đang kiểm thử sẽ bị khóa đến khi phê duyệt Đạt hoặc Không đạt.
-          else
-            p.settings-section__desc Chọn model đã được phê duyệt active để vận hành thật.
+            .checkbox-field
+              label(for="save_arduino_default")
+                input#save_arduino_default(
+                  type="checkbox"
+                  name="save_arduino_default"
+                  value="1"
+                )
+                span Lưu cấu hình Arduino làm mặc định
+              p.form-note Chỉ áp dụng cho tốc độ, góc servo và ngưỡng ánh sáng.
 
-        .settings-section-grid.settings-section-grid--two
-          .field
-            label.field__label(for="model_id") Model AI
+            .arduino-actions
+              button#read_arduino_config.btn.btn--secondary(type="button") Đọc cấu hình Arduino
+              button#run_light_check.btn.btn--secondary(type="button") Kiểm tra ánh sáng
+              button#reset_arduino_default.btn.btn--secondary(type="button") Khôi phục mặc định Arduino
 
-            if isTestModelLocked
-              select#model_id.field__control(name="model_id" disabled)
-                if selectedModel
-                  option(value=selectedModel.model_id selected)
-                    | #{selectedModel.model_name} - #{selectedModel.version} - #{selectedModel.product_code}
-                else
-                  option(value=config.model_id selected)= config.model_id
-              input(type="hidden" name="model_id" value=config.model_id)
-              p.field__hint Model kiểm thử đang được khóa. Hãy phê duyệt Đạt hoặc Không đạt trước khi chọn model khác.
-            else
-              select#model_id.field__control(name="model_id" required disabled=isConfigLocked)
-                if currentTab === "test"
-                  option(value="") -- Chọn model chờ kiểm thử --
-                  each model in testingModels
-                    option(value=model.model_id selected=String(config.model_id || "") === String(model.model_id))
-                      | #{model.model_name} - #{model.version} - #{model.product_code}
-                else
-                  option(value="") -- Chọn model đã phê duyệt --
-                  each model in activeModels
-                    option(value=model.model_id selected=String(config.model_id || "") === String(model.model_id))
-                      | #{model.model_name} - #{model.version} - #{model.product_code}
+            .arduino-status-panel#arduino_status_panel
+              .arduino-status-panel__head
+                h4 Cấu hình Arduino hiện tại
+                span#arduino_status_badge Chưa đọc
 
-          .field
-            label.field__label(for="ai_threshold") Ngưỡng đánh giá
-            input#ai_threshold.field__control(type="number" name="ai_threshold" step="0.000001" value=config.ai_threshold || 30.436506 required disabled=isConfigLocked)
+              .arduino-status-grid
+                .arduino-status-item
+                  span Firmware
+                  strong#arduino_fw -
+                .arduino-status-item
+                  span Tốc độ LOW
+                  strong#arduino_speed_low -
+                .arduino-status-item
+                  span Tốc độ HIGH
+                  strong#arduino_speed_high -
+                .arduino-status-item
+                  span Chế độ hiện tại
+                  strong#arduino_current_speed -
+                .arduino-status-item
+                  span Servo HOME
+                  strong#arduino_servo_home -
+                .arduino-status-item
+                  span Servo GẠT
+                  strong#arduino_servo_gate -
+                .arduino-status-item
+                  span Ánh sáng OK
+                  strong#arduino_light_range -
+                .arduino-status-item
+                  span EEPROM
+                  strong#arduino_saved -
 
-      .settings-actions
-        button.btn.btn--primary(type="submit" disabled=isConfigLocked) Lưu cấu hình
+              .arduino-status-panel__subhead Kết quả kiểm tra ánh sáng
+              .arduino-status-grid.arduino-status-grid--light
+                .arduino-status-item
+                  span Trung bình
+                  strong#light_check_avg -
+                .arduino-status-item
+                  span Thấp nhất
+                  strong#light_check_min -
+                .arduino-status-item
+                  span Cao nhất
+                  strong#light_check_max -
+                .arduino-status-item
+                  span Đánh giá
+                  strong#light_check_status -
 
-    if currentTab === "test" && config.model_id && config.config_mode === "TEST"
-      .settings-section
-        .settings-section__head
-          h3.settings-section__title Phê duyệt model kiểm thử
-          if isRunning
-            p.settings-section__desc Vui lòng dừng băng tải trước khi phê duyệt model.
-          else
-            p.settings-section__desc Chọn Đạt để chuyển model sang active, hoặc Không đạt để đánh dấu failed.
+              .arduino-status-panel__footer#arduino_status_message Chưa có dữ liệu từ Arduino.
 
-        if isRunning
-          .alert.alert--error Chỉ được phê duyệt sau khi đã dừng kiểm thử.
-        else
-          form.btn-row(method="POST" action=`/settings/${conveyor.conveyor_id}/approve-model`)
-            button.btn.btn--success(type="submit" name="decision" value="PASS" onclick="return confirm('Xác nhận model này ĐẠT và được dùng cho vận hành thật?');") Đạt
-            button.btn.btn--danger(type="submit" name="decision" value="FAIL" onclick="return confirm('Xác nhận model này KHÔNG ĐẠT?');") Không đạt
+        .settings-actions
+          button.btn.btn--primary(type="submit" disabled=isConfigLocked) Lưu cấu hình
 
   script.
     window.CONVEYOR_ID = "#{conveyor.conveyor_id}";
-    window.__RUNTIME_MODE__ = "#{currentMode}";
+    window.SPEED_PRESETS = !{JSON.stringify(safeSpeedPresets)};

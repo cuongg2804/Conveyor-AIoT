@@ -480,6 +480,7 @@ export const updateSettings = async (req: Request, res: Response) => {
         nextConfigMode = "TEST";
       }
     }
+    console.log("Selected model_id:", selectedModelId);
 
     if (oldCameraId && oldCameraId !== newCameraId) {
       await Camera.updateOne(

@@ -15,7 +15,7 @@ export const streamMinioObject = async (req: Request, res: Response) => {
     const objectKey = normalizeObjectKey(params[1] || params.objectKey);
 
     if (!bucket || !objectKey) {
-      return res.status(400).send("Missing MinIO bucket or object key.");
+      return res.status(400).send("Thiếu bucket hoặc object key trong MinIO.");
     }
 
     const stat = await minioClient.statObject(bucket, objectKey);
@@ -25,13 +25,13 @@ export const streamMinioObject = async (req: Request, res: Response) => {
     res.setHeader("Cache-Control", "public, max-age=300");
 
     objectStream.on("error", (error) => {
-      console.error("MinIO object stream error:", error);
+      console.error("Lỗi stream đối tượng MinIO:", error);
       if (!res.headersSent) res.status(500).end();
     });
 
     objectStream.pipe(res);
   } catch (error: any) {
-    console.error("streamMinioObject error:", error);
-    return res.status(404).send("Image not found.");
+    console.error("Lỗi stream đối tượng MinIO:", error);
+    return res.status(404).send("Không tìm thấy tệp.");
   }
 };

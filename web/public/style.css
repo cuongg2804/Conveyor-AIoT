@@ -2242,3 +2242,119 @@ img[src]:not([src=""]) + .image-placeholder {
   text-align: center !important;
   vertical-align: middle !important;
 }
+.light-preview {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.light-preview__item {
+  padding: 14px 16px;
+  border: 1px solid #dbe4f0;
+  border-radius: 14px;
+  background: #f8fafc;
+}
+
+.light-preview__item span {
+  display: block;
+  font-size: 13px;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
+.light-preview__item strong {
+  font-size: 16px;
+  color: #0f172a;
+}
+
+.light-preview__item--ok {
+  background: #ecfdf5;
+  border-color: #86efac;
+}
+
+.checkbox-field {
+  margin-top: 18px;
+}
+
+.checkbox-field label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+}
+
+.form-note {
+  margin-top: 8px;
+  color: #64748b;
+}
+
+.arduino-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.arduino-status-panel {
+  margin-top: 20px;
+  padding: 20px;
+  border: 1px solid #dbe4f0;
+  border-radius: 18px;
+  background: #f8fafc;
+}
+
+.arduino-status-panel__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.arduino-status-panel__head h4 {
+  margin: 0;
+  font-size: 20px;
+}
+
+#arduino_status_badge {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  font-weight: 700;
+}
+
+.arduino-status-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.arduino-status-item {
+  padding: 14px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+}
+
+.arduino-status-item span {
+  display: block;
+  color: #64748b;
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+.arduino-status-item strong {
+  color: #0f172a;
+  font-size: 16px;
+}
+
+.arduino-status-panel__subhead {
+  margin-top: 20px;
+  margin-bottom: 12px;
+  font-weight: 800;
+}
+
+.arduino-status-panel__footer {
+  margin-top: 16px;
+  color: #64748b;
+}

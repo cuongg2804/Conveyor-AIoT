@@ -339,7 +339,7 @@ io.on("connection", async (socket) => {
             { user_id: disconnectedUserId },
             {
               $set: {
-                token: "",
+                //token: "",
                 status: "OFFLINE",
               },
             }
