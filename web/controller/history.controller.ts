@@ -1,3 +1,7 @@
+import fs from "fs";
+import path from "path";
+
+const PDFDocument = require("pdfkit");
 import { Request, Response } from "express";
 import InspectionResult from "../model/inspection-result.model";
 import Conveyor from "../model/conveyor.model";
@@ -112,10 +116,33 @@ const getStatsRange = (
 // - co inspection_id
 // - co conveyor_id
 // - co du 3 frame, vi "frames.2" la frame thu 3 trong mang.
-const validInspectionFilter = {
-  inspection_id: { $exists: true, $ne: "" },
-  conveyor_id: { $exists: true, $ne: "" },
-  "frames.2": { $exists: true },
+const getValidInspectionFilter = (inspectionMode: string) => {
+  const normalizedMode =
+    String(inspectionMode || "PRODUCTION").toUpperCase() === "TEST"
+      ? "TEST"
+      : "PRODUCTION";
+
+  const baseFilter = {
+    inspection_id: { $exists: true, $ne: "" },
+    conveyor_id: { $exists: true, $ne: "" },
+    "frames.2": { $exists: true },
+  };
+
+  if (normalizedMode === "TEST") {
+    return {
+      ...baseFilter,
+      mode: "TEST",
+    };
+  }
+
+  return {
+    ...baseFilter,
+    $or: [
+      { mode: "PRODUCTION" },
+      { mode: { $exists: false } },
+      { mode: "" },
+    ],
+  };
 };
 
 // Tinh so luong OK/NG va ti le OK/NG de hien thi o phan thong ke.
@@ -124,12 +151,24 @@ const summarize = (items: any[]) => {
   const ok = items.filter((item) => item.label === "OK").length;
   const ng = items.filter((item) => item.label === "NG").length;
 
+  const scores = items
+    .map((item) =>
+      Number(item.avg_score ?? item.average_score ?? item.anomaly_score ?? item.score)
+    )
+    .filter((score) => Number.isFinite(score));
+
+  const avgScore =
+    scores.length > 0
+      ? scores.reduce((sum, score) => sum + score, 0) / scores.length
+      : null;
+
   return {
     total,
     ok,
     ng,
     okRate: total ? (ok / total) * 100 : 0,
     ngRate: total ? (ng / total) * 100 : 0,
+    avgScore,
   };
 };
 
@@ -153,9 +192,468 @@ const previewItem = async (item: any) => {
   };
 };
 
+const FONT_REGULAR = "C:/Windows/Fonts/arial.ttf";
+const FONT_BOLD = "C:/Windows/Fonts/arialbd.ttf";
+
+const formatDateTime = (timestamp: any) => {
+  const ts = Number(timestamp);
+  if (!Number.isFinite(ts)) return "-";
+
+  const date = ts > 1000000000000 ? new Date(ts) : new Date(ts * 1000);
+  return date.toLocaleString("vi-VN");
+};
+
+const formatScore = (value: any, digits = 3) => {
+  const num = Number(value);
+  return Number.isFinite(num) ? num.toFixed(digits) : "-";
+};
+
+const safeText = (value: any) => {
+  if (value === null || value === undefined || value === "") return "-";
+  return String(value);
+};
+
+const getStorageRoot = () => {
+  if (process.env.STORAGE_PATH) {
+    return path.resolve(process.env.STORAGE_PATH);
+  }
+
+  return path.join(process.cwd(), "storage");
+};
+
+const imageUrlToLocalPath = (imageUrl: string) => {
+  if (!imageUrl) return null;
+
+  const cleanUrl = String(imageUrl).split("?")[0];
+
+  if (!cleanUrl.startsWith("/images/")) {
+    return null;
+  }
+
+  const relativePath = cleanUrl.replace("/images/", "");
+  return path.join(getStorageRoot(), relativePath);
+};
+
+const setupPdfResponse = (res: Response, filename: string) => {
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader(
+    "Content-Disposition",
+    `attachment; filename="${encodeURIComponent(filename)}"`
+  );
+};
+
+const setupDocFonts = (doc: any) => {
+  if (fs.existsSync(FONT_REGULAR)) {
+    doc.registerFont("regular", FONT_REGULAR);
+    doc.font("regular");
+  }
+
+  if (fs.existsSync(FONT_BOLD)) {
+    doc.registerFont("bold", FONT_BOLD);
+  }
+};
+
+const drawTitle = (doc: any, title: string, subtitle?: string) => {
+  doc.font("bold").fontSize(18).text(title, { align: "center" });
+  doc.moveDown(0.4);
+
+  if (subtitle) {
+    doc.font("regular").fontSize(10).text(subtitle, { align: "center" });
+    doc.moveDown(1);
+  }
+};
+
+const drawKeyValue = (doc: any, label: string, value: any) => {
+  doc.font("bold").fontSize(10).text(`${label}: `, { continued: true });
+  doc.font("regular").text(safeText(value));
+};
+
+const buildHistoryExportFilter = async (query: any) => {
+  const clearFilter = query.clear === "1";
+
+  const selectedInspectionMode =
+  String(query.inspectionMode || "PRODUCTION").toUpperCase() === "TEST"
+    ? "TEST"
+    : "PRODUCTION";
+
+  if (clearFilter) {
+    return {
+      filter: { ...getValidInspectionFilter(selectedInspectionMode) },
+      filterText: "Tất cả dữ liệu hợp lệ",
+    };
+  }
+
+  const selectedMode = ["day", "month", "year"].includes(String(query.mode))
+    ? String(query.mode)
+    : "day";
+
+  const selectedLabel = String(query.label || "");
+  const selectedShift = ["morning", "afternoon"].includes(String(query.shift))
+    ? String(query.shift)
+    : "all";
+
+  const selectedDateValue = String(query.statsDate || todayInputValue());
+  const selectedMonthValue = String(query.statsMonth || currentMonthValue());
+  const selectedYearValue = String(query.statsYear || currentYearValue());
+  const selectedConveyorId = String(query.conveyor_id || "").trim().toUpperCase();
+
+  if (selectedMode === "day" && !isValidDateValue(selectedDateValue)) {
+    throw new Error("Ngày thống kê không hợp lệ.");
+  }
+
+  if (selectedMode === "month" && !isValidMonthValue(selectedMonthValue)) {
+    throw new Error("Tháng thống kê không hợp lệ.");
+  }
+
+  if (selectedMode === "year" && !isValidYearValue(selectedYearValue)) {
+    throw new Error("Năm thống kê không hợp lệ.");
+  }
+
+  const selectedRange = getStatsRange(
+    selectedMode,
+    selectedDateValue,
+    selectedMonthValue,
+    selectedYearValue
+  );
+
+  const selectedDay = dayRange(selectedDateValue || todayInputValue());
+
+  const filter: any = {
+    ...getValidInspectionFilter(selectedInspectionMode),
+    timestamp: {
+      $gte: selectedRange.start,
+      $lte: selectedRange.end,
+    },
+  };
+
+  if (selectedConveyorId) {
+    filter.conveyor_id = selectedConveyorId;
+  }
+
+  if (selectedLabel === "OK" || selectedLabel === "NG") {
+    filter.label = selectedLabel;
+  }
+
+  if (selectedMode === "day" && selectedShift === "morning") {
+    filter.timestamp = {
+      $gte: selectedDay.start,
+      $lt: selectedDay.noon,
+    };
+  }
+
+  if (selectedMode === "day" && selectedShift === "afternoon") {
+    filter.timestamp = {
+      $gte: selectedDay.noon,
+      $lte: selectedDay.end,
+    };
+  }
+
+  const modeText =
+    selectedMode === "day"
+      ? `Ngày ${selectedDateValue}`
+      : selectedMode === "month"
+        ? `Tháng ${selectedMonthValue}`
+        : `Năm ${selectedYearValue}`;
+
+  const shiftText =
+    selectedMode !== "day"
+      ? "Tất cả"
+      : selectedShift === "morning"
+        ? "Ca sáng"
+        : selectedShift === "afternoon"
+          ? "Ca chiều"
+          : "Tất cả ca";
+
+  const labelText = selectedLabel || "Tất cả kết quả";
+  const conveyorText = selectedConveyorId || "Tất cả băng tải";
+
+  return {
+    filter,
+    filterText: `${modeText} | ${shiftText} | ${labelText} | ${conveyorText} | ${modeText}`,
+  };
+};
+
+export const exportPdf = async (req: Request, res: Response) => {
+  try {
+    const { filter, filterText } = await buildHistoryExportFilter(req.query);
+
+    const items = await InspectionResult.find(filter, { _id: 0 })
+      .sort({ timestamp: -1 })
+      .lean();
+
+    const summary = summarize(items);
+
+    const filename = `lich-su-kiem-tra-${Date.now()}.pdf`;
+    setupPdfResponse(res, filename);
+
+    const doc = new PDFDocument({
+      size: "A4",
+      margin: 36,
+      bufferPages: true,
+    });
+
+    doc.pipe(res);
+    setupDocFonts(doc);
+
+    drawTitle(
+      doc,
+      "BÁO CÁO LỊCH SỬ KIỂM TRA SẢN PHẨM",
+      `Điều kiện xuất: ${filterText}`
+    );
+
+    doc.font("bold").fontSize(12).text("1. Thống kê tổng quan");
+    doc.moveDown(0.4);
+
+    drawKeyValue(doc, "Tổng số sản phẩm", summary.total);
+    drawKeyValue(doc, "Số sản phẩm OK", summary.ok);
+    drawKeyValue(doc, "Số sản phẩm NG", summary.ng);
+    drawKeyValue(doc, "Tỉ lệ OK", `${summary.okRate.toFixed(2)}%`);
+    drawKeyValue(doc, "Tỉ lệ NG", `${summary.ngRate.toFixed(2)}%`);
+    drawKeyValue(
+      doc,
+      "Điểm trung bình",
+      summary.avgScore !== null ? summary.avgScore.toFixed(3) : "-"
+    );
+
+    doc.moveDown(1);
+    doc.font("bold").fontSize(12).text("2. Danh sách lượt kiểm tra");
+    doc.moveDown(0.5);
+
+    const startX = doc.x;
+    let y = doc.y;
+
+    const columns = [
+      { title: "STT", width: 36 },
+      { title: "Inspection ID", width: 120 },
+      { title: "Băng tải", width: 80 },
+      { title: "Thời gian", width: 115 },
+      { title: "KQ", width: 40 },
+      { title: "Score", width: 55 },
+      { title: "Threshold", width: 65 },
+    ];
+
+    const drawHeader = () => {
+      doc.font("bold").fontSize(9);
+      let x = startX;
+
+      columns.forEach((col) => {
+        doc.text(col.title, x, y, {
+          width: col.width,
+          align: "left",
+        });
+        x += col.width;
+      });
+
+      y += 20;
+      doc.moveTo(startX, y - 6).lineTo(560, y - 6).stroke();
+    };
+
+    const drawRow = (item: any, index: number) => {
+      if (y > 760) {
+        doc.addPage();
+        y = 50;
+        drawHeader();
+      }
+
+      doc.font("regular").fontSize(8);
+
+      const row = [
+        String(index + 1),
+        safeText(item.inspection_id),
+        safeText(item.conveyor_id),
+        formatDateTime(item.timestamp),
+        safeText(item.label),
+        formatScore(item.avg_score ?? item.average_score, 3),
+        formatScore(item.threshold, 3),
+      ];
+
+      let x = startX;
+
+      row.forEach((value, idx) => {
+        doc.text(value, x, y, {
+          width: columns[idx].width,
+          align: "left",
+        });
+        x += columns[idx].width;
+      });
+
+      y += 22;
+    };
+
+    drawHeader();
+
+    if (!items.length) {
+      doc.font("regular").fontSize(10).text("Không có dữ liệu phù hợp.", startX, y);
+    } else {
+      items.forEach((item, index) => drawRow(item, index));
+    }
+
+    const range = doc.bufferedPageRange();
+
+    for (let i = range.start; i < range.start + range.count; i++) {
+      doc.switchToPage(i);
+      doc.font("regular").fontSize(8);
+      doc.text(
+        `Trang ${i + 1} / ${range.count}`,
+        36,
+        805,
+        { align: "center", width: 520 }
+      );
+    }
+
+    doc.end();
+  } catch (error) {
+    console.error("Lỗi xuất file PDF lịch sử kiểm tra:", error);
+    return res.status(500).send("Không thể xuất file PDF lịch sử kiểm tra.");
+  }
+};
+
+export const exportDetailPdf = async (req: Request, res: Response) => {
+  try {
+    const stt = Number(req.params.stt);
+
+    const selectedInspectionMode =
+      String(req.query.inspectionMode || "PRODUCTION").toUpperCase() === "TEST"
+        ? "TEST"
+        : "PRODUCTION";
+
+    if (!Number.isFinite(stt)) {
+      return res.status(400).send("Mã lượt kiểm tra không hợp lệ.");
+    }
+
+    const filter: any = {
+      ...getValidInspectionFilter(selectedInspectionMode),
+      stt: stt,
+    };
+
+    if (req.query.conveyor_id) {
+      filter.conveyor_id = String(req.query.conveyor_id).trim().toUpperCase();
+    }
+
+    const inspection: any = await InspectionResult.findOne(filter, { _id: 0 })
+      .sort({ timestamp: -1 })
+      .lean();
+
+    if (!inspection) {
+      return res.status(404).send("Không tìm thấy lượt kiểm tra.");
+    }
+
+    const frames = Array.isArray(inspection.frames)
+      ? inspection.frames.sort(
+          (a: any, b: any) => Number(a.frame_index) - Number(b.frame_index)
+        )
+      : [];
+
+    const filename = `chi-tiet-kiem-tra-${inspection.stt || stt}.pdf`;
+    setupPdfResponse(res, filename);
+
+    const doc = new PDFDocument({
+      size: "A4",
+      margin: 36,
+      bufferPages: true,
+    });
+
+    doc.pipe(res);
+    setupDocFonts(doc);
+
+    drawTitle(
+      doc,
+      `BÁO CÁO CHI TIẾT LƯỢT KIỂM TRA ${inspection.stt || stt}`,
+      `Inspection ID: ${inspection.inspection_id || "-"}`
+    );
+
+    doc.font("bold").fontSize(12).text("1. Thông tin lượt kiểm tra");
+    doc.moveDown(0.5);
+
+    drawKeyValue(doc, "Job ID", inspection.stt);
+    drawKeyValue(doc, "Inspection ID", inspection.inspection_id);
+    drawKeyValue(doc, "Băng tải", inspection.conveyor_id);
+    drawKeyValue(doc, "Thời gian", formatDateTime(inspection.timestamp));
+    drawKeyValue(doc, "Kết quả", inspection.label);
+    drawKeyValue(doc, "Điểm trung bình", formatScore(inspection.avg_score ?? inspection.average_score, 6));
+    drawKeyValue(doc, "Ngưỡng đánh giá", formatScore(inspection.threshold, 6));
+    drawKeyValue(doc, "Số frame", frames.length);
+
+    doc.moveDown(1);
+    doc.font("bold").fontSize(12).text("2. Chi tiết từng frame");
+    doc.moveDown(0.5);
+
+    for (const frame of frames) {
+      if (doc.y > 620) {
+        doc.addPage();
+      }
+
+      doc.font("bold").fontSize(11).text(`Frame ${frame.frame_index || "-"}`);
+      doc.font("regular").fontSize(10);
+
+      drawKeyValue(doc, "Predicted label", frame.predicted_label);
+      drawKeyValue(doc, "Predicted score", formatScore(frame.predicted_score, 6));
+
+      doc.moveDown(0.4);
+
+      const roiLocalPath = imageUrlToLocalPath(frame.roi_path);
+      const overlayLocalPath = imageUrlToLocalPath(frame.overlay_path);
+
+      const imageY = doc.y;
+      const imageWidth = 240;
+      const imageHeight = 160;
+
+      doc.font("bold").fontSize(9).text("Ảnh sản phẩm", 36, imageY);
+
+      if (roiLocalPath && fs.existsSync(roiLocalPath)) {
+        doc.image(roiLocalPath, 36, imageY + 16, {
+          fit: [imageWidth, imageHeight],
+        });
+      } else {
+        doc.font("regular").text("Không có ảnh", 36, imageY + 40, {
+          width: imageWidth,
+        });
+      }
+
+      doc.font("bold").fontSize(9).text("Ảnh khoanh lỗi", 310, imageY);
+
+      if (overlayLocalPath && fs.existsSync(overlayLocalPath)) {
+        doc.image(overlayLocalPath, 310, imageY + 16, {
+          fit: [imageWidth, imageHeight],
+        });
+      } else {
+        doc.font("regular").text("Không có ảnh", 310, imageY + 40, {
+          width: imageWidth,
+        });
+      }
+
+      doc.y = imageY + imageHeight + 34;
+      doc.moveDown(0.5);
+    }
+
+    const range = doc.bufferedPageRange();
+
+    for (let i = range.start; i < range.start + range.count; i++) {
+      doc.switchToPage(i);
+      doc.font("regular").fontSize(8);
+      doc.text(
+        `Trang ${i + 1} / ${range.count}`,
+        36,
+        805,
+        { align: "center", width: 520 }
+      );
+    }
+
+    doc.end();
+  } catch (error) {
+    console.error("Lỗi xuất file PDF chi tiết lượt kiểm tra:", error);
+    return res.status(500).send("Không thể xuất file PDF chi tiết lượt kiểm tra.");
+  }
+};
+
 export const index = async (req: Request, res: Response) => {
   try {
     const clearFilter = req.query.clear === "1";
+
+    const selectedInspectionMode =
+      String(req.query.inspectionMode || "PRODUCTION").toUpperCase() === "TEST"
+        ? "TEST"
+        : "PRODUCTION";
 
     const selectedMode = ["day", "month", "year"].includes(String(req.query.mode))
       ? String(req.query.mode)
@@ -255,6 +753,7 @@ export const index = async (req: Request, res: Response) => {
           statsMonth: selectedMonthValue,
           statsYear: selectedYearValue,
           shift: "all",
+          inspectionMode: selectedInspectionMode,
         },
 
         shiftLinks: {
@@ -304,9 +803,7 @@ export const index = async (req: Request, res: Response) => {
     // Filter nay khong loc theo ca va khong loc OK/NG,
     // vi phan thong ke phia tren can tinh tong ca ngay.
     const wholeDayFilter: any = {
-      inspection_id: validInspectionFilter.inspection_id,
-      conveyor_id: validInspectionFilter.conveyor_id,
-      "frames.2": validInspectionFilter["frames.2"],
+      ...getValidInspectionFilter(selectedInspectionMode),
       timestamp: {
         $gte: selectedRange.start,
         $lte: selectedRange.end,
@@ -328,9 +825,7 @@ export const index = async (req: Request, res: Response) => {
     // 3. Tao filter cho bang danh sach ben duoi
     // Ban dau bang danh sach cung lay tat ca ket qua trong ngay.
     const listFilter: any = {
-      inspection_id: validInspectionFilter.inspection_id,
-      conveyor_id: validInspectionFilter.conveyor_id,
-      "frames.2": validInspectionFilter["frames.2"],
+      ...getValidInspectionFilter(selectedInspectionMode),
       timestamp: {
         $gte: selectedRange.start,
         $lte: selectedRange.end,
@@ -393,7 +888,8 @@ export const index = async (req: Request, res: Response) => {
     // 7. Tao du lieu phan trang va link chuyen ca
     // commonQuery giu lai ngay va label hien tai khi bam chuyen ca hoac chuyen trang.
     const totalPages = Math.max(Math.ceil(total / PAGE_SIZE), 1);
-    const commonQuery = { mode: selectedMode, statsDate: selectedDay.date, statsMonth: selectedMonthValue, statsYear: selectedYearValue, label: selectedLabel, conveyor_id: selectedConveyorId };
+
+    const commonQuery = { mode: selectedMode, statsDate: selectedDay.date, statsMonth: selectedMonthValue, statsYear: selectedYearValue, label: selectedLabel, conveyor_id: selectedConveyorId, inspectionMode: selectedInspectionMode };
 
     const inspectionList = await Promise.all(
       listItems.map((item: any) => previewItem(item))
@@ -401,7 +897,7 @@ export const index = async (req: Request, res: Response) => {
     // 8. Dua du lieu ra giao dien
     // Cac ten bien o day phai khop voi file view/history/index.pug.
     return res.render("history/index", {
-      title: "Lich su kiem tra",
+      title: "Lịch sử kiểm tra",
 
       // Danh sach cac lan kiem tra hien thi trong bang.
       inspectionList,
@@ -418,6 +914,7 @@ export const index = async (req: Request, res: Response) => {
         statsMonth: selectedMonthValue,
         statsYear: selectedYearValue,
         shift: selectedMode === "day" ? selectedShift : "all",
+        inspectionMode: selectedInspectionMode,
       },
 
       // Link cho 3 tab: tat ca, ca sang, ca chieu.
@@ -450,18 +947,23 @@ export const index = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("History page error:", error);
-    return res.status(500).send("Khong the tai lich su kiem tra.");
+    return res.status(500).send("Không thể tải lịch sử kiểm tra.");
   }
 };
 
 export const detail = async (req: Request, res: Response) => {
   try {
-    // Lay jobId tu URL /history/:jobId.
-    const jobId = Number(req.params.jobId);
-    if (!Number.isFinite(jobId)) return res.status(400).send("Ma luot kiem tra khong hop le.");
+    // Lay stt tu URL /history/:stt.
+    const stt = Number(req.params.stt);
+    if (!Number.isFinite(stt)) return res.status(400).send("Mã lượt kiểm tra không hợp lệ.");
+
+    const selectedInspectionMode =
+      String(req.query.inspectionMode || "PRODUCTION").toUpperCase() === "TEST"
+        ? "TEST"
+        : "PRODUCTION";
 
     // Tim lan kiem tra theo stt va chi lay ban ghi hop le.
-    const filter: any = { ...validInspectionFilter, stt: jobId };
+    const filter: any = { ...getValidInspectionFilter(selectedInspectionMode), stt: stt };
 
     // Neu URL co conveyor_id thi loc them de tranh trung stt giua cac bang tai.
     if (req.query.conveyor_id) {
@@ -473,11 +975,11 @@ export const detail = async (req: Request, res: Response) => {
       .sort({ timestamp: -1 })
       .lean();
 
-    if (!inspection) return res.status(404).send("Khong tim thay luot kiem tra.");
+    if (!inspection) return res.status(404).send("Không tìm thấy lượt kiểm tra.");
 
     // Sap xep frame theo frame_index truoc khi dua ra trang detail.
     return res.render("history/detail", {
-      title: `Chi tiet luot ${jobId}`,
+      title: `Chi tiet luot ${stt}`,
       inspection: {
         ...withPublicInspectionImageUrls(inspection),
         display_id: inspection.stt || "-",
@@ -487,10 +989,10 @@ export const detail = async (req: Request, res: Response) => {
             )
           : [],
       },
-      backUrl: "/history",
+      backUrl: `/history?inspectionMode=${selectedInspectionMode}`,
     });
   } catch (error) {
     console.error("History detail error:", error);
-    return res.status(500).send("Khong the tai chi tiet luot kiem tra.");
+    return res.status(500).send("Không thể tải chi tiết lượt kiểm tra.");
   }
 };

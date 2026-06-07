@@ -13,13 +13,22 @@ const conveyorConfigSchema = new mongoose.Schema(
     camera_id: {
       type: String,
       trim: true,
-      default: null,
+      default: "",
+      index: true,
     },
 
     model_id: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "ModelRegistry",
-      default: null,
+      type: String,
+      default: "",
+      trim: true,
+      index: true,
+    },
+
+    config_mode: {
+      type: String,
+      enum: ["PRODUCTION", "TEST"],
+      default: "PRODUCTION",
+      index: true,
     },
 
     camera_trigger_delay: {
@@ -35,7 +44,7 @@ const conveyorConfigSchema = new mongoose.Schema(
     serial_port: {
       type: String,
       trim: true,
-      default: null,
+      default: "",
     },
 
     baud_rate: {
@@ -49,6 +58,30 @@ const conveyorConfigSchema = new mongoose.Schema(
       required: true,
       default: 30.436506,
     },
+
+    // speed: {
+    //   type: Number,
+    //   default: 150,
+    //   required: true,
+    //   min: 0,
+    //   max: 255,
+    // },
+
+    // goc_home: {
+    //   type: Number,
+    //   default: 0,
+    //   required: true,
+    //   min: 0,
+    //   max: 180,
+    // },
+
+    // goc_gat: {
+    //   type: Number,
+    //   default: 120,
+    //   required: true,
+    //   min: 0,
+    //   max: 180,
+    // },
 
     arduino_speed_low_level: {
       type: Number,
@@ -97,11 +130,11 @@ const conveyorConfigSchema = new mongoose.Schema(
       default: null,
     },
 
-    mode: {
-      type: String,
-      enum: ["AUTO", "MANUAL"],
-      default: "AUTO",
-    },
+    // mode: {
+    //   type: String,
+    //   enum: ["AUTO", "MANUAL"],
+    //   default: "AUTO",
+    // },
 
     status: {
       type: String,

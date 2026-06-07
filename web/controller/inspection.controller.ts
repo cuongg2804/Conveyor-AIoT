@@ -3,6 +3,7 @@ import { Server } from "socket.io";
 import InspectionResult from "../model/inspection-result.model";
 import Conveyor from "../model/conveyor.model";
 import { withPublicFrameImageUrls, withPublicInspectionImageUrls } from "../helper/image-url";
+import { canAccessConveyor } from "../helper/conveyorAccess.helper";
 
 const normalizeConveyorCode = (value: any) =>
   String(value || "").trim().toUpperCase();
@@ -35,6 +36,12 @@ export const monitor = async (req: Request, res: Response) => {
       return res.status(400).send("Thiếu mã băng tải.");
     }
 
+    const currentUser = res.locals.user
+    const allow = await canAccessConveyor(currentUser, conveyorCode);
+    if(!allow) {
+      return res.status(403).send("Bạn không có quyền truy cập băng tải này.");
+    }
+
     const conveyor = await Conveyor.findOne({ conveyor_id: conveyorCode })
       .select("-_id")
       .lean();
@@ -46,9 +53,17 @@ export const monitor = async (req: Request, res: Response) => {
     const isRunning = ["STARTING", "RUNNING"].includes(
       String((conveyor as any).status || "").toUpperCase()
     );
+    const rawMode = String(req.query.mode || req.query.run_mode || "PRODUCTION")
+      .trim()
+      .toUpperCase();
+
+    const mode = rawMode === "TEST" ? "TEST" : "PRODUCTION";
 
     const latestInspection: any = isRunning
-      ? await InspectionResult.findOne({ conveyor_id: conveyorCode })
+      ? await InspectionResult.findOne({
+          conveyor_id: conveyorCode,
+          mode,
+        })
           .select("-_id")
           .sort({ timestamp: -1 })
           .lean()
@@ -59,12 +74,16 @@ export const monitor = async (req: Request, res: Response) => {
         ? withPublicInspectionImageUrls(latestInspection)
         : latestInspection;
 
+    
+
     return res.render("dashboard/monitor", {
       title: `Giám sát ${(conveyor as any).name}`,
       conveyor,
       latestInspection: latestInspectionView,
       dashboardUrl: "/dashboard",
       settingsUrl: `/settings/${conveyorCode}`,
+      mode,
+//      currentTab: mode === "TEST" ? "test" : "production",
     });
   } catch (error) {
     console.error("Render monitor lỗi:", error);
@@ -97,9 +116,25 @@ export const handleInspectionResultMessage = async (payload: any, io: Server) =>
       return;
     }
 
+    const rawMode = String(payload.mode || payload.run_mode || "PRODUCTION")
+      .trim()
+      .toUpperCase();
+
+    const mode = rawMode === "TEST" ? "TEST" : "PRODUCTION";
+
     const frames = Array.isArray(payload.frames)
       ? payload.frames.map(normalizeFrame)
       : [];
+
+    const frameScores = frames
+      .map((frame: any) => Number(frame.predicted_score))
+      .filter((score: number) => Number.isFinite(score));
+
+    const avgScore =
+      frameScores.length > 0
+        ? frameScores.reduce((sum: number, score: number) => sum + score, 0) /
+          frameScores.length
+        : null;
 
     const document = {
       inspection_id: inspectionId,
@@ -107,9 +142,10 @@ export const handleInspectionResultMessage = async (payload: any, io: Server) =>
       conveyor_id: conveyorId,
       timestamp: Number(payload.timestamp || Date.now() / 1000),
       label: String(payload.label || "UNKNOWN").toUpperCase(),
-      ng_count: Number(payload.ng_count || 0),
+      avg_score: avgScore,
       threshold: Number(payload.threshold || 0),
       frames,
+      mode,
     };
 
     await InspectionResult.updateOne(
@@ -125,8 +161,8 @@ export const handleInspectionResultMessage = async (payload: any, io: Server) =>
       frames: framesForView,
     });
 
-    console.log(`[MQTT] Saved inspection_result: ${inspectionId}`);
+    console.log(`[MQTT] Đã lưu kết quả kiểm tra: ${inspectionId}, mode=${mode}`);
   } catch (error) {
-    console.error("Handle inspection result error:", error);
+    console.error("Lỗi:", error);
   }
 };

@@ -1,9 +1,16 @@
+import os
+
+SDK_BIN = r"C:\Program Files\IRayple\MVP\Application\win64"
+SDK_CTI = r"C:\Program Files\IRayple\MVP\Application\win64\CameraProcol\Cti"
+CTI_PATH = rf"{SDK_CTI}\MVProducerGEV.cti"
+
+os.environ["PATH"] = SDK_BIN + os.pathsep + SDK_CTI + os.pathsep + os.environ.get("PATH", "")
+
 import cv2
+import threading
 import time
 from harvesters.core import Harvester
 from genicam.gentl import TimeoutException
-
-CTI_PATH = r"C:\Program Files\IRayple\MVP\Application\win64\CameraProcol\Cti\MVProducerGEV.cti"
 
 class Camera:
   def __init__(self, cti_path=CTI_PATH,user_set="UserSet1", configure_trigger=False):
@@ -18,31 +25,41 @@ class Camera:
 
     self.camera_status = "DISCONNECTED"
     self._last_error_print = 0
+    self._acquisition_lock = threading.RLock()
 
-  def connect(self):
+  def connect(self, retries=3, retry_delay=3):
     if self.ia is not None:
       print("Cam already connected")
       self.camera_status = "CONNECTED"
       return
 
-    try:
-      self.h = Harvester()
-      self.h.add_file(self.cti_path)
-      self.h.update()
+    last_error = None
 
-      if len(self.h.device_info_list) == 0:
-        raise RuntimeError("No camera found")
+    for attempt in range(1, retries + 1):
+      try:
+        self.h = Harvester()
+        self.h.add_file(self.cti_path)
+        self.h.update()
 
-      self.ia = self.h.create(0)
-      self.load_user_set()
-      if self.configure_trigger:
-        self.configure_for_triggered_multiframe()
-      self.camera_status = "CONNECTED"
-      print("Camera connected")
-    except Exception as e:
-      self.camera_status = "ERROR"
-      self.stop()
-      raise RuntimeError(f"Cannot connect camera: {e}")
+        if len(self.h.device_info_list) == 0:
+          raise RuntimeError("No camera found")
+
+        self.ia = self.h.create(0)
+        self.load_user_set()
+        if self.configure_trigger:
+          self.configure_for_triggered_multiframe()
+        self.camera_status = "CONNECTED"
+        print("Camera connected")
+        return
+      except Exception as e:
+        last_error = e
+        self.stop()
+        if attempt < retries:
+          print(f"Camera connect attempt {attempt}/{retries} failed: {e}. Retrying...")
+          time.sleep(retry_delay)
+
+    self.camera_status = "ERROR"
+    raise RuntimeError(f"Cannot connect camera after {retries} attempts: {last_error}")
 
   def load_user_set(self):
     if self.ia is None:
@@ -58,10 +75,27 @@ class Camera:
 
     nodes.UserSetSelector.value = self.user_set
     nodes.UserSetLoad.execute()
+    time.sleep(0.2)
 
     print(f"Loaded camera user set: {self.user_set}")
 
     self.print_camera_settings()
+
+  def save_user_set(self):
+    if self.ia is None:
+      raise RuntimeError("Camera is not connected")
+
+    nodes = self.ia.remote_device.node_map
+
+    if not hasattr(nodes, "UserSetSelector"):
+      raise RuntimeError("Camera does not support UserSetSelector")
+    if not hasattr(nodes, "UserSetSave"):
+      raise RuntimeError("Camera does not support UserSetSave")
+
+    nodes.UserSetSelector.value = self.user_set
+    nodes.UserSetSave.execute()
+    time.sleep(0.2)
+    print(f"Saved camera settings to user set: {self.user_set}")
 
   def _set_node_value(self, nodes, name, value):
     if not hasattr(nodes, name):
@@ -73,6 +107,16 @@ class Camera:
       print(f"{name} = {getattr(nodes, name).value}")
     except Exception as e:
       print(f"{name}: SET_ERROR ({e})")
+
+  def _disable_unused_frame_start_trigger(self, nodes):
+    if not hasattr(nodes, "TriggerSelector") or not hasattr(nodes, "TriggerMode"):
+      return
+
+    try:
+      nodes.TriggerSelector.value = "FrameStart"
+      nodes.TriggerMode.value = "Off"
+    except Exception as e:
+      print(f"Cannot disable unused per-frame trigger: {e}")
 
   def configure_for_triggered_multiframe(self):
     if self.ia is None:
@@ -88,9 +132,7 @@ class Camera:
     self._set_node_value(nodes, "AcquisitionFrameRate", 60.0)
 
     if hasattr(nodes, "TriggerSelector"):
-      self._set_node_value(nodes, "TriggerSelector", "FrameStart")
-      self._set_node_value(nodes, "TriggerMode", "Off")
-
+      self._disable_unused_frame_start_trigger(nodes)
       self._set_node_value(nodes, "TriggerSelector", "AcquisitionStart")
       self._set_node_value(nodes, "TriggerMode", "On")
     else:
@@ -99,58 +141,127 @@ class Camera:
     self._set_node_value(nodes, "TriggerSource", "Line1")
     self._set_node_value(nodes, "TriggerActivation", "FallingEdge")
 
-    if hasattr(nodes, "TriggerDelay"):
-      self._set_node_value(nodes, "TriggerDelay", 0.0)
-    elif hasattr(nodes, "TriggerDelayAbs"):
-      self._set_node_value(nodes, "TriggerDelayAbs", 0.0)
-
     self.print_camera_settings()
 
   def start(self):
-    if self.ia is None:
-      self.connect()
+    with self._acquisition_lock:
+      if self.ia is None:
+        self.connect()
 
-    try:
-      self.ia.start()
-      self.camera_status = "RUNNING"
-      print("Camera started")
-    except Exception as e:
-      self.camera_status = "ERROR"
-      raise RuntimeError(f"Cannot start camera: {e}")
+      try:
+        self.ia.start()
+        self.camera_status = "RUNNING"
+        print("Camera started")
+      except Exception as e:
+        self.camera_status = "ERROR"
+        raise RuntimeError(f"Cannot start camera: {e}")
 
   def stop(self):
-    had_resource = self.ia is not None or self.h is not None
+    with self._acquisition_lock:
+      had_resource = self.ia is not None or self.h is not None
+
+      try:
+        if self.ia is not None:
+          self.ia.stop()
+      except Exception:
+        pass
+
+      try:
+        if self.ia is not None:
+          self.ia.destroy()
+      except Exception:
+        pass
+
+      try:
+        if self.h is not None:
+          self.h.reset()
+      except Exception:
+        pass
+
+      self.ia = None
+      self.h = None
+      self.camera_status = "DISCONNECTED"
+
+      if had_resource:
+        print("Camera stopped")
+
+  def _get_trigger_delay_node(self):
+    if self.ia is None:
+      raise RuntimeError("Camera is not connected")
+
+    nodes = self.ia.remote_device.node_map
+    if hasattr(nodes, "TriggerSelector"):
+      try:
+        nodes.TriggerSelector.value = "AcquisitionStart"
+      except Exception as e:
+        raise RuntimeError(f"Cannot select AcquisitionStart trigger delay: {e}")
+
+    if hasattr(nodes, "TriggerDelay"):
+      return nodes.TriggerDelay, "TriggerDelay"
+    if hasattr(nodes, "TriggerDelayAbs"):
+      return nodes.TriggerDelayAbs, "TriggerDelayAbs"
+
+    raise AttributeError("Camera does not support TriggerDelay / TriggerDelayAbs")
+
+  def get_trigger_delay(self):
+    node, node_name = self._get_trigger_delay_node()
 
     try:
-      if self.ia is not None:
-        self.ia.stop()
-    except Exception:
-      pass
+      value = node.value
+      print(f"{node_name} current = {value}")
+      return value
+    except Exception as e:
+      raise RuntimeError(f"Cannot read camera trigger delay: {e}")
 
-    try:
-      if self.ia is not None:
-        self.ia.destroy()
-    except Exception:
-      pass
+  def set_trigger_delay(self, value, persist=False):
+    with self._acquisition_lock:
+      was_running = self.camera_status == "RUNNING"
+      requested_value = float(value)
+      previous_value = None
+      actual_value = None
+      user_set_saved = False
 
-    try:
-      if self.h is not None:
-        self.h.reset()
-    except Exception:
-      pass
+      try:
+        if was_running:
+          self.ia.stop()
 
-    self.ia = None
-    self.h = None
-    self.camera_status = "DISCONNECTED"
+        node, node_name = self._get_trigger_delay_node()
+        previous_value = float(node.value)
+        node.value = requested_value
+        actual_value = float(node.value)
 
-    if had_resource:
-      print("Camera stopped")
+        if persist and actual_value != previous_value:
+          self.save_user_set()
+          user_set_saved = True
+      except Exception as e:
+        raise RuntimeError(f"Cannot update camera trigger delay: {e}")
+      finally:
+        if was_running:
+          try:
+            self.ia.start()
+            self.camera_status = "RUNNING"
+          except Exception as e:
+            self.camera_status = "ERROR"
+            raise RuntimeError(f"Camera delay updated but acquisition could not restart: {e}")
+
+      node, node_name = self._get_trigger_delay_node()
+      actual_value = float(node.value)
+      print(
+        f"{node_name} AcquisitionStart requested={requested_value} "
+        f"actual={actual_value} us user_set_saved={user_set_saved}"
+      )
+      return actual_value
 
   def print_camera_settings(self):
     if self.ia is None:
       raise RuntimeError("Camera is not connected")
 
     nodes = self.ia.remote_device.node_map
+    if hasattr(nodes, "TriggerSelector"):
+      try:
+        nodes.TriggerSelector.value = "AcquisitionStart"
+      except Exception as e:
+        print(f"TriggerSelector AcquisitionStart: SET_ERROR ({e})")
 
     setting_names = [
       "UserSetSelector",
@@ -245,22 +356,23 @@ class Camera:
     return drained
 
   def wait_for_n_frames(self, n=3, timeout_first=10.0, timeout_each=2.0, should_stop=None):
-    frames = []
-    self.drain_pending_frames()
+    with self._acquisition_lock:
+      frames = []
+      self.drain_pending_frames()
 
-    first = self.wait_for_trigger(timeout=timeout_first, should_stop=should_stop)
-    if first is None:
+      first = self.wait_for_trigger(timeout=timeout_first, should_stop=should_stop)
+      if first is None:
+        return frames
+
+      frames.append(first)
+
+      for _ in range(n - 1):
+        frame = self.wait_for_trigger(timeout=timeout_each, should_stop=should_stop)
+        if frame is None:
+          break
+        frames.append(frame)
+
       return frames
-
-    frames.append(first)
-
-    for _ in range(n - 1):
-      frame = self.wait_for_trigger(timeout=timeout_each, should_stop=should_stop)
-      if frame is None:
-        break
-      frames.append(frame)
-
-    return frames
 
   def get_status(self):
     return {

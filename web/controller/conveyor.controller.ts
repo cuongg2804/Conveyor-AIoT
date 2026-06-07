@@ -12,7 +12,7 @@ const mapRuntimeStatusToDbStatus = (payload: any) => {
   if (running || rawStatus === "RUNNING") return "RUNNING";
   if (rawStatus === "ERROR" || rawStatus.includes("LỖI")) return "ERROR";
   if (rawStatus === "READY") return "READY";
-  return "STOPPED";
+  return "STOP";
 };
 // Controller để xử lý các thông điệp trạng thái hệ thống và lỗi từ MQTT và cập nhật database cũng như phát sự kiện qua Socket.IO
 export const handleSystemStatusMessage = async (payload: any, io: Server) => {

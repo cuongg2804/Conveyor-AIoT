@@ -8,6 +8,7 @@ from rewrite.config.config import MONGO_URI, MONGO_DB_NAME
 class ResultService:
   def __init__(self):
     self.client = MongoClient(MONGO_URI)
+    self.client.admin.command("ping")
     self.db = self.client[MONGO_DB_NAME]
     self.collection = self.db["inspection_results"]
 

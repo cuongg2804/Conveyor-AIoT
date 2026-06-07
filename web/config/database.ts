@@ -8,5 +8,6 @@ export const connect = async () => {
     console.log("Kết nối thành công đến cơ sở dữ liệu");
   } catch (error) {
     console.error("Kết nối thất bại đến cơ sở dữ liệu: ", error);
+    throw error;
   }
 };

@@ -19,7 +19,14 @@ class RuntimeConfigService:
 
     try:
       with urlopen(url, timeout=self.timeout) as response:
-        payload = json.loads(response.read().decode("utf-8"))
+        body = response.read().decode("utf-8", errors="replace")
+        try:
+          payload = json.loads(body)
+        except json.JSONDecodeError as e:
+          preview = body[:200].strip() or "<empty response>"
+          raise RuntimeError(
+            f"Backend runtime config returned invalid JSON from {url}: {preview}"
+          ) from e
     except HTTPError as e:
       body = e.read().decode("utf-8", errors="ignore")
       raise RuntimeError(f"Backend runtime config error {e.code}: {body}")

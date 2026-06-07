@@ -54,7 +54,7 @@ class SystemController:
 
     def _queue_item_to_text(self, item):
         try:
-            return f"job_id={item['job_id']} | label={item['label']} | score={float(item['score']):.6f}"
+            return f"job_id={item['job_id']} | label={item['label']} | ng_count={item.get('ng_count', '-')}"
         except Exception:
             return str(item)
 
@@ -135,9 +135,6 @@ class SystemController:
                     return False
                 if not np.isfinite(float(item.get("pred_score", 0.0))):
                     return False
-
-            if not np.isfinite(float(result.get("avg_score", 0.0))):
-                return False
 
             return True
         except Exception:
@@ -234,7 +231,7 @@ class SystemController:
         inspection_id = f"INS-{time.strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:6]}"
 
         final_label = result["final_label"]
-        avg_score = float(result["avg_score"])
+        ng_count = int(result.get("ng_count", 0) or 0)
         threshold = float(result.get("threshold", getattr(self.model, "image_threshold", 0.0)))
 
         if self.arduino is not None:
@@ -255,7 +252,7 @@ class SystemController:
         if self.queue is not None:
             queue_start = time.perf_counter()
             try:
-                self.queue.push({"job_id": self.job_id, "label": final_label, "score": avg_score})
+                self.queue.push({"job_id": self.job_id, "label": final_label, "ng_count": ng_count})
                 self._push_queue_debug()
             except Exception as e:
                 self.cb("log", f"Queue update error: {e}")
@@ -300,14 +297,14 @@ class SystemController:
             "conveyor_code": self.conveyor_code,
             "timestamp": timestamp,
             "label": final_label,
-            "average_score": avg_score,
+            "ng_count": ng_count,
             "threshold": threshold,
             "frames": frame_documents,
         }
 
         gui_start = time.perf_counter()
-        self.cb("update_multiframe_results", result["frames"], avg_score, final_label, threshold)
-        self.cb("set_score", f"{avg_score:.6f}")
+        self.cb("update_multiframe_results", result["frames"], ng_count, final_label, threshold)
+        self.cb("set_score", f"{ng_count}/3 NG")
         self.cb("set_label", final_label)
         self.cb("set_threshold", str(threshold))
         self.cb("set_count", str(self.batch_count))
@@ -357,7 +354,7 @@ class SystemController:
                     "inspection_id": inspection_id,
                     "conveyor_code": self.conveyor_code,
                     "label": final_label,
-                    "avg_score": avg_score,
+                    "ng_count": ng_count,
                     "threshold": threshold,
                     **timings,
                 })

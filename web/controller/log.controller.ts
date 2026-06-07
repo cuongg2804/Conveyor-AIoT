@@ -4,17 +4,24 @@ import Control_log from "../model/control_logs.model";
 import Conveyor from "../model/conveyor.model";
 import User from "../model/user.model";
 
+    const PAGE_SIZE = 10;
 const dayRange = (dateValue: string) => {
     const start = new Date(`${dateValue}T00:00:00`).getTime()
     const end = new Date(`${dateValue}T23:59:59.999`).getTime()
 
     return {start, end}
 }
+const url = (query: Record<string, string | number>) => `/logs?${new URLSearchParams(
+  Object.entries(query).filter(([, value]) => String(value) !== "") as [string, string][]
+).toString()}`;
 export const index = async (req: Request, res: Response) => {
     try {
         const tab = String(req.query.tab || "control")
         const date = String(req.query.date || "")
         const conveyor_id = String(req.query.conveyor_id || "").trim().toUpperCase()
+        const page = Math.max(Number(req.query.page || 1), 1);
+        const skip = (page - 1) * PAGE_SIZE;
+        
 
         const filter : any = {}
 
@@ -35,8 +42,8 @@ export const index = async (req: Request, res: Response) => {
         } 
         ).lean()
 
-        const controlLogs = tab === "control" ? await Control_log.find(filter).sort({created_at: -1}).lean() : []
-        const configLogs = tab === "config" ? await Config_log.find(filter).sort({created_at: -1}).lean() : []
+        const controlLogs = tab === "control" ? await Control_log.find(filter).sort({created_at: -1}).lean().skip(skip).limit(PAGE_SIZE) : []
+        const configLogs = tab === "config" ? await Config_log.find(filter).sort({created_at: -1}).lean().skip(skip).limit(PAGE_SIZE) : []
 
         const logsForMap = tab === "control"
             ? controlLogs
@@ -76,9 +83,17 @@ export const index = async (req: Request, res: Response) => {
                 ? conveyorMap.get(item.conveyor_id) || item.conveyor_id
                 : "-",
             }));
+        const total = tab === "control" ? await Control_log.countDocuments(filter) : await Config_log.countDocuments(filter)
+        const totalPages = Math.max(Math.ceil(total / PAGE_SIZE), 1);
 
         const controlLog_list = list(controlLogs)
         const configLog_list = list(configLogs)
+
+        const commonQuery = {
+            tab,
+            date,
+            conveyor_id,
+        }
 
         return res.render("logs/index", {
             title: "Nhật ký hệ thống",
@@ -89,6 +104,14 @@ export const index = async (req: Request, res: Response) => {
             filters: {
                 date,
                 conveyor_id: conveyor_id,
+            },
+            pagination: {
+                page,
+                totalPages,
+                hasPrev: page > 1,
+                hasNext: page < totalPages,
+                prevUrl: url({ ...commonQuery, page: page - 1 }),
+                nextUrl: url({ ...commonQuery, page: page + 1 }),
             },
         })
     } catch (error) {

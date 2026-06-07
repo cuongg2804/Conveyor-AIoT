@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"},{"v":{"$numberInt":"2"},"key":{"control_log_id":{"$numberInt":"1"}},"name":"control_log_id_1","background":true,"unique":true}],"uuid":"3852e82cc0564292a2a5cf95c16f4580","collectionName":"control_logs","type":"collection"}

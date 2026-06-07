@@ -1,6 +1,5 @@
 import time
 import traceback
-import numpy as np
 
 from core.contour_roi import crop_by_contour
 from utils.image_utils import build_overlay
@@ -157,16 +156,16 @@ class PipelineService:
             # =========================
             # 4. Fusion kết quả
             # =========================
-            avg_score = float(np.mean(scores))
+            ng_count = sum(score >= threshold for score in scores)
             has_forced_ng = any(
                 str(result.get("contour_warning", "")) == "Too close to left/right border"
                 for result in results
             )
-            final_label = "NG" if has_forced_ng or avg_score > threshold else "OK"
+            final_label = "NG" if has_forced_ng or ng_count >= 2 else "OK"
 
             print(
                 f"[Pipeline] Fusion done: "
-                f"avg_score={avg_score:.6f}, "
+                f"ng_count={ng_count}, "
                 f"threshold={threshold:.6f}, "
                 f"final_label={final_label}"
             )
@@ -210,7 +209,7 @@ class PipelineService:
 
             return {
                 "frames": frame_results,
-                "avg_score": avg_score,
+                "ng_count": ng_count,
                 "final_label": final_label,
                 "threshold": threshold,
                 "latency": latency,

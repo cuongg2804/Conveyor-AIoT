@@ -116,7 +116,6 @@ export const create = async (req: Request, res: Response) => {
       camera_id: "",
       camera_name: "",
       camera_ip: "",
-      //type: "GIGE",
       status: "AVAILABLE",
     },
   });
@@ -127,7 +126,6 @@ export const createPost = async (req: Request, res: Response) => {
       camera_id,
       camera_name,
       camera_ip,
-      /*type, */
     } = req.body;
 
     const finalCameraId = camera_id
@@ -165,9 +163,6 @@ export const createPost = async (req: Request, res: Response) => {
       camera_id: finalCameraId,
       camera_name: String(camera_name).trim(),
       camera_ip: String(camera_ip || "").trim(),
-      /*type: ["GIGE", "USB", "IP_CAMERA"].includes(String(type).toUpperCase())
-        ? String(type).toUpperCase()
-        : "GIGE", */
       status: "AVAILABLE",
       conveyor_id: "",
     });
@@ -214,7 +209,6 @@ export const editPost = async (req: Request, res: Response) => {
     const {
       camera_name,
       camera_ip,
-      /*type, */
       description,
     } = req.body;
 
@@ -252,9 +246,6 @@ export const editPost = async (req: Request, res: Response) => {
         $set: {
           camera_name: String(camera_name).trim(),
           camera_ip: String(camera_ip || "").trim(),
-          /*type: ["GIGE", "USB", "IP_CAMERA"].includes(String(type).toUpperCase())
-            ? String(type).toUpperCase()
-            : "GIGE", */
           description: String(description || "").trim(),
         },
       }

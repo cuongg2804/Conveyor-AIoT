@@ -9,6 +9,7 @@ import {
   uploadModelFile,
 } from "../service/modelStorage.service";
 
+
 const maxUploadMb = () => Number(process.env.MODEL_UPLOAD_MAX_MB || 1024);
 
 const wantsJson = (req: Request) =>
@@ -28,7 +29,7 @@ const renderIndex = async (
   const models = await listModels();
 
   return res.render("models/index", {
-    title: "Quan ly model",
+    title: "Quản lý model",
     maxUploadMb: maxUploadMb(),
     error: options.error || null,
     success: options.success || null,
@@ -41,9 +42,9 @@ export const index = async (req: Request, res: Response) =>
   renderIndex(res, {
     success:
       req.query.updated === "1"
-        ? "Cap nhat model thanh cong."
+        ? "Cập nhật model thành công."
         : req.query.deleted === "1"
-          ? "Xoa model thanh cong."
+          ? "Xóa model thành công."
           : null,
   });
 
@@ -57,13 +58,13 @@ export const uploadModel = async (req: Request, res: Response) => {
       if (!wantsJson(req)) {
         res.status(400);
         return renderIndex(res, {
-          error: "Can upload du 2 file: model .ckpt/.onnx va model_info.json.",
+          error: "Cần upload đủ 2 file: model .ckpt/.onnx và model_info.json.",
         });
       }
 
       return res.status(400).json({
         success: false,
-        message: "Can upload du 2 file multipart/form-data: model (.ckpt/.onnx) va metadata (.json).",
+        message: "Cần upload đủ 2 file: model .ckpt/.onnx và model_info.json.",
       });
     }
 
@@ -73,39 +74,39 @@ export const uploadModel = async (req: Request, res: Response) => {
     if (!wantsJson(req)) {
       res.status(201);
       return renderIndex(res, {
-        success: "Upload model thanh cong.",
+        success: "Upload model thành công.",
         uploadedModel: storedModel,
       });
     }
 
     return res.status(201).json({
       success: true,
-      message: "Upload model thanh cong.",
+      message: "Upload model thành công.",
       data: storedModel,
     });
   } catch (error: any) {
     if (!wantsJson(req)) {
       res.status(400);
       return renderIndex(res, {
-        error: error?.message || "Khong the upload model.",
+        error: error?.message || "Không thể upload model.",
       });
     }
 
     return res.status(400).json({
       success: false,
-      message: error?.message || "Khong the upload model.",
+      message: error?.message || "Không thể upload model.",
     });
   }
 };
 
 export const edit = async (req: Request, res: Response) => {
-  const model = await getModelById(req.params.id);
+  const model = await getModelById(req.params.model_id);
   if (!model) {
-    return res.status(404).send("Khong tim thay model.");
+    return res.status(404).send("Không tìm thấy model.");
   }
 
   return res.render("models/edit", {
-    title: "Cap nhat model",
+    title: "Cập nhật model",
     model,
     error: null,
   });
@@ -114,30 +115,30 @@ export const edit = async (req: Request, res: Response) => {
 export const update = async (req: Request, res: Response) => {
   try {
     const updateInput = buildRegistryUpdate(req.body);
-    await updateModelRegistry(req.params.id, updateInput);
+    await updateModelRegistry(req.params.model_id, updateInput);
     return res.redirect("/models?updated=1");
   } catch (error: any) {
-    const model = await getModelById(req.params.id);
+    const model = await getModelById(req.params.model_id);
     if (!model) {
-      return res.status(404).send("Khong tim thay model.");
+      return res.status(404).send("Không tìm thấy model.");
     }
 
     return res.status(400).render("models/edit", {
-      title: "Cap nhat model",
+      title: "Cập nhật model",
       model: { ...model, ...req.body },
-      error: error?.message || "Khong the cap nhat model.",
+      error: error?.message || "Không thể cập nhật model.",
     });
   }
 };
 
 export const remove = async (req: Request, res: Response) => {
   try {
-    await deleteModelRegistry(req.params.id);
+    await deleteModelRegistry(req.params.model_id);
     return res.redirect("/models?deleted=1");
   } catch (error: any) {
     res.status(400);
     return renderIndex(res, {
-      error: error?.message || "Khong the xoa model.",
+      error: error?.message || "Không thể xóa model.",
     });
   }
 };

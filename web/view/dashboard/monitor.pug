@@ -1,17 +1,22 @@
 extends ../layout/default.pug
 
 block main
-  - const statusLabels = { READY: "Sẵn sàng", STARTING: "Đang khởi động", RUNNING: "Đang chạy", STOPPING: "Đang dừng", STOPPED: "Đã dừng", ERROR: "Đang lỗi" }
-  - const conveyorStatusText = statusLabels[conveyor.status] || "Đang chờ dữ liệu"
+  - const statusLabels = { READY: "Sẵn sàng", STARTING: "Đang khởi động", RUNNING: "Đang chạy", STOPPING: "Đang dừng", STOPPED: "Đã dừng", STOP: "Đã dừng", ERROR: "Đang lỗi", OFFLINE: "Offline" }
+  - const conveyorStatusText = statusLabels[String(conveyor.status || "").toUpperCase()] || "Đang chờ dữ liệu"
+  - const currentMode = mode || "PRODUCTION"
+  - const isTestMode = currentMode === "TEST"
+  - const runningStatuses = ["STARTING", "RUNNING", "STOPPING"]
+  - const isRunning = runningStatuses.includes(String(conveyor.status || "").toUpperCase())
+
   .dashboard(data-conveyor-code=conveyor.conveyor_id)
     .dashboard__header
       .dashboard__heading
         h1.dashboard__title #{conveyor.name}
-        p.dashboard__subtitle Giám sát kết quả kiểm tra theo thời gian thực
+        p.dashboard__subtitle= isTestMode ? "Giám sát kiểm thử model AI" : "Giám sát vận hành chính thức"
 
       .dashboard-actions
-        a.btn.btn--secondary(href=dashboardUrl) Quay lại
-        a.btn.btn--primary(href=settingsUrl) Cấu hình
+        a.btn.btn--secondary(href=dashboardUrl || "/dashboard") Quay lại
+        a.btn.btn--primary(href=settingsUrl || `/settings/${conveyor.conveyor_id}`) Cấu hình
 
       .dashboard__status-pill(class=conveyor.status)
         span.status-dot
@@ -24,7 +29,7 @@ block main
             h2.card__title Ảnh kiểm tra
             p.card__desc Hiển thị ảnh đại diện của lượt kiểm tra mới nhất
           .preview-frame-meta
-            span Khung hình 2
+            span Khung hình
             strong#framePreviewScore -
 
         .main-preview
@@ -44,7 +49,7 @@ block main
         .card.control-card
           .card__head
             h2.card__title Điều khiển nhanh
-            p.card__desc Điều khiển hệ thống kiểm tra và băng tải
+            p.card__desc Điều khiển hệ thống kiểm tra
 
           .btn-row
             button.btn.btn--success(type="button" onclick="sendControlCommand('START_SYSTEM')") Khởi động
@@ -53,6 +58,33 @@ block main
 
           .control-ack-box
             p#lastControlAck Chưa có phản hồi từ hệ thống
+
+        if isTestMode
+          .card
+            .card__head
+              h2.card__title Phê duyệt model kiểm thử
+              if isRunning
+                p.card__desc Vui lòng bấm Dừng trước khi phê duyệt model.
+              else
+                p.card__desc Chọn Đạt để chuyển model sang active, hoặc Không đạt để đánh dấu failed.
+
+            if isRunning
+              .alert.alert--error Chỉ được phê duyệt sau khi đã dừng kiểm thử.
+            else
+              form.btn-row(method="POST" action=`/settings/${conveyor.conveyor_id}/approve-model`)
+                button.btn.btn--success(
+                  type="submit"
+                  name="decision"
+                  value="PASS"
+                  onclick="return confirm('Xác nhận model này ĐẠT và được dùng cho vận hành thật?');"
+                ) Đạt
+
+                button.btn.btn--danger(
+                  type="submit"
+                  name="decision"
+                  value="FAIL"
+                  onclick="return confirm('Xác nhận model này KHÔNG ĐẠT?');"
+                ) Không đạt
 
         .result-card.card
           .card__head
@@ -65,7 +97,8 @@ block main
           .inspection-summary
             .summary-row
               span.summary-label Mã lượt kiểm tra
-              span#jobId.summary-value -
+              span#stt.summary-value -
+              span#jobId.summary-value(style="display:none") -
 
             .summary-row
               span.summary-label Kết quả khung hình
@@ -99,5 +132,7 @@ block main
               | Đang chạy
 
   script.
+    window.__CONVEYOR_ID__ = !{JSON.stringify(conveyor.conveyor_id || "")};
+    window.__RUNTIME_MODE__ = !{JSON.stringify(runtimeMode || "PRODUCTION")};
     window.__CONVEYOR_STATUS__ = !{JSON.stringify(conveyor.status || null)};
     window.__LATEST_INSPECTION__ = !{JSON.stringify(latestInspection || null)};

@@ -85,6 +85,7 @@ img {
   z-index: 999;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
@@ -96,14 +97,27 @@ img {
   letter-spacing: 0.02em;
 }
 
-.btn-logout {
+.header-user {
   margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.header-user__name {
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.btn-logout {
   padding: 8px 14px;
   border-radius: 10px;
-  background: pink;
-  color: #ffffff;
+  background: #eef2ff;
+  color: #1e3a8a;
   text-decoration: none;
-  font-weight: 600;
+  font-weight: 800;
 }
 
 /* =========================================================
@@ -829,8 +843,7 @@ img[src]:not([src=""]) + .image-placeholder {
   gap: 14px;
 }
 
-.settings-form .field:nth-child(3),
-.settings-form .field:nth-child(4),
+
 .settings-form .checkbox-field,
 .settings-form .divider,
 .settings-form .section-title,
@@ -2043,196 +2056,6 @@ img[src]:not([src=""]) + .image-placeholder {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.settings-subsection {
-  margin-top: 18px;
-  padding-top: 16px;
-  border-top: 1px solid #eef2f7;
-}
-
-.settings-subsection__head {
-  margin-bottom: 12px;
-}
-
-.settings-subsection__title {
-  margin: 0;
-  color: var(--text);
-  font-size: 15px;
-  font-weight: 950;
-}
-
-.settings-subsection__desc {
-  margin: 5px 0 0;
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1.45;
-}
-
-.form-note {
-  margin: 7px 0 0 28px;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1.45;
-}
-
-.settings-section .checkbox-field {
-  margin-top: 18px;
-}
-
-.settings-section .checkbox-field input {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--primary);
-}
-
-.light-preview {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 12px;
-}
-
-.light-preview__item {
-  padding: 12px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: var(--surface-soft);
-}
-
-.light-preview__item span {
-  display: block;
-  margin-bottom: 5px;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 950;
-  text-transform: uppercase;
-}
-
-.light-preview__item strong {
-  display: block;
-  color: var(--text);
-  font-size: 14px;
-  font-weight: 950;
-}
-
-.light-preview__item--ok {
-  background: var(--success-bg);
-  border-color: #bbf7d0;
-}
-
-.light-preview__item--ok span,
-.light-preview__item--ok strong {
-  color: var(--success-text);
-}
-
-.arduino-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 16px;
-}
-
-.arduino-status-panel {
-  margin-top: 14px;
-  padding: 14px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: var(--surface-soft);
-}
-
-.arduino-status-panel__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
-.arduino-status-panel__head h4 {
-  margin: 0;
-  color: var(--text);
-  font-size: 15px;
-  font-weight: 950;
-}
-
-#arduino_status_badge {
-  flex: 0 0 auto;
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: #e2e8f0;
-  color: #475569;
-  font-size: 12px;
-  font-weight: 950;
-}
-
-#arduino_status_badge.success {
-  background: #dcfce7;
-  color: #166534;
-}
-
-#arduino_status_badge.warning {
-  background: #fef3c7;
-  color: #92400e;
-}
-
-#arduino_status_badge.error {
-  background: #fee2e2;
-  color: #991b1b;
-}
-
-.arduino-status-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.arduino-status-grid--light {
-  margin-top: 8px;
-}
-
-.arduino-status-item {
-  min-width: 0;
-  padding: 11px 12px;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  background: #ffffff;
-}
-
-.arduino-status-item span {
-  display: block;
-  margin-bottom: 5px;
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 950;
-  text-transform: uppercase;
-}
-
-.arduino-status-item strong {
-  display: block;
-  overflow-wrap: anywhere;
-  color: var(--text);
-  font-size: 13px;
-  font-weight: 950;
-  line-height: 1.35;
-}
-
-.arduino-status-panel__subhead {
-  margin-top: 12px;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 950;
-  text-transform: uppercase;
-}
-
-.arduino-status-panel__footer {
-  margin-top: 10px;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 800;
-  line-height: 1.45;
-}
-
 .settings-section-full {
   margin-top: 16px;
 }
@@ -2250,19 +2073,6 @@ img[src]:not([src=""]) + .image-placeholder {
 @media (max-width: 900px) {
   .settings-section-grid,
   .settings-section-grid--three {
-    grid-template-columns: 1fr;
-  }
-
-  .light-preview {
-    grid-template-columns: 1fr;
-  }
-
-  .arduino-status-panel__head {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .arduino-status-grid {
     grid-template-columns: 1fr;
   }
 
@@ -2285,4 +2095,266 @@ img[src]:not([src=""]) + .image-placeholder {
   font-size: 14px;
   font-weight: 950;
   min-height: 1.2em;
+}
+
+.sider .inner-menu ul li.has-submenu .submenu {
+  margin: 4px 0 4px 18px;
+  padding: 0;
+  list-style: none;
+}
+
+.sider .inner-menu ul li.has-submenu .submenu li a {
+  font-size: 13px;
+  padding: 9px 14px;
+  opacity: 0.88;
+}
+
+.conveyor-status.RUNNING {
+  background: var(--warning-bg);
+  color: var(--warning-text);
+}
+
+.conveyor-status.COMPLETED {
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+
+.conveyor-status.CANCELLED {
+  background: var(--danger-bg);
+  color: var(--danger-text);
+}
+
+
+/* =========================================================
+   UTILITIES AFTER MERGE
+========================================================= */
+.settings-section-grid--two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: grid;
+  gap: 20px;
+}
+
+.settings-subsection {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid #eef2f7;
+}
+
+.settings-subsection__title {
+  margin: 0;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 950;
+}
+
+.settings-subsection__desc,
+.field__hint {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.light-preview {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.table-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  white-space: nowrap;
+}
+
+.table-actions form {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+}
+
+.btn--sm {
+  height: 42px;
+  min-height: 42px;
+  padding: 0 18px;
+  border-radius: 14px;
+  font-size: 14px;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.table td:last-child .table-actions .btn,
+.table td:last-child .table-actions form {
+  margin-right: 0;
+}
+
+.table thead th:last-child,
+.table td:last-child {
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+  .settings-section-grid--two,
+  .light-preview {
+    grid-template-columns: 1fr;
+  }
+}
+.table td .table-actions {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 12px !important;
+  white-space: nowrap !important;
+}
+
+.card .table td .table-actions form,
+.card form.table-action-form {
+  display: inline-flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.card .table td .table-actions .btn,
+.card .table td .table-actions form > .btn,
+.card .table td .table-actions form > button[type="submit"] {
+  width: 88px !important;
+  min-width: 88px !important;
+  height: 42px !important;
+  min-height: 42px !important;
+  margin: 0 !important;
+  padding: 0 18px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  line-height: 1 !important;
+  vertical-align: middle !important;
+}
+
+.table td:last-child {
+  text-align: center !important;
+  vertical-align: middle !important;
+}
+.light-preview {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.light-preview__item {
+  padding: 14px 16px;
+  border: 1px solid #dbe4f0;
+  border-radius: 14px;
+  background: #f8fafc;
+}
+
+.light-preview__item span {
+  display: block;
+  font-size: 13px;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
+.light-preview__item strong {
+  font-size: 16px;
+  color: #0f172a;
+}
+
+.light-preview__item--ok {
+  background: #ecfdf5;
+  border-color: #86efac;
+}
+
+.checkbox-field {
+  margin-top: 18px;
+}
+
+.checkbox-field label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+}
+
+.form-note {
+  margin-top: 8px;
+  color: #64748b;
+}
+
+.arduino-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.arduino-status-panel {
+  margin-top: 20px;
+  padding: 20px;
+  border: 1px solid #dbe4f0;
+  border-radius: 18px;
+  background: #f8fafc;
+}
+
+.arduino-status-panel__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.arduino-status-panel__head h4 {
+  margin: 0;
+  font-size: 20px;
+}
+
+#arduino_status_badge {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  font-weight: 700;
+}
+
+.arduino-status-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.arduino-status-item {
+  padding: 14px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+}
+
+.arduino-status-item span {
+  display: block;
+  color: #64748b;
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+.arduino-status-item strong {
+  color: #0f172a;
+  font-size: 16px;
+}
+
+.arduino-status-panel__subhead {
+  margin-top: 20px;
+  margin-bottom: 12px;
+  font-weight: 800;
+}
+
+.arduino-status-panel__footer {
+  margin-top: 16px;
+  color: #64748b;
 }

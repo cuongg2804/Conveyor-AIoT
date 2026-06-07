@@ -4,7 +4,8 @@ services:
     container_name: conveyor-mongo
     restart: unless-stopped
     ports:
-      - "27018:27017"
+      - "127.0.0.1:27019:27017"
+      - "192.168.0.106:27019:27017"
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}

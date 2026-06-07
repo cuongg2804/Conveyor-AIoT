@@ -23,7 +23,8 @@ block main
 
                 .history-filters__actions
                     button.btn.btn--primary(type="submit") Lọc
-                    a.btn.btn-secondary(href=`/logs?tab=${tab}`) Xóa
+                    a.btn.btn--secondary(href=`/logs?tab=${tab}`) Xóa
+        
         .history-shift-tabs 
             a.history-shift-tab(
                 href="/logs?tab=control"
@@ -46,6 +47,7 @@ block main
                                 th Băng tải
                                 th Lệnh điều khiển
                                 th Trạng thái
+                                th Ghi chú
                         tbody
                             if controlLogs.length
                                 each item in controlLogs
@@ -94,4 +96,13 @@ block main
                                         td= item.message || "-"
                             else 
                                 tr 
-                                    td(colspan="6") Không có dữ liệu                            
+                                    td(colspan="6") Không có dữ liệu          
+        if pagination && pagination.totalPages > 1
+            .pagination
+                if pagination.hasPrev
+                a.pagination__btn(href=pagination.prevUrl) Trước
+
+                span.pagination__info Trang #{pagination.page} / #{pagination.totalPages}
+
+                if pagination.hasNext
+                a.pagination__btn(href=pagination.nextUrl) Sau                  

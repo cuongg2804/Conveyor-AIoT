@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-import Conveyor from "./conveyor.model";
 
 const config_logs_schema = new mongoose.Schema({
     config_log_id : {
