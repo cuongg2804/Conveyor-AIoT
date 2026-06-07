@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import ConveyorConfig from "../model/conveyorConfigSchema.model";
 import Conveyor from "../model/conveyor.model";
 import Camera from "../model/camera.model";
+import User from "../model/user.model";
 
 export const index = async (req: Request, res: Response) => {
   try {
@@ -17,6 +18,11 @@ export const index = async (req: Request, res: Response) => {
       camera_id: { $in: configs.map((c: any) => c.camera_id).filter(Boolean) },
     }).lean();
 
+    const users = await User.find({
+      user_id: {$in: conveyors.map((c: any) => c.user_id).filter(Boolean)} 
+    }).lean()
+    const userMap = new Map(users.map((u: any) => [u.user_id, u]))
+
     const currentUser = res.locals.user;
     const isAdmin = String(currentUser.role || "").toUpperCase() === "ADMIN"
     const conveyorQuery = isAdmin ? {is_active : true} : {is_active: true, user_id: currentUser.user_id}
@@ -28,11 +34,13 @@ export const index = async (req: Request, res: Response) => {
     const conveyorList = conveyors.map((conveyor: any) => {
       const config: any = configMap.get(conveyor.conveyor_id) || {};
       const camera: any = cameraMap.get(config.camera_id) || {};
+      const userAssigned: any = userMap.get(conveyor.user_id) || {};
 
       return {
         ...conveyor,
         ...config,
         camera_name: camera.camera_name || "-",
+        user_name: userAssigned.fullname || null,
         camera_ip: camera.camera_ip || "-",
       };
     });

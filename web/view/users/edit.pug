@@ -45,8 +45,5 @@ block main
                     select#role.field__control(name="role" required)
                         option(value="USER" selected=userEdit.role === "USER") USER
                         option(value="ADMIN" selected=userEdit.role === "ADMIN") ADMIN
-                .field
-                    label.field__label Trạng thái
-                    input#status.field__control(type="text" value=userEdit.status disabled)
                 .settings-actions
                     button.btn.btn--primary(type="submit") Cập nhật tài khoản

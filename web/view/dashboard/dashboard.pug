@@ -5,8 +5,8 @@ block main
   .dashboard
     .dashboard__header
       .dashboard__heading
-        h1.dashboard__title Hệ thống kiểm tra sản phẩm
-        p.dashboard__subtitle Quản lý băng tải, theo dõi kết quả và cấu hình vận hành
+        h1.dashboard__title Tổng quan hệ thống băng tải
+        //p.dashboard__subtitle Quản lý băng tải, theo dõi kết quả và cấu hình vận hành
 
     if errorMessage
       .alert.alert--error
@@ -19,8 +19,8 @@ block main
             .conveyor-card__head
               .conveyor-card__info
                 h2 #{conveyor.name}
-                if conveyor.user_id
-                  p Người vận hành: #{conveyor.fullname}
+                if conveyor.user_name  
+                  p Người vận hành: #{conveyor.user_name}
                 else
                   p Chưa có người vận hành
 

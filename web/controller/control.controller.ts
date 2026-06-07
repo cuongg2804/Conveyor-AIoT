@@ -4,6 +4,7 @@ import ConveyorConfig from "../model/conveyorConfigSchema.model";
 import ModelRegistry from "../model/modelRegister.model";
 import { publishControlCommand } from "../service/mqtt.service";
 import { canAccessConveyor } from "../helper/conveyorAccess.helper";
+import Control_log from "../model/control_logs.model";
 
 const allowedCommands = [
   "START_SYSTEM",
@@ -194,6 +195,15 @@ export const sendCommand = async (req: Request, res: Response) => {
         },
       });
 
+      await Control_log.create({
+        user_id: res.locals.user?.user_id || "",
+        conveyor_id: conveyorCode,
+        cmd: "START",
+        status: "SUCCESS",
+        message: "Người dùng gửi lệnh Start hệ thống",
+        created_at: new Date(),
+      });
+
       await Conveyor.updateOne(
         { conveyor_id: conveyorCode },
         { $set: { status: "STARTING" } }
@@ -214,6 +224,15 @@ export const sendCommand = async (req: Request, res: Response) => {
         conveyor_id: conveyorCode,
         //conveyor_code: conveyorCode,
         mode: runtimeMode,
+      });
+
+      await Control_log.create({
+        user_id: res.locals.user?.user_id || "",
+        conveyor_id: conveyorCode,
+        cmd: "STOP",
+        status: "SUCCESS",
+        message: "Người dùng gửi lệnh Stop hệ thống",
+        created_at: new Date(),
       });
 
       await Conveyor.updateOne(

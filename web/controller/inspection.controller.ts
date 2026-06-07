@@ -53,15 +53,16 @@ export const monitor = async (req: Request, res: Response) => {
     const isRunning = ["STARTING", "RUNNING"].includes(
       String((conveyor as any).status || "").toUpperCase()
     );
+    const rawMode = String(req.query.mode || req.query.run_mode || "PRODUCTION")
+      .trim()
+      .toUpperCase();
+
+    const mode = rawMode === "TEST" ? "TEST" : "PRODUCTION";
 
     const latestInspection: any = isRunning
       ? await InspectionResult.findOne({
           conveyor_id: conveyorCode,
-          $or: [
-            { mode: "PRODUCTION" },
-            { mode: { $exists: false } },
-            { mode: "" },
-          ],
+          mode,
         })
           .select("-_id")
           .sort({ timestamp: -1 })
@@ -73,12 +74,16 @@ export const monitor = async (req: Request, res: Response) => {
         ? withPublicInspectionImageUrls(latestInspection)
         : latestInspection;
 
+    
+
     return res.render("dashboard/monitor", {
       title: `Giám sát ${(conveyor as any).name}`,
       conveyor,
       latestInspection: latestInspectionView,
       dashboardUrl: "/dashboard",
       settingsUrl: `/settings/${conveyorCode}`,
+      mode,
+//      currentTab: mode === "TEST" ? "test" : "production",
     });
   } catch (error) {
     console.error("Render monitor lỗi:", error);

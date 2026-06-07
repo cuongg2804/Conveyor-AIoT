@@ -3,7 +3,7 @@ extends ../layout/default.pug
 block main
   - const statusLabels = { READY: "Sẵn sàng", STARTING: "Đang khởi động", RUNNING: "Đang chạy", STOPPING: "Đang dừng", STOPPED: "Đã dừng", STOP: "Đã dừng", ERROR: "Đang lỗi", OFFLINE: "Offline" }
   - const conveyorStatusText = statusLabels[String(conveyor.status || "").toUpperCase()] || "Đang chờ dữ liệu"
-  - const currentMode = runtimeMode || "PRODUCTION"
+  - const currentMode = mode || "PRODUCTION"
   - const isTestMode = currentMode === "TEST"
   - const runningStatuses = ["STARTING", "RUNNING", "STOPPING"]
   - const isRunning = runningStatuses.includes(String(conveyor.status || "").toUpperCase())

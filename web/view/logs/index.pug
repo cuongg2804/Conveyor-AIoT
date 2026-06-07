@@ -97,12 +97,12 @@ block main
                             else 
                                 tr 
                                     td(colspan="6") Không có dữ liệu          
-                if pagination && pagination.totalPages > 1
-                    .pagination
-                        if pagination.hasPrev
-                        a.pagination__btn(href=pagination.prevUrl) Trước
+        if pagination && pagination.totalPages > 1
+            .pagination
+                if pagination.hasPrev
+                a.pagination__btn(href=pagination.prevUrl) Trước
 
-                        span.pagination__info Trang #{pagination.page} / #{pagination.totalPages}
+                span.pagination__info Trang #{pagination.page} / #{pagination.totalPages}
 
-                        if pagination.hasNext
-                        a.pagination__btn(href=pagination.nextUrl) Sau                  
+                if pagination.hasNext
+                a.pagination__btn(href=pagination.nextUrl) Sau                  

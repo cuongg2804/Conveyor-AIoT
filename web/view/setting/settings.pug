@@ -26,6 +26,8 @@ block main
       light_max_lux: config.arduino_light_max_lux || 2000
     };
 
+    
+
   .page
     .dashboard__header
       .dashboard__heading
@@ -393,3 +395,73 @@ block main
   script.
     window.CONVEYOR_ID = "#{conveyor.conveyor_id}";
     window.SPEED_PRESETS = !{JSON.stringify(safeSpeedPresets)};
+    //- function sendArduinoCommand(command, payload, button) {
+    //-   const commandId =
+    //-     "CMD_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 8);
+
+    //-   if (button) {
+    //-     button.disabled = true;
+    //-     pendingArduinoButtons[commandId] = button;
+    //-   }
+
+    //-   if (arduinoStatusBadge) arduinoStatusBadge.textContent = "Đang xử lý";
+    //-   if (arduinoStatusMessage) arduinoStatusMessage.textContent = "Đang gửi lệnh tới Arduino...";
+
+    //-   socket.emit("control_command", {
+    //-     command_id: commandId,
+    //-     command,
+    //-     payload: {
+    //-       conveyor_id: window.CONVEYOR_ID,
+    //-       ...(payload || {}),
+    //-     },
+    //-   });
+    //- }
+    //- if (readArduinoConfigButton) {
+    //-   readArduinoConfigButton.addEventListener("click", function () {
+    //-     sendArduinoCommand("READ_ARDUINO_CONFIG", {}, readArduinoConfigButton);
+    //-   });
+    //- }
+
+    //- if (runLightCheckButton) {
+    //-   runLightCheckButton.addEventListener("click", function () {
+    //-     sendArduinoCommand("LIGHT_CHECK", {}, runLightCheckButton);
+    //-   });
+    //- }
+
+    //- if (resetArduinoDefaultButton) {
+    //-   resetArduinoDefaultButton.addEventListener("click", function () {
+    //-     if (!confirm("Khôi phục cấu hình Arduino về mặc định?")) return;
+    //-     sendArduinoCommand("RESET_ARDUINO_DEFAULT", {}, resetArduinoDefaultButton);
+    //-   });
+    //- }
+    //- socket.on("control_ack", function (ack) {
+    //-   const button = pendingArduinoButtons[ack.command_id];
+
+    //-   if (button) {
+    //-     button.disabled = false;
+    //-     delete pendingArduinoButtons[ack.command_id];
+    //-   }
+
+    //-   if (arduinoStatusBadge) {
+    //-     arduinoStatusBadge.textContent = ack.status === "SUCCESS" ? "Đã nhận" : "Lỗi";
+    //-   }
+
+    //-   if (arduinoStatusMessage) {
+    //-     arduinoStatusMessage.textContent = ack.message || "-";
+    //-   }
+
+    //-   if (ack.status !== "SUCCESS") {
+    //-     alert(ack.message || "Thao tác Arduino thất bại.");
+    //-     return;
+    //-   }
+
+    //-   const data = ack.data || {};
+
+    //-   if (data.config) {
+    //-     renderArduinoConfig(data.config);
+    //-   }
+
+    //-   if (data.light) {
+    //-     renderLightCheck(data.light);
+    //-   }
+    //- });

@@ -12,9 +12,6 @@ block main
         .card 
             form.setting-form(method="POST" action="/cameras/create")
                 .field
-                        label.field__label(for="camera_id") Mã camera
-                        input#camera_id.field__control(type="text" name="camera_id" value=form.name required)
-                .field
                     label.field__label(for="camera_name") Tên camera
                     input#camera_name.field__control(type="text" name="camera_name" value=form.name required)
 
