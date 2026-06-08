@@ -326,7 +326,7 @@ async function sendControlCommand(command, payload = {}) {
         command,
         payload: {
           conveyor_id: conveyorCode,
-          mode: window.__RUNTIME_MODE__ || "PRODUCTION",
+          mode: window.__RUNTIME_MODE__,
           ...payload,
         },
       }),

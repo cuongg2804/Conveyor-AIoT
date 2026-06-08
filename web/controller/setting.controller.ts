@@ -221,7 +221,7 @@ export const settings = async (req: Request, res: Response) => {
       .sort({ created_at: -1 })
       .lean();
 
-    const testingModels = await ModelRegistry.find({ status: "testing" })
+    const testingModels = await ModelRegistry.find({ status: {$in: ["testing", "failed"]}})
       .sort({ created_at: -1 })
       .lean();
 
@@ -465,14 +465,14 @@ export const updateSettings = async (req: Request, res: Response) => {
 
         const testingModel = await ModelRegistry.findOne({
           model_id: selectedModelId,
-          status: "testing",
+          status: {$in: ["testing", "failed"]},
         }).lean<any>();
 
         if (!testingModel) {
           return res
             .status(400)
             .send(
-              "Model kiểm thử không tồn tại hoặc không ở trạng thái testing."
+              "Model kiểm thử không tồn tại."
             );
         }
 

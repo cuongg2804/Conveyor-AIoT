@@ -395,6 +395,7 @@ block main
   script.
     window.CONVEYOR_ID = "#{conveyor.conveyor_id}";
     window.SPEED_PRESETS = !{JSON.stringify(safeSpeedPresets)};
+    window.__RUNTIME_MODE__ = !{JSON.stringify(runtimeMode || "PRODUCTION")};
     //- function sendArduinoCommand(command, payload, button) {
     //-   const commandId =
     //-     "CMD_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 8);

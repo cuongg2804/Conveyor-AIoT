@@ -40,9 +40,9 @@ const publicErrorMessage = (error: any) => {
     raw.includes("sockettimeoutms") ||
     raw.includes("connecttimeoutms")
   ) {
-    return "Không kết nối được MongoDB Atlas";
+    return "Không kết nối được tới MongoDB";
   }
-
+  console.log("LỖI: ",raw)
   return "Không gửi được yêu cầu tới hệ thống kiểm tra.";
 };
 
@@ -65,9 +65,8 @@ export const sendCommand = async (req: Request, res: Response) => {
 
     const payloadData = payload && typeof payload === "object" ? payload : {};
     const conveyorCode = normalizeConveyorCode(
-      payloadData.conveyor_id || payloadData.conveyor_code
-    );
-    const runtimeMode = normalizeRuntimeMode(payloadData.mode);
+      payloadData.conveyor_id);
+    const runtimeMode = normalizeRuntimeMode(payloadData.mode || req.body.mode || req.query.mode || req.query.tab);
 
     if (!conveyorCode) {
       return res.status(400).json({
@@ -104,11 +103,11 @@ export const sendCommand = async (req: Request, res: Response) => {
       });
     }
 
-    if (command === "START_SYSTEM" && runningStatuses.includes(currentStatus)) {
-      return res.status(409).json({
-        message: `Băng tải ${conveyorCode} đang ${currentStatus}, không thể khởi động thêm chế độ khác.`,
-      });
-    }
+    // if (command === "START_SYSTEM" && runningStatuses.includes(currentStatus)) {
+    //   return res.status(409).json({
+    //     message: `Băng tải ${conveyorCode} đang ${currentStatus}, không thể khởi động thêm chế độ khác.`,
+    //   });
+    // }
 
     const config = await ConveyorConfig.findOne({
       conveyor_id: conveyorCode,
