@@ -6,9 +6,9 @@ from pathlib import Path
 class LatencyLogger:
   FIELDNAMES = [
     "timestamp",
-    "job_id",
+    "stt",
     "inspection_id",
-    "conveyor_code",
+    "conveyor_id",
     "model_id",
     "model_name",
     "model_version",
@@ -101,6 +101,6 @@ class LatencyLogger:
 
     print(
       "[LatencyLogger] wrote "
-      f"job_id={clean_row.get('job_id')} "
+      f"stt={clean_row.get('stt')} "
       f"end_to_end_ms={clean_row.get('end_to_end_ms')}"
     )

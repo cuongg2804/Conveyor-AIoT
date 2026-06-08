@@ -132,6 +132,25 @@ class ArduinoComm:
       "lines": lines,
     }
 
+  def _verify_config_protocol_unlocked(self, timeout=3, retries=2):
+    last_error = None
+
+    for attempt in range(1, retries + 1):
+      try:
+        self.serial_conn.reset_input_buffer()
+        return self._send_and_wait_unlocked("GET_VERSION", "FW_VERSION:", timeout=timeout)
+      except RuntimeError as e:
+        last_error = e
+        if attempt < retries:
+          time.sleep(1)
+
+    raise RuntimeError(
+      "Arduino config protocol is not responding. "
+      f"Check that {self.port} is the correct port, baud rate is {self.baudrate}, "
+      "and BangTaiFinal firmware with GET_VERSION/config commands is uploaded. "
+      f"Last error: {last_error}"
+    )
+
   @staticmethod
   def _parse_key_value_line(line, prefix):
     if not line.startswith(prefix):
@@ -216,6 +235,7 @@ class ArduinoComm:
     )
 
     with self._lock:
+      version_info = self._verify_config_protocol_unlocked()
       steps = [
         self._send_and_wait_unlocked(
           f"SET_SPEED_RANGE:{values['speed_low_level']},{values['speed_high_level']}",
@@ -245,6 +265,7 @@ class ArduinoComm:
       config_line = self._send_and_wait_unlocked("GET_CONFIG", "CONFIG:fw=", timeout=5)
 
     return {
+      "firmware_version": version_info["response"].split(":", 1)[-1],
       "applied": values,
       "saved": bool(save_default),
       "steps": steps,
