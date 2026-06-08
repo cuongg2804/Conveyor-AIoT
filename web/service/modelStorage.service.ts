@@ -64,13 +64,6 @@ const requiredString = (value: any, field: string) => {
   return normalized;
 };
 
-const optionalNumber = (value: any) => {
-  if (value === undefined || value === null || value === "") return null;
-  const number = Number(value);
-  if (!Number.isFinite(number)) throw new Error("Metric trong model_info.json phai la so.");
-  return number;
-};
-
 const allowedStatuses = ["testing", "active", "inactive", "archived", "failed"];
 const normalizeModelIdPart = (value: any) =>
   String(value || "")
@@ -107,12 +100,39 @@ export const buildRegistryUpdate = (body: any): ModelRegistryUpdate => {
     throw new Error("Status không hợp lệ.");
   }
 
+  const isValidMetric = (value: any, fieldName: String) => {
+    if(value === undefined || value === null || value === "") {
+      return undefined
+    }
+    const number = Number(value)
+    if(!Number.isFinite(number)){
+      throw new Error(`${fieldName} phải là số hợp lệ.`)
+    }
+
+    if(number < 0 || number >1){
+      throw new Error(`${fieldName} phải nằm trong khoảng [0:1].`)
+    }
+    return number
+  }
+  const isValidThreshold = (value: any) => {
+    const number = Number(value)
+    if(!Number.isFinite(number)){
+      throw new Error("Threshold phải là số hợp lệ.")
+    }
+
+    if(number < 0 ){
+      throw new Error("Threshold phải nằm trong khoảng lớn hơn 0.")
+    }
+    return number
+  }
+  
+
   return {
-    threshold,
-    accuracy: optionalNumber(body.accuracy),
-    precision: optionalNumber(body.precision),
-    recall: optionalNumber(body.recall),
-    f1_score: optionalNumber(body.f1_score),
+    threshold: isValidThreshold(body.threshold),
+    accuracy: isValidMetric(body.accuracy, "Accuracy"),
+    precision: isValidMetric(body.precision, "Precision"),
+    recall: isValidMetric(body.recall, "Recall"),
+    f1_score: isValidMetric(body.f1_score, "F1 Score"),
     status: status as ModelRegistryUpdate["status"],
   };
 };
@@ -183,8 +203,30 @@ export const parseModelInfo = (file: Express.Multer.File): ModelRegistryInput =>
   }
 
   const threshold = Number(metadata.threshold);
-  if (!Number.isFinite(threshold)) {
-    throw new Error("model_info.json thiếu threshold hoặc threshold không phải là số.");
+  const isValidMetric = (value: any, fieldName: String) => {
+    if(value === undefined || value === null || value === "") {
+      return undefined
+    }
+    const number = Number(value)
+    if(!Number.isFinite(number)){
+      throw new Error(`${fieldName} phải là số hợp lệ.`)
+    }
+
+    if(number < 0 || number >1){
+      throw new Error(`${fieldName} phải nằm trong khoảng [0:1].`)
+    }
+    return number
+  }
+  const isValidThreshold = (value: any) => {
+    const number = Number(value)
+    if(!Number.isFinite(number)){
+      throw new Error("Threshold phải là số hợp lệ.")
+    }
+
+    if(number < 0 ){
+      throw new Error("Threshold phải nằm trong khoảng lớn hơn 0.")
+    }
+    return number
   }
 
   return {
@@ -197,11 +239,11 @@ export const parseModelInfo = (file: Express.Multer.File): ModelRegistryInput =>
         : metadata.model_format === "ckpt" || metadata.format === "ckpt"
           ? "ckpt"
           : undefined,
-    threshold,
-    accuracy: optionalNumber(metadata.accuracy),
-    precision: optionalNumber(metadata.precision),
-    recall: optionalNumber(metadata.recall),
-    f1_score: optionalNumber(metadata.f1_score),
+    threshold: isValidThreshold(threshold),
+    accuracy: isValidMetric(metadata.accuracy, "Accuracy"),
+    precision: isValidMetric(metadata.precision, "Precision"),
+    recall: isValidMetric(metadata.recall, "Recall"),
+    f1_score: isValidMetric(metadata.f1_score, "F1 Score"),
     status: "testing",
   };
 };

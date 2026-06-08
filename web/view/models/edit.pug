@@ -43,24 +43,24 @@ block main
         form.model-upload-form(method="POST" action=`/models/${model.model_id}/edit`)
           .field
             label.field__label(for="threshold") Threshold
-            input#threshold.field__control(type="number" name="threshold" value=model.threshold step="0.000001" required)
+            input#threshold.field__control(type="number" name="threshold" value=model.threshold step="0.000001" min="0" required)
 
           .model-form-grid
             .field
               label.field__label(for="accuracy") Accuracy
-              input#accuracy.field__control(type="number" name="accuracy" value=model.accuracy step="0.0001")
+              input#accuracy.field__control(type="number" name="accuracy" value=model.accuracy step="0.0001" min="0" max="1")
 
             .field
               label.field__label(for="precision") Precision
-              input#precision.field__control(type="number" name="precision" value=model.precision step="0.0001")
+              input#precision.field__control(type="number" name="precision" value=model.precision step="0.0001" min="0" max="1")
 
             .field
               label.field__label(for="recall") Recall
-              input#recall.field__control(type="number" name="recall" value=model.recall step="0.0001")
+              input#recall.field__control(type="number" name="recall" value=model.recall step="0.0001" min="0" max="1")
 
             .field
               label.field__label(for="f1_score") F1 score
-              input#f1_score.field__control(type="number" name="f1_score" value=model.f1_score step="0.0001")
+              input#f1_score.field__control(type="number" name="f1_score" value=model.f1_score step="0.0001" min="0" max="1")
 
           .field
             label.field__label(for="status") Trạng thái
