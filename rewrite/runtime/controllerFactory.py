@@ -129,6 +129,7 @@ class SystemController:
         should_stop=self.should_stop_requested,
       )
 
+      self.arduino.send_line("START")
       self.running = True
       if self.status != "RUNNING_ROLLBACK":
         self.status = "RUNNING"
