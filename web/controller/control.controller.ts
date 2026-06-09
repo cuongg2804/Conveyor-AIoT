@@ -5,6 +5,7 @@ import ModelRegistry from "../model/modelRegister.model";
 import { publishControlCommand } from "../service/mqtt.service";
 import { canAccessConveyor } from "../helper/conveyorAccess.helper";
 import Control_log from "../model/control_logs.model";
+import { randomUUID } from "crypto";
 
 const allowedCommands = [
   "START_SYSTEM",
@@ -42,7 +43,7 @@ const publicErrorMessage = (error: any) => {
   ) {
     return "Không kết nối được MongoDB Atlas";
   }
-
+//  console.log("Loi: ", raw);
   return "Không gửi được yêu cầu tới hệ thống kiểm tra.";
 };
 
@@ -101,12 +102,6 @@ export const sendCommand = async (req: Request, res: Response) => {
       return res.status(400).json({
         message:
           "Không thể áp dụng cấu hình khi băng tải đang vận hành. Vui lòng dừng hệ thống trước.",
-      });
-    }
-
-    if (command === "START_SYSTEM" && runningStatuses.includes(currentStatus)) {
-      return res.status(409).json({
-        message: `Băng tải ${conveyorCode} đang ${currentStatus}, không thể khởi động thêm chế độ khác.`,
       });
     }
 
@@ -196,24 +191,20 @@ export const sendCommand = async (req: Request, res: Response) => {
       });
 
       await Control_log.create({
+        control_log_id: `CTRL-${randomUUID()}`,
         user_id: res.locals.user?.user_id || "",
         conveyor_id: conveyorCode,
-        cmd: "START",
+        cmd: "START_INSPECTION_SESSION",
         status: "SUCCESS",
-        message: "Người dùng gửi lệnh Start hệ thống",
+        message: "Người dùng bắt đầu phiên kiểm tra AI",
         created_at: new Date(),
       });
-
-      await Conveyor.updateOne(
-        { conveyor_id: conveyorCode },
-        { $set: { status: "STARTING" } }
-      );
 
       return res.json({
         message:
           runtimeMode === "TEST"
-            ? "Đã gửi lệnh khởi động kiểm thử model."
-            : "Đã gửi lệnh khởi động vận hành chính.",
+            ? "Đã gửi yêu cầu bắt đầu phiên kiểm thử model."
+            : "Đã gửi yêu cầu bắt đầu phiên kiểm tra.",
         data,
       });
     }
@@ -227,21 +218,17 @@ export const sendCommand = async (req: Request, res: Response) => {
       });
 
       await Control_log.create({
+        control_log_id: `CTRL-${randomUUID()}`,
         user_id: res.locals.user?.user_id || "",
         conveyor_id: conveyorCode,
-        cmd: "STOP",
+        cmd: "STOP_INSPECTION_SESSION",
         status: "SUCCESS",
-        message: "Người dùng gửi lệnh Stop hệ thống",
+        message: "Người dùng kết thúc phiên kiểm tra AI",
         created_at: new Date(),
       });
 
-      await Conveyor.updateOne(
-        { conveyor_id: conveyorCode },
-        { $set: { status: "STOPPING" } }
-      );
-
       return res.json({
-        message: "Đã gửi lệnh dừng hệ thống.",
+        message: "Đã gửi yêu cầu kết thúc phiên kiểm tra.",
         data,
       });
     }

@@ -174,6 +174,22 @@ enum SystemState {
 
 SystemState trangThai = STOPPED;
 
+void printSystemState() {
+  Serial.print(F("STATE:"));
+
+  switch (trangThai) {
+    case RUNNING:
+      Serial.println(F("RUNNING"));
+      break;
+    case EMERGENCY_STOP:
+      Serial.println(F("EMERGENCY_STOP"));
+      break;
+    default:
+      Serial.println(F("STOPPED"));
+      break;
+  }
+}
+
 // ================= SERIAL + QUEUE =================
 const int SIZE_QUEUE = 30;
 int queueKQ[SIZE_QUEUE];
@@ -592,6 +608,7 @@ void batHeThong() {
     Serial.print(dangChayNhanh ? F("HIGH") : F("LOW"));
     Serial.print(F(",PWM:"));
     Serial.println(getCurrentPwm());
+    printSystemState();
   }
 }
 
@@ -601,6 +618,7 @@ void dungHeThong() {
     dungCoCau();
 
     Serial.println(F("STOP: He thong dung."));
+    printSystemState();
   }
 }
 
@@ -611,6 +629,7 @@ void dungKhanCap() {
     xoaQueue();
 
     Serial.println(F("EMERGENCY STOP: Dung khan cap!"));
+    printSystemState();
   }
 }
 
@@ -620,6 +639,7 @@ void nhaEstopVeStopped() {
     dungCoCau();
 
     Serial.println(F("E-STOP RESET: He thong ve STOPPED. Can bam START de chay lai."));
+    printSystemState();
   }
 }
 
@@ -687,14 +707,6 @@ void xuLySerial() {
       }
     }
 
-    else if (msg.equalsIgnoreCase("START")) {
-      batHeThong();
-    }
-
-    else if (msg.equalsIgnoreCase("STOP")) {
-      dungHeThong();
-    }
-
     else if (msg.equalsIgnoreCase("GET_VERSION")) {
       Serial.print(F("FW_VERSION:"));
       Serial.println(FIRMWARE_VERSION);
@@ -702,6 +714,10 @@ void xuLySerial() {
 
     else if (msg.equalsIgnoreCase("GET_CONFIG")) {
       printConfig();
+    }
+
+    else if (msg.equalsIgnoreCase("GET_STATE")) {
+      printSystemState();
     }
 
     else if (msg.equalsIgnoreCase("SAVE_CONFIG")) {
@@ -896,6 +912,7 @@ void setup() {
   Serial.println(F("SET_SERVO_GATE:x"));
   Serial.println(F("SET_LIGHT_RANGE:min,max   // 0 <= min < max <= 3000"));
   Serial.println(F("GET_CONFIG"));
+  Serial.println(F("GET_STATE"));
   Serial.println(F("GET_VERSION"));
   Serial.println(F("SAVE_CONFIG"));
   Serial.println(F("RESET_CONFIG_DEFAULT"));

@@ -206,7 +206,6 @@ class HikCamera:
             with self.ia.fetch(timeout=timeout) as buf:
                 return self._buffer_to_frame(buf)
         except TimeoutException:
-            self._print_limited(f"Camera fetch timeout after {timeout}s; no frame returned.")
             return None
         except Exception as e:
             self._print_limited(f"⚠️ Capture error: {e}")

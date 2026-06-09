@@ -51,3 +51,11 @@ class StorageService:
     )
 
     return self.upload_image(roi_image, object_key)
+
+  def save_overlay(self, conveyor_id, inspection_id, frame_index, overlay_image):
+    object_key = (
+      f"inspections/{conveyor_id}/{inspection_id}/"
+      f"frame_{frame_index}_overlay.jpg"
+    )
+
+    return self.upload_image(overlay_image, object_key)

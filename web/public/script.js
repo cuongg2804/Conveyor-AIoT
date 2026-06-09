@@ -54,8 +54,8 @@ document.addEventListener("click", (event) => {
 });
 
 const COMMAND_LABELS = {
-  START_SYSTEM: "Khởi động hệ thống",
-  STOP_SYSTEM: "Dừng hệ thống",
+  START_SYSTEM: "Bắt đầu phiên kiểm tra",
+  STOP_SYSTEM: "Kết thúc phiên kiểm tra",
   GET_STATUS: "Kiểm tra trạng thái",
   GET_SERIAL_PORT: "Quét cổng Serial",
   GET_SERIAL_PORTS: "Quét cổng Serial",
@@ -101,10 +101,10 @@ const userMessage = (message, fallback = "Có lỗi xảy ra") => {
   if (normalized.includes("publish command failed")) return "Không gửi được yêu cầu tới hệ thống AI.";
 
   return raw
-    .replaceAll("START_SYSTEM", "Khởi động hệ thống")
-    .replaceAll("STOP_SYSTEM", "Dừng hệ thống")
+    .replaceAll("START_SYSTEM", "Bắt đầu phiên kiểm tra")
+    .replaceAll("STOP_SYSTEM", "Kết thúc phiên kiểm tra")
     .replaceAll("GET_STATUS", "Kiểm tra trạng thái")
-    .replaceAll("job_id", "Mã lượt kiểm tra")
+    .replaceAll("stt", "Số thứ tự")
     .replaceAll("Job", "Lượt kiểm tra")
     .replaceAll("command", "Thao tác");
 };
@@ -205,6 +205,21 @@ const setAiStatus = (mode, text) => {
   if (topText) topText.textContent = text;
 };
 
+const setInspectionSessionStatus = (running, status) => {
+  const el = document.getElementById("inspectionSessionStatus");
+  if (!el) return;
+
+  el.classList.remove("connected", "disconnected", "warning");
+  if (running) {
+    el.classList.add("connected");
+    el.innerHTML = '<span class="status-dot"></span>Đang kiểm tra';
+    return;
+  }
+
+  el.classList.add(status === "ERROR" ? "disconnected" : "warning");
+  el.innerHTML = `<span class="status-dot"></span>${status === "ERROR" ? "Lỗi" : "Chưa bắt đầu"}`;
+};
+
 const updateMqttStatus = (status) => {
   const el = document.getElementById("systemStatus");
   if (!el) return;
@@ -265,7 +280,7 @@ function renderInspectionResult(data) {
   if (currentMode === "TEST" && resultMode !== "TEST") return;
   if (currentMode === "PRODUCTION" && resultMode === "TEST") return;
 
-  const displayId = data.stt || data.job_id || data.inspection_id;
+  const displayId = data.stt || data.inspection_id;
 
   setText("stt", displayId ? `Lượt ${displayId}` : "-");
   setText("jobId", displayId ? `Lượt ${displayId}` : "-");
@@ -313,8 +328,8 @@ async function sendControlCommand(command, payload = {}) {
     const conveyorCode = getCurrentConveyorCode();
     const label = commandLabel(command);
 
-    if (command === "START_SYSTEM") setAiStatus("warning", "Đang khởi động hệ thống...");
-    if (command === "STOP_SYSTEM") setAiStatus("warning", "Đang dừng hệ thống...");
+    if (command === "START_SYSTEM") setInspectionSessionStatus(false, "STARTING");
+    if (command === "STOP_SYSTEM") setInspectionSessionStatus(false, "STOPPING");
     if (command === "GET_STATUS") setAiStatus("warning", "Đang kiểm tra trạng thái...");
 
     const res = await fetch("/control/command", {
@@ -491,7 +506,7 @@ socket.on("inspection_result", (data) => {
 
   inspectionSessionActive = true;
   renderInspectionResult(data);
-  setAiStatus("connected", "Hệ thống đang chạy");
+  setInspectionSessionStatus(true, "RUNNING");
   //showToast(`Đã nhận kết quả kiểm tra: ${resultLabel(data.label)}`, "info");
 });
 
@@ -500,33 +515,22 @@ socket.on("control_ack", (ack) => {
 
   if (ack.status === "SUCCESS" && ack.command === "START_SYSTEM") {
     inspectionSessionActive = true;
-    setAiStatus("warning", "AI da nhan lenh khoi dong, dang cho he thong san sang...");
-    showToast("AI da nhan lenh khoi dong, dang cho he thong san sang", "info");
+    setInspectionSessionStatus(false, "STARTING");
+    showToast("AI đã nhận yêu cầu bắt đầu phiên kiểm tra", "info");
   }
 
   if (ack.status === "SUCCESS" && ack.command === "STOP_SYSTEM") {
     inspectionSessionActive = false;
     clearInspectionResult();
-    setAiStatus("warning", "AI da nhan lenh dung he thong...");
-    showToast("AI da nhan lenh dung he thong", "info");
+    setInspectionSessionStatus(false, "STOPPING");
+    showToast("AI đã nhận yêu cầu kết thúc phiên kiểm tra", "info");
   }
 
   if (ack.status === "SUCCESS" && !["START_SYSTEM", "STOP_SYSTEM"].includes(ack.command)) {
     showToast(`${commandLabel(ack.command)} thành công`, "success");
 
-    if (ack.command === "START_SYSTEM") {
-      inspectionSessionActive = true;
-      setAiStatus("warning", "Đang khởi động hệ thống...");
-    }
-
-    if (ack.command === "STOP_SYSTEM") {
-      inspectionSessionActive = false;
-      clearInspectionResult();
-      setAiStatus("warning", "Đang dừng hệ thống...");
-    }
-
     if (ack.command === "GET_STATUS") {
-      setAiStatus("connected", "Đã nhận trạng thái hệ thống");
+      showToast("Đã đọc trạng thái băng tải từ Arduino", "success");
     }
   }
 
@@ -539,42 +543,29 @@ socket.on("control_ack", (ack) => {
 });
 
 socket.on("system_status", (status) => {
-  const dbStatus = normalizeCode(status.db_status || status.status);
-  const running = status.running === true || dbStatus === "RUNNING";
+  const dbStatus = normalizeCode(status.db_status || status.conveyor_status);
+  const sessionRunning = status.session_running === true;
+  const sessionStatus = normalizeCode(status.session_status || status.status);
 
-  if (running || dbStatus === "STARTING") {
-    inspectionSessionActive = true;
-    setAiStatus(
-      running ? "connected" : "warning",
-      running ? "Hệ thống đang chạy" : "Đang khởi động hệ thống..."
-    );
-    return;
-  }
+  inspectionSessionActive = sessionRunning;
+  setInspectionSessionStatus(sessionRunning, sessionStatus);
 
-  if (dbStatus === "STOPPING") {
-    inspectionSessionActive = false;
-    clearInspectionResult();
-    setAiStatus("warning", "Đang dừng hệ thống...");
-    return;
-  }
-
-  if (dbStatus === "READY") {
-    inspectionSessionActive = false;
-    clearInspectionResult();
-    setAiStatus("warning", "Sẵn sàng vận hành");
+  if (dbStatus === "RUNNING") {
+    setAiStatus("connected", "Băng tải đang chạy");
     return;
   }
 
   if (dbStatus === "ERROR") {
-    inspectionSessionActive = false;
-    clearInspectionResult();
-    setAiStatus("disconnected", "Hệ thống đang lỗi");
+    setAiStatus("disconnected", "Băng tải đang dừng khẩn cấp");
     return;
   }
 
-  inspectionSessionActive = false;
-  clearInspectionResult();
-  setAiStatus("disconnected", "Hệ thống đang dừng");
+  if (dbStatus === "OFFLINE") {
+    setAiStatus("disconnected", "Không đọc được trạng thái Arduino");
+    return;
+  }
+
+  setAiStatus("warning", "Băng tải đang dừng");
 });
 
 socket.on("system_error", (payload) => {

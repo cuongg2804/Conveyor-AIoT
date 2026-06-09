@@ -43,6 +43,7 @@ class ArduinoComm:
         port=self.port,
         baudrate=self.baudrate,
         timeout=self.timeout,
+        write_timeout=0.1,
       )
       time.sleep(2)
       self.serial_conn.reset_input_buffer()
@@ -64,11 +65,11 @@ class ArduinoComm:
     with self._lock:
       self._send_line_unlocked(message)
 
-  def _send_line_unlocked(self, message):
+  def _send_line_unlocked(self, message, log=True):
     data = (str(message) + "\n").encode("utf-8")
     self.serial_conn.write(data)
-    self.serial_conn.flush()
-    print(f"[Arduino TX] {message}")
+    if log:
+      print(f"[Arduino TX] {message}")
 
   def read_line(self):
     if not self.is_connected():
@@ -82,13 +83,9 @@ class ArduinoComm:
       return None
 
     if self.serial_conn.in_waiting:
-      try:
-        line = self.serial_conn.readline().decode("utf-8", errors="ignore").strip()
-        if line:
-          print(f"[Arduino RX] {line}")
-          return line
-      except Exception as e:
-        print(f"[Arduino] Read error: {e}")
+      line = self.serial_conn.readline().decode("utf-8", errors="ignore").strip()
+      if line:
+        return line
 
     return None
 
@@ -123,8 +120,8 @@ class ArduinoComm:
 
     raise RuntimeError(f"Timeout waiting for Arduino response: {', '.join(prefixes)}")
 
-  def _send_and_wait_unlocked(self, command, prefixes, timeout=5):
-    self._send_line_unlocked(command)
+  def _send_and_wait_unlocked(self, command, prefixes, timeout=5, log=True):
+    self._send_line_unlocked(command, log=log)
     line, lines = self._wait_for_line_unlocked(prefixes, timeout=timeout)
     return {
       "command": command,
@@ -211,6 +208,28 @@ class ArduinoComm:
         "config": self._parse_key_value_line(line_info["response"], "CONFIG:"),
         "lines": line_info["lines"],
       }
+
+  def get_conveyor_state(self, timeout=0.2):
+    if not self.is_connected():
+      return "OFFLINE"
+
+    if not self._lock.acquire(timeout=0.05):
+      return None
+
+    try:
+      line_info = self._send_and_wait_unlocked(
+        "GET_STATE",
+        "STATE:",
+        timeout=timeout,
+        log=False,
+      )
+    finally:
+      self._lock.release()
+
+    state = line_info["response"].split(":", 1)[-1].strip().upper()
+    if state not in ["RUNNING", "STOPPED", "EMERGENCY_STOP"]:
+      return "UNKNOWN"
+    return state
 
   def apply_config(
     self,

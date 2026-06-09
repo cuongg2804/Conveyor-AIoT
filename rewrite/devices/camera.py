@@ -333,7 +333,6 @@ class Camera:
           print(f"Capture error: {e}")
         return None
 
-    print(f"Camera fetch timeout after {timeout}s")
     return None
 
   def drain_pending_frames(self, max_frames=20):

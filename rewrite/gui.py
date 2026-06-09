@@ -43,6 +43,8 @@ class RewriteGUI:
 
       self.build_ui()
       self.start_control_service()
+      self.last_published_runtime_status = None
+      self.schedule_runtime_status_poll()
       self.root.protocol("WM_DELETE_WINDOW", self.on_close)
 
   def start_control_service(self):
@@ -195,6 +197,25 @@ class RewriteGUI:
         self.control_service.publish_status()
     except Exception as e:
       print(f"Publish runtime status error: {e}")
+
+  def schedule_runtime_status_poll(self):
+    try:
+      status = self.controller.get_status()
+      snapshot = (
+        status.get("conveyor_id"),
+        status.get("conveyor_status"),
+        status.get("session_status"),
+        status.get("session_running"),
+        status.get("arduino_status"),
+      )
+      if snapshot != self.last_published_runtime_status:
+        self.last_published_runtime_status = snapshot
+        self.update_status_view()
+        self.publish_runtime_status()
+    except Exception as e:
+      print(f"Runtime status poll error: {e}")
+    finally:
+      self.root.after(1000, self.schedule_runtime_status_poll)
 
   def update_status_view(self):
     status = self.controller.get_status()
@@ -459,7 +480,7 @@ class RewriteGUI:
 
     try:
       if self.controller is not None:
-        self.controller.stop()
+        self.controller.shutdown()
     except Exception as e:
       print(f"Controller stop error: {e}")
 
@@ -467,7 +488,8 @@ class RewriteGUI:
     self.root.destroy()
 
   def build_mqtt_result_payload(self, result):
-    status = self.controller.get_status()
+    # Result publishing must not wait for the lower-priority GET_STATE poll.
+    status = self.controller.get_status(refresh_conveyor=False)
 
     frames = []
     for item in result.get("frames", []):
@@ -476,6 +498,7 @@ class RewriteGUI:
         "predicted_label": item.get("pred_label"),
         "predicted_score": float(item.get("pred_score", 0.0)),
         "roi_path": item.get("roi_path"),
+        "overlay_path": item.get("overlay_path"),
         "contour_msg": item.get("contour_msg"),
         "contour_warning": item.get("contour_warning"),
       })

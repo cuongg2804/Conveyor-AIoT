@@ -4,14 +4,12 @@ import Conveyor from "../model/conveyor.model";
 const normalizeConveyorCode = (value: any) => String(value || "").trim().toUpperCase();
 // Hàm ánh xạ trạng thái runtime từ payload thành trạng thái chuẩn để lưu vào database
 const mapRuntimeStatusToDbStatus = (payload: any) => {
-  const running = payload.running === true; 
-  const rawStatus = String(payload.status || "").toUpperCase(); // Chuẩn hóa trạng thái từ payload để so sánh
+  const rawStatus = String(payload.conveyor_status || "").toUpperCase();
 
-  if (rawStatus === "STARTING") return "STARTING";
-  if (rawStatus === "STOP") return "STOP";
-  if (running || rawStatus === "RUNNING") return "RUNNING";
-  if (rawStatus === "ERROR" || rawStatus.includes("LỖI")) return "ERROR";
-  if (rawStatus === "READY") return "READY";
+  if (rawStatus === "RUNNING") return "RUNNING";
+  if (rawStatus === "STOPPED") return "STOPPED";
+  if (rawStatus === "EMERGENCY_STOP" || rawStatus === "ERROR") return "ERROR";
+  if (rawStatus === "OFFLINE" || rawStatus === "UNKNOWN") return "OFFLINE";
   return "STOP";
 };
 // Controller để xử lý các thông điệp trạng thái hệ thống và lỗi từ MQTT và cập nhật database cũng như phát sự kiện qua Socket.IO

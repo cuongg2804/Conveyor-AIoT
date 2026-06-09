@@ -1,6 +1,7 @@
 import json
 import os
 import tempfile
+import time
 
 from rewrite.config.config import AI_ACTIVE_MODEL_STATE_PATH
 
@@ -36,9 +37,11 @@ class RuntimeStateManager:
     previous_current = state.get("current_model")
     next_current = self._snapshot(model_config, local_path)
 
-    rollback_model = previous_current
+    rollback_model = previous_current if self._is_valid_cached_model(previous_current) else None
     if previous_current and previous_current.get("model_id") == next_current.get("model_id"):
       rollback_model = state.get("rollback_model")
+      if not self._is_valid_cached_model(rollback_model):
+        rollback_model = None
 
     next_state = {
       "current_model": next_current,
@@ -67,6 +70,7 @@ class RuntimeStateManager:
       raise
 
   def _snapshot(self, model_config, local_path):
+    local_size = os.path.getsize(local_path) if os.path.exists(local_path) else 0
     return {
       "model_id": str(model_config.get("model_id")),
       "model_name": model_config.get("model_name"),
@@ -75,6 +79,21 @@ class RuntimeStateManager:
       "bucket": model_config.get("bucket"),
       "object_key": model_config.get("object_key"),
       "local_path": local_path,
+      "local_exists": os.path.isfile(local_path),
+      "local_size": local_size,
       "threshold": float(model_config.get("threshold")),
+      "registry_threshold": model_config.get("registry_threshold"),
       "model_format": model_config.get("model_format") or model_config.get("format"),
+      "cached_at": time.time(),
     }
+
+  def _is_valid_cached_model(self, model):
+    if not model:
+      return False
+
+    local_path = model.get("local_path")
+    return (
+      bool(local_path)
+      and os.path.isfile(local_path)
+      and os.path.getsize(local_path) > 0
+    )

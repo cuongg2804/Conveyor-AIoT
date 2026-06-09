@@ -393,7 +393,7 @@ io.on("connection", async (socket) => {
                     user_name: userName,
                     conveyor_id: conveyorId,
                     conveyor_name: conveyorName,
-                    message: `Đã hủy tự động dừng băng tải ${conveyorName}`,
+                  message: `Đã hủy tự động kết thúc phiên kiểm tra ${conveyorName}`,
                   });
 
                   return;
@@ -415,26 +415,17 @@ io.on("connection", async (socket) => {
 
                 autoStoppedConveyors.add(conveyorId);
 
-                await Conveyor.updateOne(
-                  { conveyor_id: conveyorId },
-                  {
-                    $set: {
-                      status: "STOPPING",
-                    },
-                  }
-                );
-
                 io.to("admins").emit("auto_stop_triggered", {
                   user_id: disconnectedUserId,
                   user_name: userName,
                   conveyor_id: conveyorId,
                   conveyor_name: conveyorName,
-                  message: `Không có người vận hành hoặc người giám sát sau 30 giây. Hệ thống đã tự động gửi lệnh dừng băng tải ${conveyorName}.`,
+                  message: `Không có người vận hành hoặc người giám sát sau 30 giây. Hệ thống đã tự động kết thúc phiên kiểm tra AI của ${conveyorName}.`,
                 });
 
                 io.emit("conveyor_status_changed", {
                   conveyor_id: conveyorId,
-                  status: "STOPPING",
+                  session_status: "STOPPING",
                 });
 
                 operatorDisconnectTimers.delete(conveyorId);

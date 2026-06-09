@@ -25,7 +25,7 @@ const control_logs_schema = new mongoose.Schema({
         type: String,
         required: true,
         trim: true,
-        enum: ["OK", "ERROR", "DENIED"]
+        enum: ["SUCCESS", "ERROR", "DENIED"]
     },
 }, 
     {

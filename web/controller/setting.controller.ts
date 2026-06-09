@@ -410,11 +410,11 @@ export const updateSettings = async (req: Request, res: Response) => {
       camera_trigger_delay_ms ?? camera_trigger_delay,
       0,
       0,
-      10000
+      1000000
     );
 
     const thresholdOverride = optionalNumber(threshold_override);
-    const newAiThreshold =
+    let newAiThreshold =
       thresholdOverride !== null
         ? thresholdOverride
         : Number(ai_threshold || oldConfig.ai_threshold || 30.436506);
@@ -452,12 +452,18 @@ export const updateSettings = async (req: Request, res: Response) => {
 
       nextModelId = activeModel.model_id;
       nextConfigMode = "PRODUCTION";
+      if (thresholdOverride === null && activeModel.threshold !== undefined) {
+        newAiThreshold = Number(activeModel.threshold);
+      }
     }
 
     if (selectedTab === "test") {
       if (isTestingModelLocked) {
         nextModelId = String(oldConfig.model_id || "");
         nextConfigMode = "TEST";
+        if (thresholdOverride === null && (currentModel as any)?.threshold !== undefined) {
+          newAiThreshold = Number((currentModel as any).threshold);
+        }
       } else {
         if (!selectedModelId) {
           return res.status(400).send("Vui lòng chọn model cần kiểm thử.");
@@ -465,7 +471,7 @@ export const updateSettings = async (req: Request, res: Response) => {
 
         const testingModel = await ModelRegistry.findOne({
           model_id: selectedModelId,
-          status: {$in: ["testing", "failed"]}
+          status: "testing"
         }).lean<any>();
 
         if (!testingModel) {
@@ -478,6 +484,9 @@ export const updateSettings = async (req: Request, res: Response) => {
 
         nextModelId = testingModel.model_id;
         nextConfigMode = "TEST";
+        if (thresholdOverride === null && testingModel.threshold !== undefined) {
+          newAiThreshold = Number(testingModel.threshold);
+        }
       }
     }
     console.log("Selected model_id:", selectedModelId);
@@ -656,6 +665,9 @@ export const updateSettings = async (req: Request, res: Response) => {
           save_arduino_default === "on" ||
           save_arduino_default === true,
       });
+      publishControlCommand("RELOAD_CONFIG", {
+        conveyor_id: conveyorId,
+      });
     } catch (mqttError) {
       synced = "0";
       console.error("[MQTT] APPLY_ARDUINO_CONFIG lỗi:", mqttError);
@@ -737,7 +749,9 @@ export const approveModel = async (req: Request, res: Response) => {
         {
           $set: {
             config_mode: "PRODUCTION",
+            model_id: model.model_id,
             ai_threshold: model.threshold,
+            threshold_override: null,
           },
         }
       );
@@ -760,6 +774,7 @@ export const approveModel = async (req: Request, res: Response) => {
         $set: {
           model_id: "",
           config_mode: "TEST",
+          threshold_override: null,
         },
       }
     );
