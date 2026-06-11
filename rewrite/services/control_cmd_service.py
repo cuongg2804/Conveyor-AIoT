@@ -97,7 +97,6 @@ class ControlCommandService:
         self.require_conveyor_id(command_payload)
         data = self.status_handler(command_payload)
         ack = self.success_ack(command_id, command, "System status returned", data)
-        self.publish_status(command_payload)
 
       elif command == "RELOAD_CONFIG":
         self.require_conveyor_id(command_payload)

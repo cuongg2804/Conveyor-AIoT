@@ -142,6 +142,7 @@ export const publish = (
   }
 
   client.publish(topic, JSON.stringify(payload), { qos });
+  console.log(topic)
 };
 
 export const publishControlCommand = (

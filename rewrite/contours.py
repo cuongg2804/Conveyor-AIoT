@@ -7,13 +7,17 @@ import numpy as np
 # CHÈN LINK FOLDER Ở ĐÂY
 # ============================================================
 
-INPUT_DIR = r"C:\Users\ASUS\Downloads\new\MV-A7500CG20_BH00044AAK00043"
+INPUT_DIR = r"C:\Users\ASUS\MVviewer\pictures\MV-A7500CG20_BH00044AAK00043"
 
-OUTPUT_DIR = r"C:\Users\ASUS\Desktop\Conveyor-AIoT\rewrite\dataset_tim\ok"
+OUTPUT_DIR = r"C:\Users\ASUS\Desktop\Conveyor-AIoT\rewrite\dataset_tim_106\ng"
 
 # Nếu không cần debug thì để None
 DEBUG_DIR = r"C:\Users\ASUS\Desktop\Conveyor-AIoT\rewrite\dataset_tim_debug"
 # DEBUG_DIR = None
+
+# Lưu ảnh nhị phân được dùng để tách contour. Để None nếu không cần lưu.
+BINARY_DIR = r"C:\Users\ASUS\Desktop\Conveyor-AIoT\rewrite\dataset_tim_binary"
+# BINARY_DIR = None
 
 
 # ============================================================
@@ -378,7 +382,7 @@ def crop_by_contour(image):
     contour, binary, mask_name = find_best_contour_from_masks(image)
 
     if contour is None:
-        return None, debug, "No valid contour"
+        return None, debug, binary, "No valid contour"
 
     cv2.drawContours(debug, [contour], -1, (0, 0, 255), 2)
 
@@ -398,13 +402,13 @@ def crop_by_contour(image):
 
     if REJECT_BORDER_HARD and (touches_left_right or touches_top_bottom):
         cv2.rectangle(debug, (x, y), (x + bw, y + bh), (0, 255, 255), 2)
-        return None, debug, f"Too close to border ({mask_name})"
+        return None, debug, binary, f"Too close to border ({mask_name})"
 
     # Chỉ loại nếu vật thể quá nhỏ mà còn dính biên.
     # Hộp lớn sát biên vẫn cho crop, tránh fail ảnh nằm ngang/chéo.
     if (touches_left_right or touches_top_bottom) and product_ratio < 0.05:
         cv2.rectangle(debug, (x, y), (x + bw, y + bh), (0, 255, 255), 2)
-        return None, debug, f"Partial object near border ({mask_name})"
+        return None, debug, binary, f"Partial object near border ({mask_name})"
 
     rect = cv2.minAreaRect(contour)
 
@@ -431,7 +435,7 @@ def crop_by_contour(image):
     max_height = int(max(height_a, height_b))
 
     if max_width < 10 or max_height < 10:
-        return None, debug, "Warp size too small"
+        return None, debug, binary, "Warp size too small"
 
     dst = np.array(
         [
@@ -458,14 +462,19 @@ def crop_by_contour(image):
 
     roi = cv2.resize(warped, OUTPUT_SIZE)
 
-    return roi, debug, f"OK:{mask_name}"
+    return roi, debug, binary, f"OK:{mask_name}"
 
 
 # ============================================================
 # PROCESS FOLDER
 # ============================================================
 
-def process_folder(input_dir: Path, output_dir: Path, debug_dir: Path | None = None):
+def process_folder(
+    input_dir: Path,
+    output_dir: Path,
+    debug_dir: Path | None = None,
+    binary_dir: Path | None = None,
+):
     total = 0
     ok = 0
     failed = 0
@@ -480,11 +489,15 @@ def process_folder(input_dir: Path, output_dir: Path, debug_dir: Path | None = N
             print(f"[FAIL] {image_path.name}: Cannot read image")
             continue
 
-        roi, debug, message = crop_by_contour(image)
+        roi, debug, binary, message = crop_by_contour(image)
 
         if debug_dir is not None and debug is not None:
             debug_output_path = debug_dir / image_path.name
             write_image(debug_output_path, debug)
+
+        if binary_dir is not None and binary is not None:
+            binary_output_path = binary_dir / f"{image_path.stem}_binary.png"
+            write_image(binary_output_path, binary)
 
         if roi is None:
             failed += 1
@@ -512,6 +525,7 @@ def main():
     input_dir = Path(INPUT_DIR).resolve()
     output_dir = Path(OUTPUT_DIR).resolve()
     debug_dir = Path(DEBUG_DIR).resolve() if DEBUG_DIR else None
+    binary_dir = Path(BINARY_DIR).resolve() if BINARY_DIR else None
 
     if not input_dir.exists() or not input_dir.is_dir():
         raise SystemExit(f"Input folder does not exist: {input_dir}")
@@ -521,10 +535,14 @@ def main():
     if debug_dir is not None:
         debug_dir.mkdir(parents=True, exist_ok=True)
 
+    if binary_dir is not None:
+        binary_dir.mkdir(parents=True, exist_ok=True)
+
     print("Contour version:", CONTOUR_VERSION)
     print("Input folder:", input_dir)
     print("Output folder:", output_dir)
     print("Debug folder:", debug_dir)
+    print("Binary folder:", binary_dir)
     print("Output size:", OUTPUT_SIZE)
     print("Padding ratio:", PADDING_RATIO)
     print("Min contour area:", MIN_CONTOUR_AREA)
@@ -536,6 +554,7 @@ def main():
         input_dir=input_dir,
         output_dir=output_dir,
         debug_dir=debug_dir,
+        binary_dir=binary_dir,
     )
 
     print("\n========== DONE ==========")

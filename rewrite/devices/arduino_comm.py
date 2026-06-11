@@ -13,6 +13,10 @@ class ArduinoComm:
     self.serial_conn = None
     self.arduino_status = "DISCONNECTED"
     self._lock = threading.RLock()
+    self._state_handler = None
+    self._last_state = None
+    self._listener_stop = threading.Event()
+    self._listener_thread = None
 
   @property
   def ser(self):
@@ -89,6 +93,80 @@ class ArduinoComm:
 
     return None
 
+  @staticmethod
+  def _parse_state_line(line):
+    if not line or not line.startswith("STATE:"):
+      return None
+
+    state = line.split(":", 1)[-1].strip().upper()
+    if state not in ["RUNNING", "STOPPED", "EMERGENCY_STOP"]:
+      return "UNKNOWN"
+    return state
+
+  def _dispatch_line(self, line):
+    state = self._parse_state_line(line)
+    if state is None or state == self._last_state:
+      return
+
+    self._last_state = state
+    if callable(self._state_handler):
+      try:
+        self._state_handler(state)
+      except Exception as e:
+        print(f"[Arduino] State handler error: {e}")
+
+  def set_state_handler(self, handler):
+    self._state_handler = handler
+
+  def start_state_listener(self, handler=None):
+    if handler is not None:
+      self.set_state_handler(handler)
+
+    if self._listener_thread is not None and self._listener_thread.is_alive():
+      return
+
+    self._listener_stop.clear()
+    self._listener_thread = threading.Thread(
+      target=self._state_listener_loop,
+      name=f"arduino-state-{self.port}",
+      daemon=True,
+    )
+    self._listener_thread.start()
+
+  def stop_state_listener(self):
+    self._listener_stop.set()
+    listener = self._listener_thread
+    if (
+      listener is not None
+      and listener.is_alive()
+      and listener is not threading.current_thread()
+    ):
+      listener.join(timeout=1)
+    self._listener_thread = None
+
+  def _state_listener_loop(self):
+    while not self._listener_stop.is_set():
+      if not self.is_connected():
+        self._listener_stop.wait(0.1)
+        continue
+
+      if not self._lock.acquire(timeout=0.05):
+        self._listener_stop.wait(0.02)
+        continue
+
+      try:
+        line = self._read_line_unlocked()
+      except Exception as e:
+        print(f"[Arduino] State listener error: {e}")
+        line = None
+      finally:
+        self._lock.release()
+
+      if line:
+        self._dispatch_line(line)
+      else:
+        self._listener_stop.wait(0.02)
+
   def clear_pending_input(self):
     if not self.is_connected():
       return
@@ -111,6 +189,7 @@ class ArduinoComm:
       line = self._read_line_unlocked()
       if line:
         lines.append(line)
+        self._dispatch_line(line)
         if line.startswith("ERR:"):
           raise RuntimeError(line)
         if any(line.startswith(prefix) for prefix in prefixes):
@@ -349,6 +428,7 @@ class ArduinoComm:
     }
 
   def close(self):
+    self.stop_state_listener()
     if self.serial_conn is not None:
       try:
         self.serial_conn.close()

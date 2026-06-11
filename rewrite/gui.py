@@ -22,6 +22,7 @@ class RewriteGUI:
       self.root.geometry("980x720")
 
       self.controller = SystemController()
+      self.controller.set_status_change_handler(self.handle_runtime_status_change)
       self.control_service = None
       self.config_arduino = None
       self.config_arduino_key = None
@@ -43,8 +44,6 @@ class RewriteGUI:
 
       self.build_ui()
       self.start_control_service()
-      self.last_published_runtime_status = None
-      self.schedule_runtime_status_poll()
       self.root.protocol("WM_DELETE_WINDOW", self.on_close)
 
   def start_control_service(self):
@@ -198,24 +197,12 @@ class RewriteGUI:
     except Exception as e:
       print(f"Publish runtime status error: {e}")
 
-  def schedule_runtime_status_poll(self):
-    try:
-      status = self.controller.get_status()
-      snapshot = (
-        status.get("conveyor_id"),
-        status.get("conveyor_status"),
-        status.get("session_status"),
-        status.get("session_running"),
-        status.get("arduino_status"),
-      )
-      if snapshot != self.last_published_runtime_status:
-        self.last_published_runtime_status = snapshot
-        self.update_status_view()
-        self.publish_runtime_status()
-    except Exception as e:
-      print(f"Runtime status poll error: {e}")
-    finally:
-      self.root.after(1000, self.schedule_runtime_status_poll)
+  def handle_runtime_status_change(self, _status=None):
+    self.root.after(0, self.publish_runtime_status_change)
+
+  def publish_runtime_status_change(self):
+    self.update_status_view()
+    self.publish_runtime_status()
 
   def update_status_view(self):
     status = self.controller.get_status()
@@ -398,8 +385,20 @@ class RewriteGUI:
     self.config_arduino = ArduinoComm(port=serial_port, baudrate=baud_rate, timeout=1)
     self.config_arduino.connect()
     self.config_arduino_key = key
+    self.config_arduino.start_state_listener(
+      lambda state: self.handle_config_arduino_state(conveyor_id, state)
+    )
+    try:
+      self.config_arduino.get_conveyor_state(timeout=1)
+    except Exception as e:
+      print(f"[ARDUINO] Initial config connection state read error: {e}")
     print(f"[ARDUINO] Opened config connection on {serial_port} @ {baud_rate}")
     return self.config_arduino
+
+  def handle_config_arduino_state(self, conveyor_id, state):
+    self.controller.conveyor_id = str(conveyor_id).strip().upper()
+    self.controller.arduino_status = "CONNECTED"
+    self.controller.handle_arduino_state_change(state)
 
   def close_config_arduino(self):
     if self.config_arduino is not None:
@@ -488,8 +487,7 @@ class RewriteGUI:
     self.root.destroy()
 
   def build_mqtt_result_payload(self, result):
-    # Result publishing must not wait for the lower-priority GET_STATE poll.
-    status = self.controller.get_status(refresh_conveyor=False)
+    status = self.controller.get_status()
 
     frames = []
     for item in result.get("frames", []):

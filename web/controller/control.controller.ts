@@ -50,7 +50,6 @@ const publicErrorMessage = (error: any) => {
 export const sendCommand = async (req: Request, res: Response) => {
   try {
     const { command, payload } = req.body || {};
-
     if (!command) {
       return res.status(400).json({
         message: "Vui lòng chọn thao tác điều khiển.",

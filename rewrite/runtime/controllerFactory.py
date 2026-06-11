@@ -42,6 +42,7 @@ class SystemController:
     self.on_result = None
     self.stop_event = threading.Event()
     self.runtime_config_lock = threading.Lock()
+    self.status_change_handler = None
 
     self.result_service = None
     self.stt = 0
@@ -102,7 +103,7 @@ class SystemController:
         self.arduino = ArduinoComm(serial_port, baud_rate)
         self.arduino.connect()
       self.arduino_status = "CONNECTED"
-      self.refresh_conveyor_status()
+      self.bind_arduino_state_listener(fetch_initial=True)
       if self.conveyor_status == "STOPPED":
         try:
           self.apply_arduino_config(config)
@@ -129,7 +130,7 @@ class SystemController:
         should_stop=self.should_stop_requested,
       )
 
-      self.arduino.send_line("START")
+      # self.arduino.send_line("START")
       self.running = True
       if self.status != "RUNNING_ROLLBACK":
         self.status = "RUNNING"
@@ -161,7 +162,6 @@ class SystemController:
 
     if self.arduino is not None and self.arduino.is_connected():
       self.arduino_status = "CONNECTED"
-      self.refresh_conveyor_status()
     else:
       self.arduino_status = "DISCONNECTED"
       self.conveyor_status = "OFFLINE"
@@ -287,6 +287,12 @@ class SystemController:
         return None
       raise RuntimeError(pipeline.last_error or "Pipeline returned no result")
     timings.update(result.get("timings") or {})
+
+    if self.arduino is not None:
+      arduino_start = time.perf_counter()
+      self.arduino.send_result(result["final_label"])
+      timings["arduino_ms"] = (time.perf_counter() - arduino_start) * 1000.0
+
     #Minio
     inspection_id = f"INS-{time.strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:6]}"
 
@@ -379,7 +385,42 @@ class SystemController:
       "threshold": float(result.get("threshold", 0.0)),
       **timings,
     })
-  def get_status(self, refresh_conveyor=True):
+  def set_status_change_handler(self, handler):
+    self.status_change_handler = handler
+
+  def _notify_status_change(self):
+    if callable(self.status_change_handler):
+      try:
+        self.status_change_handler(self.get_status())
+      except Exception as e:
+        print(f"Status change handler error: {e}")
+
+  def handle_arduino_state_change(self, state):
+    state = str(state or "UNKNOWN").strip().upper()
+    if state == self.conveyor_status:
+      return
+
+    self.conveyor_status = state
+    print(f"[Arduino STATE] {state}")
+    self._notify_status_change()
+
+  def bind_arduino_state_listener(self, fetch_initial=False):
+    if self.arduino is None or not self.arduino.is_connected():
+      self.arduino_status = "DISCONNECTED"
+      self.conveyor_status = "OFFLINE"
+      return
+
+    self.arduino.start_state_listener(self.handle_arduino_state_change)
+
+    if fetch_initial:
+      try:
+        state = self.arduino.get_conveyor_state(timeout=1)
+        if state is not None:
+          self.handle_arduino_state_change(state)
+      except Exception as e:
+        print(f"Initial Arduino state read error: {e}")
+
+  def get_status(self, refresh_conveyor=False):
     config = self.conveyor_config or {}
 
     camera_status = (
@@ -397,9 +438,6 @@ class SystemController:
     last_label = None
     if self.last_result is not None:
       last_label = self.last_result.get("final_label")
-
-    if refresh_conveyor:
-      self.refresh_conveyor_status()
 
     return {
       "running": self.running,
@@ -422,20 +460,6 @@ class SystemController:
       "model_format": self.model_format,
       "model_status": self.model.get_status() if self.model is not None else None,
     }
-
-  def refresh_conveyor_status(self):
-    if self.arduino is None or not self.arduino.is_connected():
-      self.conveyor_status = "OFFLINE"
-      return self.conveyor_status
-
-    try:
-      state = self.arduino.get_conveyor_state()
-      if state is not None:
-        self.conveyor_status = state
-    except Exception:
-      pass
-
-    return self.conveyor_status
 
   def shutdown(self):
     if self.running:
@@ -589,13 +613,6 @@ class SystemController:
           self.on_result(result)
           result["_latency_timings"]["mqtt_ms"] = (
             time.perf_counter() - mqtt_start
-          ) * 1000.0
-
-        if result is not None and self.arduino is not None:
-          arduino_start = time.perf_counter()
-          self.arduino.send_result(result["final_label"])
-          result["_latency_timings"]["arduino_ms"] = (
-            time.perf_counter() - arduino_start
           ) * 1000.0
 
         if result is not None:
