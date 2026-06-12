@@ -50,8 +50,11 @@ class SystemController:
     self.model_cache = ModelCacheManager()
     self.runtime_state = RuntimeStateManager()
     self.logger = LatencyLogger()
+    self.run_mode = "PRODUCTION"
 
-  def start(self, conveyor_id, on_result=None, camera_ip=None):
+  def start(self, conveyor_id, on_result=None, camera_ip=None, mode="PRODUCTION"):
+    mode = str(mode or "PRODUCTION").strip().upper()
+    self.run_mode = mode if mode in ["TEST", "PRODUCTION"] else "PRODUCTION"
     if self.running == True:
       print("System already running")
       return
@@ -88,8 +91,6 @@ class SystemController:
         runtime_threshold = self.load_rollback_model(threshold, model_error)
         config["ai_threshold"] = runtime_threshold
 
-      # Keep one serial connection alive so reading physical conveyor state does
-      # not repeatedly reset an Arduino Uno.
       serial_port = config.get("serial_port")
       baud_rate = config.get("baud_rate")
       reuse_arduino = (
@@ -287,10 +288,12 @@ class SystemController:
     }
     pipeline = self.pipeline
     result = pipeline.inspect_once()
+    
     if result is None:
       if self.should_stop_requested():
         return None
       raise RuntimeError(pipeline.last_error or "Pipeline returned no result")
+    result["mode"] = self.run_mode
     timings.update(result.get("timings") or {})
     #Minio
     inspection_id = f"INS-{time.strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:6]}"

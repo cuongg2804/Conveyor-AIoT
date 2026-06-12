@@ -136,7 +136,7 @@ class RewriteGUI:
       image_label.pack()
       self.frame_image_labels.append(image_label)
 
-  def start_system(self, conveyor_id="BT_IWFY2PY", camera_ip=None):
+  def start_system(self, conveyor_id="BT_IWFY2PY", camera_ip=None, mode="PRODUCTION"):
     try:
 
       conveyor_id = str(conveyor_id).strip().upper()
@@ -146,6 +146,7 @@ class RewriteGUI:
         conveyor_id,
         on_result=self.handle_inspection_result,
         camera_ip=camera_ip,
+        mode=mode
       )
       print(f"Start system: {conveyor_id}")
       self.update_status_view()
@@ -294,6 +295,9 @@ class RewriteGUI:
     conveyor_id = payload.get("conveyor_id") or payload.get("conveyor_code")
     config_payload = payload.get("config") if isinstance(payload.get("config"), dict) else {}
     camera_ip = payload.get("camera_ip") or config_payload.get("camera_ip")
+    mode = str(payload.get("mode") or "PRODUCTION").strip().upper()
+    if mode not in ["TEST", "PRODUCTION"]:
+      mode = "PRODUCTION"
 
     if not conveyor_id:
       raise RuntimeError("Missing conveyor_id")
@@ -302,7 +306,7 @@ class RewriteGUI:
 
     self.root.after(
       0,
-      lambda: self.start_system(conveyor_id=conveyor_id, camera_ip=camera_ip)
+      lambda: self.start_system(conveyor_id=conveyor_id, camera_ip=camera_ip, mode=mode)
     )
 
     return {
@@ -508,6 +512,7 @@ class RewriteGUI:
 
     return {
       "inspection_id": result.get("inspection_id"),
+      "mode": result.get("mode", "PRODUCTION"),
       "stt": result.get("stt"),
       "conveyor_id": status.get("conveyor_id"),
       "conveyor_code": status.get("conveyor_id"),

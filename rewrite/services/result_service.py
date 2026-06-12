@@ -38,6 +38,7 @@ class ResultService:
     document = {
       "inspection_id": inspection_id,
       "conveyor_id": conveyor_id,
+      "mode": result.get("mode", "PRODUCTION"),
       "frames": frames,
       "stt": stt,
       "label": result.get("final_label"),

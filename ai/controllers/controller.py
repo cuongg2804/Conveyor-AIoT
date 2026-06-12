@@ -57,11 +57,7 @@ class SystemController:
 
     def _queue_item_to_text(self, item):
         try:
-<<<<<<< HEAD
             return f"stt={item['stt']} | label={item['label']} | score={float(item['score']):.6f}"
-=======
-            return f"job_id={item['job_id']} | label={item['label']} | ng_count={item.get('ng_count', '-')}"
->>>>>>> f8035ea1357d6da2cd9d56287bdba1162e164dae
         except Exception:
             return str(item)
 
@@ -203,22 +199,6 @@ class SystemController:
             "arduino_light_max_lux": config.get("arduino_light_max_lux"),
             "arduino": arduino_result,
         }
-    
-    # def _apply_arduino_config(self, arduino, conveyor_config):
-    #     self.log("Ap dung cau hinh Arduino tu DB...")
-
-    #     result = arduino.apply_config(
-    #         speed_low_level=conveyor_config.get("arduino_speed_low_level", 2),
-    #         speed_high_level=conveyor_config.get("arduino_speed_high_level", 5),
-    #         servo_home_angle=conveyor_config.get("arduino_servo_home_angle", 0),
-    #         servo_gate_angle=conveyor_config.get("arduino_servo_gate_angle", 130),
-    #         light_min_lux=conveyor_config.get("arduino_light_min_lux", 1000),
-    #         light_max_lux=conveyor_config.get("arduino_light_max_lux", 2000),
-    #         save_default=False,
-    #     )
-
-    #     self.log(f"Da gui cau hinh Arduino: {result}")
-    #     return result
 
     def start(self):
         # Chặn start nếu đã đang chạy để tránh lỗi
@@ -319,6 +299,11 @@ class SystemController:
         final_label = result["final_label"]
         ng_count = int(result.get("ng_count", 0) or 0)
         threshold = float(result.get("threshold", getattr(self.model, "image_threshold", 0.0)))
+        frame_scores = [
+            float(frame.get("pred_score", 0.0))
+            for frame in result["frames"]
+        ]
+        average_score = sum(frame_scores) / len(frame_scores)
 
         if self.arduino is not None:
             arduino_start = time.perf_counter()
@@ -338,11 +323,7 @@ class SystemController:
         if self.queue is not None:
             queue_start = time.perf_counter()
             try:
-<<<<<<< HEAD
-                self.queue.push({"stt": self.stt, "label": final_label, "score": avg_score})
-=======
-                self.queue.push({"job_id": self.job_id, "label": final_label, "ng_count": ng_count})
->>>>>>> f8035ea1357d6da2cd9d56287bdba1162e164dae
+                self.queue.push({"stt": self.stt, "label": final_label, "score": average_score})
                 self._push_queue_debug()
             except Exception as e:
                 self.cb("log", f"Queue update error: {e}")
@@ -387,11 +368,7 @@ class SystemController:
             "conveyor_id": self.conveyor_id,
             "timestamp": timestamp,
             "label": final_label,
-<<<<<<< HEAD
-            "avg_score": avg_score,
-=======
-            "ng_count": ng_count,
->>>>>>> f8035ea1357d6da2cd9d56287bdba1162e164dae
+            "average_score": average_score,
             "threshold": threshold,
             "frames": frame_documents,
         }
