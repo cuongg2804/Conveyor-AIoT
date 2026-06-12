@@ -1,0 +1,49 @@
+{
+  "model_name": "patch_core_dragon_box_purple",
+  "version": "ckpt-2.0.0",
+  "product_code": "DRAGON_BOX",
+  "model_format": "ckpt",
+  "checkpoint_path": "patchcore_ok_only.ckpt",
+  "score_csv_path": "test_ok_scores.csv",
+  "threshold": 11.315319557189941,
+  "threshold_method": "max_ok_score_plus_margin",
+  "max_ok_score": 11.093450546264648,
+  "mean_ok_score": 6.579016382797905,
+  "p95_ok_score": 8.823933887481688,
+  "p99_ok_score": 9.90467945098877,
+  "margin": 0.221869010925293,
+  "margin_ratio": 0.02,
+  "min_margin": 0,
+  "dataset": {
+    "source_ok_dir": "/kaggle/input/datasets/cuongvv/data-banh-tim-ok/ok",
+    "dataset_root": "/kaggle/working/dataset_banh_tim_split",
+    "train_ok_dir": "/kaggle/working/dataset_banh_tim_split/train_ok",
+    "test_ok_dir": "/kaggle/working/dataset_banh_tim_split/test_ok",
+    "train_ratio": 0.8,
+    "random_seed": 42,
+    "train_ok_images": 457,
+    "test_ok_images": 115
+  },
+  "patchcore_config": {
+    "backbone": "resnet18",
+    "layers": [
+      "layer2",
+      "layer3"
+    ],
+    "pre_trained": true,
+    "coreset_sampling_ratio": 0.1,
+    "num_neighbors": 9,
+    "train_batch_size": 8,
+    "eval_batch_size": 8,
+    "num_workers": 2
+  },
+  "csv_columns": [
+    "image_name",
+    "image_path",
+    "gt_label",
+    "anomaly_score",
+    "threshold",
+    "pred_label",
+    "is_false_ng"
+  ]
+}

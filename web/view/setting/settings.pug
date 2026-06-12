@@ -45,14 +45,11 @@ block main
     if updated
       .alert.alert--success Cập nhật cấu hình thành công.
 
-    if configSynced
-      .alert.alert--success Đã đồng bộ cấu hình.
-
     if configSyncFailed
       .alert.alert--error Không thể đồng bộ cấu hình.
 
     if approved
-      .alert.alert--success Model kiểm thử đã đạt và được chuyển sang model vận hành thật.
+      .alert.alert--success Model kiểm thử đã đạt và được chuyển sang model vận hành chính thức.
 
     if rejected
       .alert.alert--error Model kiểm thử đã được đánh dấu không đạt.
@@ -176,7 +173,7 @@ block main
                   type="number"
                   name="camera_trigger_delay"
                   min="0"
-                  max="10000"
+                  max="1000000"
                   step="1"
                   value=config.camera_trigger_delay || config.camera_trigger_delay_ms || 0
                 )
@@ -395,74 +392,4 @@ block main
   script.
     window.CONVEYOR_ID = "#{conveyor.conveyor_id}";
     window.SPEED_PRESETS = !{JSON.stringify(safeSpeedPresets)};
-    window.__RUNTIME_MODE__ = !{JSON.stringify(runtimeMode || "PRODUCTION")};
-    //- function sendArduinoCommand(command, payload, button) {
-    //-   const commandId =
-    //-     "CMD_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 8);
-
-    //-   if (button) {
-    //-     button.disabled = true;
-    //-     pendingArduinoButtons[commandId] = button;
-    //-   }
-
-    //-   if (arduinoStatusBadge) arduinoStatusBadge.textContent = "Đang xử lý";
-    //-   if (arduinoStatusMessage) arduinoStatusMessage.textContent = "Đang gửi lệnh tới Arduino...";
-
-    //-   socket.emit("control_command", {
-    //-     command_id: commandId,
-    //-     command,
-    //-     payload: {
-    //-       conveyor_id: window.CONVEYOR_ID,
-    //-       ...(payload || {}),
-    //-     },
-    //-   });
-    //- }
-    //- if (readArduinoConfigButton) {
-    //-   readArduinoConfigButton.addEventListener("click", function () {
-    //-     sendArduinoCommand("READ_ARDUINO_CONFIG", {}, readArduinoConfigButton);
-    //-   });
-    //- }
-
-    //- if (runLightCheckButton) {
-    //-   runLightCheckButton.addEventListener("click", function () {
-    //-     sendArduinoCommand("LIGHT_CHECK", {}, runLightCheckButton);
-    //-   });
-    //- }
-
-    //- if (resetArduinoDefaultButton) {
-    //-   resetArduinoDefaultButton.addEventListener("click", function () {
-    //-     if (!confirm("Khôi phục cấu hình Arduino về mặc định?")) return;
-    //-     sendArduinoCommand("RESET_ARDUINO_DEFAULT", {}, resetArduinoDefaultButton);
-    //-   });
-    //- }
-    //- socket.on("control_ack", function (ack) {
-    //-   const button = pendingArduinoButtons[ack.command_id];
-
-    //-   if (button) {
-    //-     button.disabled = false;
-    //-     delete pendingArduinoButtons[ack.command_id];
-    //-   }
-
-    //-   if (arduinoStatusBadge) {
-    //-     arduinoStatusBadge.textContent = ack.status === "SUCCESS" ? "Đã nhận" : "Lỗi";
-    //-   }
-
-    //-   if (arduinoStatusMessage) {
-    //-     arduinoStatusMessage.textContent = ack.message || "-";
-    //-   }
-
-    //-   if (ack.status !== "SUCCESS") {
-    //-     alert(ack.message || "Thao tác Arduino thất bại.");
-    //-     return;
-    //-   }
-
-    //-   const data = ack.data || {};
-
-    //-   if (data.config) {
-    //-     renderArduinoConfig(data.config);
-    //-   }
-
-    //-   if (data.light) {
-    //-     renderLightCheck(data.light);
-    //-   }
-    //- });
+    

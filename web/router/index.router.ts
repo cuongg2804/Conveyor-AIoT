@@ -29,7 +29,7 @@ router.use("/cameras", requireAuth, cameraRoute);
 router.use("/models", requireAuth, modelRoute);
 router.use("/logs", logRoute);
 router.use("/media", requireAuth, mediaRoute);
-router.use("/api/runtime-config", requireAuth, runtimeConfigRoute);
+router.use("/api/runtime-config", runtimeConfigRoute);
 router.use("/users", requireAuth, userRoute);
 router.use("/logout", requireAuth, logoutRoute);
 

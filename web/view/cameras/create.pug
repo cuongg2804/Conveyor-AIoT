@@ -4,20 +4,32 @@ block main
         .dashboard_header
             .dashboard_heading
                 h1.dashboard_title Quản lý camera
-                p.dashboard_subtitle Tạo, cập nhật, xóa camera trong hệ thống
+                p.dashboard_subtitle Thêm camera vào hệ thống
             .dashboard_actions
                 a.btn.btn--secondary(href="/cameras") Quay lại
-        
-        
-        .card 
-            form.setting-form(method="POST" action="/cameras/create")
+
+        if error
+            .alert.alert--error #{error}
+        if created
+            .alert.alert--success Thêm camera thành công.
+        .card.camera-form-card
+            form.settings-form(method="POST" action="/cameras/create")
                 .field
                     label.field__label(for="camera_name") Tên camera
-                    input#camera_name.field__control(type="text" name="camera_name" value=form.name required)
+                    input#camera_name.field__control(type="text" name="camera_name" value=form.camera_name required placeholder="Ví dụ: Camera khu vực đầu vào")
 
-                .field
-                    label.field__label(for="camera_ip") Địa chỉ IP
-                    input#camera_ip.field__control(type="text" name="camera_ip" value=form.camera_ip required placeholder="X.X.X.X (0-255)")
+                .camera-picker(data-camera-picker data-selected-ip=form.camera_ip)
+                    .camera-picker__head
+                        div
+                            h3.camera-picker__title Chọn camera
+                            p.camera-picker__desc Quét và chọn camera muốn thêm vào hệ thống.
+                        button.btn.btn--secondary(type="button" data-camera-scan-button) Quét camera
+                    p.camera-picker__status(data-camera-scan-status) Chưa quét camera.
+                    .camera-picker__grid(data-camera-scan-results)
+
+                .field.camera-ip-field
+                    label.field__label(for="camera_ip") Địa chỉ camera đã chọn
+                    input#camera_ip.field__control(type="text" name="camera_ip" value=form.camera_ip required readonly placeholder="Chưa chọn camera")
                 .field
                     label.field__label(for="status") Trạng thái
                     select#status.field__control(name="status" required)
@@ -25,26 +37,4 @@ block main
                         //option(value="IN_USE" selected=form.status === "IN_USE") Đang hoạt động
                         //option(value="ERROR" selected=form.status === "ERROR") Lỗi
                 .setting-actions
-                    button.btn.btn--primary(type="submit") Thêm mới camera
-    block scripts
-        if error
-            script.
-                Toastify({
-                text: "#{error}",
-                duration: 3000,
-                gravity: "top",
-                position: "right",
-                backgroundColor: "#ef4444",
-                close: true
-                }).showToast();
-
-        if success
-            script.
-                Toastify({
-                text: "#{success}",
-                duration: 3000,
-                gravity: "top",
-                position: "right",
-                backgroundColor: "#16a34a",
-                close: true
-                }).showToast();
+                    button.btn.btn--primary(type="submit") Thêm camera

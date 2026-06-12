@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import ConveyorConfig from "../model/conveyorConfigSchema.model";
 import ModelRegistry from "../model/modelRegister.model";
+import Camera from "../model/camera.model";
 
 const normalizeConveyorId = (value: any) =>
   String(value || "").trim().toUpperCase();
@@ -30,6 +31,9 @@ export const getRuntimeConfig = async (req: Request, res: Response) => {
     const model = config.model_id
       ? await ModelRegistry.findOne({ model_id: config.model_id }).lean<any>()
       : null;
+    const camera = config.camera_id
+      ? await Camera.findOne({ camera_id: config.camera_id }).lean<any>()
+      : null;
 
     if (!model) {
       return res.status(404).json({
@@ -48,6 +52,7 @@ export const getRuntimeConfig = async (req: Request, res: Response) => {
       data: {
         conveyor_id: config.conveyor_id,
         camera_id: config.camera_id,
+        camera_ip: String(camera?.camera_ip || "").trim(),
         serial_port: config.serial_port,
         baud_rate: config.baud_rate,
         camera_trigger_delay: config.camera_trigger_delay,

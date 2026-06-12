@@ -29,9 +29,6 @@ type ConveyorConfigView = {
   serial_port?: string;
   baud_rate?: number;
   ai_threshold?: number;
-  // speed?: number;
-  // goc_home?: number;
-  // goc_gat?: number;
   arduino_speed_low_level?: number;
   arduino_speed_high_level?: number;
   arduino_servo_home_angle?: number;
@@ -39,7 +36,6 @@ type ConveyorConfigView = {
   arduino_light_min_lux?: number;
   arduino_light_max_lux?: number;
   threshold_override?: number | null;
-  // mode?: string;
   model_id?: string;
   config_mode?: "PRODUCTION" | "TEST";
 };
@@ -221,7 +217,7 @@ export const settings = async (req: Request, res: Response) => {
       .sort({ created_at: -1 })
       .lean();
 
-    const testingModels = await ModelRegistry.find({ status: {$in: ["testing", "failed"]}})
+    const testingModels = await ModelRegistry.find({ status: {$in: ["testing", "failed"]} })
       .sort({ created_at: -1 })
       .lean();
 
@@ -349,11 +345,7 @@ export const updateSettings = async (req: Request, res: Response) => {
       serial_port,
       baud_rate,
       ai_threshold,
-      speed,
-      goc_home,
-      goc_gat,
       threshold_override,
-      mode,
       model_id,
       arduino_speed_low_level,
       arduino_speed_high_level,
@@ -401,20 +393,16 @@ export const updateSettings = async (req: Request, res: Response) => {
 
     const newCameraId = normalizeCode(camera_id);
     const oldCameraId = normalizeCode(oldConfig.camera_id);
-
-    const newSpeed = toNumberInRange(speed, 150, 0, 255);
-    const newGocHome = toNumberInRange(goc_home, 0, 0, 180);
-    const newGocGat = toNumberInRange(goc_gat, 120, 0, 180);
     const newBaudRate = toNumberInRange(baud_rate, 9600, 1200, 115200);
     const newCameraTriggerDelay = toNumberInRange(
       camera_trigger_delay_ms ?? camera_trigger_delay,
       0,
       0,
-      10000
+      1000000
     );
 
     const thresholdOverride = optionalNumber(threshold_override);
-    const newAiThreshold =
+    let newAiThreshold =
       thresholdOverride !== null
         ? thresholdOverride
         : Number(ai_threshold || oldConfig.ai_threshold || 30.436506);
@@ -452,12 +440,18 @@ export const updateSettings = async (req: Request, res: Response) => {
 
       nextModelId = activeModel.model_id;
       nextConfigMode = "PRODUCTION";
+      if (thresholdOverride === null && activeModel.threshold !== undefined) {
+        newAiThreshold = Number(activeModel.threshold);
+      }
     }
 
     if (selectedTab === "test") {
       if (isTestingModelLocked) {
         nextModelId = String(oldConfig.model_id || "");
         nextConfigMode = "TEST";
+        if (thresholdOverride === null && (currentModel as any)?.threshold !== undefined) {
+          newAiThreshold = Number((currentModel as any).threshold);
+        }
       } else {
         if (!selectedModelId) {
           return res.status(400).send("Vui lòng chọn model cần kiểm thử.");
@@ -465,22 +459,26 @@ export const updateSettings = async (req: Request, res: Response) => {
 
         const testingModel = await ModelRegistry.findOne({
           model_id: selectedModelId,
-          status: {$in: ["testing", "failed"]},
+          status: "testing"
         }).lean<any>();
 
         if (!testingModel) {
           return res
             .status(400)
             .send(
-              "Model kiểm thử không tồn tại."
+              "Model kiểm thử không tồn tại hoặc không ở trạng thái testing."
             );
         }
 
         nextModelId = testingModel.model_id;
         nextConfigMode = "TEST";
+        if (thresholdOverride === null && testingModel.threshold !== undefined) {
+          newAiThreshold = Number(testingModel.threshold);
+        }
       }
     }
     console.log("Selected model_id:", selectedModelId);
+
 
     if (oldCameraId && oldCameraId !== newCameraId) {
       await Camera.updateOne(
@@ -545,12 +543,8 @@ export const updateSettings = async (req: Request, res: Response) => {
     );
     addChange("serial_port", oldConfig.serial_port, serial_port);
     addChange("baud_rate", oldConfig.baud_rate, newBaudRate);
-    // addChange("speed", oldConfig.speed, newSpeed);
-    // addChange("goc_home", oldConfig.goc_home, newGocHome);
-    // addChange("goc_gat", oldConfig.goc_gat, newGocGat);
     addChange("ai_threshold", oldConfig.ai_threshold, newAiThreshold);
     addChange("threshold_override", oldConfig.threshold_override, thresholdOverride);
-    //addChange("mode", oldConfig.mode, normalizeCode(mode || "AUTO"));
     addChange("model_id", oldConfig.model_id, nextModelId);
     addChange("config_mode", oldConfig.config_mode, nextConfigMode);
 
@@ -607,9 +601,6 @@ export const updateSettings = async (req: Request, res: Response) => {
           serial_port: String(serial_port || "").trim(),
           baud_rate: newBaudRate,
           ai_threshold: newAiThreshold,
-          // speed: newSpeed,
-          // goc_home: newGocHome,
-          // goc_gat: newGocGat,
 
           arduino_speed_low_level: arduinoConfig.speed_low_level,
           arduino_speed_high_level: arduinoConfig.speed_high_level,
@@ -619,7 +610,6 @@ export const updateSettings = async (req: Request, res: Response) => {
           arduino_light_max_lux: arduinoConfig.light_max_lux,
 
           threshold_override: thresholdOverride,
-          //mode: normalizeCode(mode || "AUTO"),
 
           model_id: nextModelId,
           config_mode: nextConfigMode,
@@ -644,7 +634,6 @@ export const updateSettings = async (req: Request, res: Response) => {
     try {
       publishControlCommand("APPLY_ARDUINO_CONFIG", {
         conveyor_id: conveyorId,
-        //conveyor_code: conveyorId,
         speed_low_level: arduinoConfig.speed_low_level,
         speed_high_level: arduinoConfig.speed_high_level,
         servo_home_angle: arduinoConfig.servo_home_angle,
@@ -655,6 +644,9 @@ export const updateSettings = async (req: Request, res: Response) => {
           save_arduino_default === "1" ||
           save_arduino_default === "on" ||
           save_arduino_default === true,
+      });
+      publishControlCommand("RELOAD_CONFIG", {
+        conveyor_id: conveyorId,
       });
     } catch (mqttError) {
       synced = "0";
@@ -737,7 +729,9 @@ export const approveModel = async (req: Request, res: Response) => {
         {
           $set: {
             config_mode: "PRODUCTION",
+            model_id: model.model_id,
             ai_threshold: model.threshold,
+            threshold_override: null,
           },
         }
       );
@@ -760,6 +754,7 @@ export const approveModel = async (req: Request, res: Response) => {
         $set: {
           model_id: "",
           config_mode: "TEST",
+          threshold_override: null,
         },
       }
     );

@@ -99,7 +99,7 @@ export const handleInspectionResultMessage = async (payload: any, io: Server) =>
       payload.conveyor_id || payload.conveyor_code
     );
 
-    const stt = Number(payload.stt || payload.inspection_no || payload.job_id);
+    const stt = Number(payload.stt || payload.inspection_no);
 
     if (!inspectionId) {
       console.warn("Thiếu inspection_id trong MQTT payload:", payload);

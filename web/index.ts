@@ -67,8 +67,8 @@ const parseCookies = (cookieHeader: string = "") => {
 };
 
 type ActiveUserSession = {
-  socket_id: string;
-  tab_id: string;
+  socket_ids: Set<string>;
+  device_id: string;
 };
 
 type MonitorViewer = {
@@ -132,11 +132,11 @@ io.on("connection", async (socket) => {
       return;
     }
 
-    const tabId = String(socket.handshake.auth?.tab_id || "").trim();
+    const deviceId = String(socket.handshake.auth?.device_id || "").trim();
 
-    if (!tabId) {
+    if (!deviceId) {
       socket.emit("session_rejected", {
-        message: "Không xác định được phiên tab trình duyệt.",
+        message: "Không xác định được thiết bị đăng nhập.",
       });
 
       socket.disconnect(true);
@@ -160,25 +160,21 @@ io.on("connection", async (socket) => {
     const existingSession = activeUserSockets.get(userId);
 
     if (existingSession) {
-      const existingSocket = io.sockets.sockets.get(existingSession.socket_id);
-      const existingSocketStillConnected = existingSocket?.connected === true;
-      const isSameTab = existingSession.tab_id === tabId;
+      const isSameDevice = existingSession.device_id === deviceId
 
-
-      if (existingSocketStillConnected && existingSocket) {
-        if(!isSameTab) {
-          socket.emit("session_rejected", {
-          message: "Tài khoản này đang được sử dụng trên một tab hoặc thiết bị khác.",
-          });
-          socket.disconnect(true);
-          return;
-        }
-        replacedSocketIds.add(existingSocket.id);
-        activeUserSockets.delete(userId);
-        existingSocket.disconnect(true)
-      } else {
-        activeUserSockets.delete(userId)
+      if(!isSameDevice){
+        socket.emit("session_rejected", {
+          message: "Tài khoản đang được đăng nhập trên một thiết bị."
+        })
+        socket.disconnect(true)
+        return
       }
+      existingSession.socket_ids.add(socket.id)
+    } else {
+      activeUserSockets.set(userId, {
+        device_id: deviceId,
+        socket_ids: new Set([socket.id])
+      })
     }
 
     const tokenTimer = tokenExpireTimers.get(userId);
@@ -193,17 +189,17 @@ io.on("connection", async (socket) => {
     }
 
     socket.data.user_id = userId;
-    socket.data.tab_id = tabId;
+    socket.data.device_id = deviceId;
     socket.data.user = user;
 
     if (isAdminUser(user)) {
       socket.join("admins");
     }
 
-    activeUserSockets.set(userId, {
-      socket_id: socket.id,
-      tab_id: tabId,
-    });
+    // activeUserSockets.set(userId, {
+    //   device_id: deviceId,
+    //   socket_ids: new Set([socket.id])
+    // });
 
     const assignedConveyors = await Conveyor.find({
       user_id: userId,
@@ -307,25 +303,21 @@ io.on("connection", async (socket) => {
 
     socket.on("disconnect", async () => {
       const disconnectedUserId = socket.data.user_id;
-      const disconnectedUser = socket.data.user;
-
-      if (replacedSocketIds.has(socket.id)) {
-        replacedSocketIds.delete(socket.id);
-        removeSocketFromMonitorViewers(socket.id);
-        return;
-      }
-
-      if (!disconnectedUserId) return;
-
+      const disconnectedUser = socket.data.username
       const currentSession = activeUserSockets.get(disconnectedUserId);
 
-      if (!currentSession || currentSession.socket_id !== socket.id) {
+      if (!currentSession) {
         removeSocketFromMonitorViewers(socket.id);
         return;
       }
 
-      activeUserSockets.delete(disconnectedUserId);
-      removeSocketFromMonitorViewers(socket.id);
+      currentSession.socket_ids.delete(socket.id)
+      removeSocketFromMonitorViewers(socket.id)
+
+      if(currentSession.socket_ids.size > 0){
+        return
+      }
+      activeUserSockets.delete(disconnectedUserId)
 
       try {
         const runningConveyors = await Conveyor.find({
@@ -357,8 +349,6 @@ io.on("connection", async (socket) => {
           const conveyorId = normalizeCode(conveyor.conveyor_id);
           const conveyorName = conveyor.name || conveyorId;
           const userName =
-            disconnectedUser.fullname ||
-            disconnectedUser.username ||
             disconnectedUserId;
 
           
@@ -393,7 +383,7 @@ io.on("connection", async (socket) => {
                     user_name: userName,
                     conveyor_id: conveyorId,
                     conveyor_name: conveyorName,
-                    message: `Đã hủy tự động dừng băng tải ${conveyorName}`,
+                  message: `Đã hủy tự động kết thúc phiên kiểm tra ${conveyorName}`,
                   });
 
                   return;
@@ -415,26 +405,17 @@ io.on("connection", async (socket) => {
 
                 autoStoppedConveyors.add(conveyorId);
 
-                await Conveyor.updateOne(
-                  { conveyor_id: conveyorId },
-                  {
-                    $set: {
-                      status: "STOPPING",
-                    },
-                  }
-                );
-
                 io.to("admins").emit("auto_stop_triggered", {
                   user_id: disconnectedUserId,
                   user_name: userName,
                   conveyor_id: conveyorId,
                   conveyor_name: conveyorName,
-                  message: `Không có người vận hành hoặc người giám sát sau 30 giây. Hệ thống đã tự động gửi lệnh dừng băng tải ${conveyorName}.`,
+                  message: `Không có người vận hành hoặc người giám sát sau 30 giây. Hệ thống đã tự động kết thúc phiên kiểm tra của ${conveyorName}.`,
                 });
 
                 io.emit("conveyor_status_changed", {
                   conveyor_id: conveyorId,
-                  status: "STOPPING",
+                  session_status: "STOPPING",
                 });
 
                 operatorDisconnectTimers.delete(conveyorId);
@@ -476,10 +457,8 @@ io.on("connection", async (socket) => {
               io.to("admins").emit("user_session_expired", {
                 user_id: disconnectedUserId,
                 user_name:
-                  disconnectedUser.fullname ||
-                  disconnectedUser.username ||
-                  disconnectedUserId,
-                message: `User ${disconnectedUser.fullname || disconnectedUser.username || disconnectedUserId} đã mất kết nối quá 60 giây. Phiên đăng nhập đã bị vô hiệu hóa.`,
+                  disconnectedUser,
+                message: `User ${disconnectedUser} đã mất kết nối quá 60 giây. Phiên đăng nhập đã bị vô hiệu hóa.`,
               });
             } catch (error) {
               console.error("[SESSION] Token expiration error:", error);

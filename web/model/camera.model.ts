@@ -18,6 +18,7 @@ const cameraSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
+      unique: true,
     },
     status: {
       type: String,

@@ -1,17 +1,20 @@
-const getOrCreateTabId = () => {
-  let tabId = sessionStorage.getItem("tab_id");
+//localStorage dùng chung giữa nhiều tab cùng trình duyệt, còn sessionStorage chỉ riêng từng tab.
+// device_id dùng để định danh 1 thiết bị/trình duyệt
 
-  if (!tabId) {
-    tabId =
-      "TAB_" +
+const getDeviceId = () => {
+  let deviceId = localStorage.getItem("device_id");
+
+  if (!deviceId) {
+    deviceId =
+      "DEVICE_" +
       Date.now().toString(36) +
       "_" +
       Math.random().toString(36).slice(2, 10);
 
-    sessionStorage.setItem("tab_id", tabId);
+    localStorage.setItem("device_id", deviceId);
   }
 
-  return tabId;
+  return deviceId;
 };
 
 const createPageInstanceId = () =>
@@ -20,8 +23,16 @@ const createPageInstanceId = () =>
   "_" +
   Math.random().toString(36).slice(2, 10);
 
-window.__TAB_ID__ = getOrCreateTabId();
+window.__DEVICE_ID__ = getDeviceId();
 window.__PAGE_INSTANCE_ID__ = createPageInstanceId();
+
+document.addEventListener("DOMContentLoaded", () => {
+  const deviceInput = document.getElementById("device_id");
+
+  if (deviceInput) {
+    deviceInput.value = window.__DEVICE_ID__;
+  }
+});
 
 const lastInternalNavigationAt = Number(
   sessionStorage.getItem("last_internal_navigation_at") || 0
@@ -30,19 +41,22 @@ const lastInternalNavigationAt = Number(
 const isInternalNavigation =
   lastInternalNavigationAt > 0 && Date.now() - lastInternalNavigationAt < 5000;
 
+const hasSocketIo = typeof io === "function";
+
 window.appSocket =
   window.appSocket ||
-  io({
-    auth: {
-      tab_id: window.__TAB_ID__,
-      page_instance_id: window.__PAGE_INSTANCE_ID__,
-      pathname: window.location.pathname,
-      internal_navigation: isInternalNavigation,
-    },
-  });
+  (hasSocketIo
+    ? io({
+        auth: {
+          device_id: window.__DEVICE_ID__,
+          page_instance_id: window.__PAGE_INSTANCE_ID__,
+          pathname: window.location.pathname,
+          internal_navigation: isInternalNavigation,
+        },
+      })
+    : null);
 
 const socket = window.appSocket;
-
 document.addEventListener("click", (event) => {
   const link = event.target.closest("a[href]");
   if (!link) return;
@@ -54,11 +68,12 @@ document.addEventListener("click", (event) => {
 });
 
 const COMMAND_LABELS = {
-  START_SYSTEM: "Khởi động hệ thống",
-  STOP_SYSTEM: "Dừng hệ thống",
+  START_SYSTEM: "Bắt đầu phiên kiểm tra",
+  STOP_SYSTEM: "Kết thúc phiên kiểm tra",
   GET_STATUS: "Kiểm tra trạng thái",
   GET_SERIAL_PORT: "Quét cổng Serial",
   GET_SERIAL_PORTS: "Quét cổng Serial",
+  SCAN_CAMERAS: "Quét camera",
   RESET_ARDUINO_CONFIG_DEFAULT: "Khôi phục cấu hình Arduino",
   LIGHT_CHECK: "Kiểm tra ánh sáng",
   GET_ARDUINO_CONFIG: "Đọc cấu hình Arduino",
@@ -99,12 +114,15 @@ const userMessage = (message, fallback = "Có lỗi xảy ra") => {
   if (normalized.includes("conveyor_id is required")) return "Thiếu mã băng tải.";
   if (normalized.includes("mqtt client is not connected")) return "Chưa kết nối tới bộ điều khiển AI.";
   if (normalized.includes("publish command failed")) return "Không gửi được yêu cầu tới hệ thống AI.";
+  if (normalized.includes("camera ip is required")) return "Camera đã chọn chưa có địa chỉ mạng hợp lệ.";
+  if (normalized.includes("cannot find camera with ip")) return "Không tìm thấy đúng camera đã chọn. Hãy kiểm tra nguồn điện, dây mạng và cấu hình mạng camera.";
+  if (normalized.includes("no camera found")) return "Không tìm thấy camera nào đang kết nối.";
 
   return raw
-    .replaceAll("START_SYSTEM", "Khởi động hệ thống")
-    .replaceAll("STOP_SYSTEM", "Dừng hệ thống")
+    .replaceAll("START_SYSTEM", "Bắt đầu phiên kiểm tra")
+    .replaceAll("STOP_SYSTEM", "Kết thúc phiên kiểm tra")
     .replaceAll("GET_STATUS", "Kiểm tra trạng thái")
-    .replaceAll("job_id", "Mã lượt kiểm tra")
+    .replaceAll("stt", "Số thứ tự")
     .replaceAll("Job", "Lượt kiểm tra")
     .replaceAll("command", "Thao tác");
 };
@@ -205,6 +223,21 @@ const setAiStatus = (mode, text) => {
   if (topText) topText.textContent = text;
 };
 
+const setInspectionSessionStatus = (running, status) => {
+  const el = document.getElementById("inspectionSessionStatus");
+  if (!el) return;
+
+  el.classList.remove("connected", "disconnected", "warning");
+  if (running) {
+    el.classList.add("connected");
+    el.innerHTML = '<span class="status-dot"></span>Đang kiểm tra';
+    return;
+  }
+
+  el.classList.add(status === "ERROR" ? "disconnected" : "warning");
+  el.innerHTML = `<span class="status-dot"></span>${status === "ERROR" ? "Lỗi" : "Chưa bắt đầu"}`;
+};
+
 const updateMqttStatus = (status) => {
   const el = document.getElementById("systemStatus");
   if (!el) return;
@@ -265,10 +298,10 @@ function renderInspectionResult(data) {
   if (currentMode === "TEST" && resultMode !== "TEST") return;
   if (currentMode === "PRODUCTION" && resultMode === "TEST") return;
 
-  const displayId = data.stt || data.job_id || data.inspection_id;
+  const displayId = data.stt || data.inspection_id;
 
   setText("stt", displayId ? `Lượt ${displayId}` : "-");
-  setText("jobId", displayId ? `Lượt ${displayId}` : "-");
+  //setText("jobId", displayId ? `Lượt ${displayId}` : "-");
   updateResultBadge(data.label);
   setText("resultTimestamp", formatTimestamp(data.timestamp));
 
@@ -313,8 +346,8 @@ async function sendControlCommand(command, payload = {}) {
     const conveyorCode = getCurrentConveyorCode();
     const label = commandLabel(command);
 
-    if (command === "START_SYSTEM") setAiStatus("warning", "Đang khởi động hệ thống...");
-    if (command === "STOP_SYSTEM") setAiStatus("warning", "Đang dừng hệ thống...");
+    if (command === "START_SYSTEM") setInspectionSessionStatus(false, "STARTING");
+    if (command === "STOP_SYSTEM") setInspectionSessionStatus(false, "STOPPING");
     if (command === "GET_STATUS") setAiStatus("warning", "Đang kiểm tra trạng thái...");
 
     const res = await fetch("/control/command", {
@@ -326,7 +359,7 @@ async function sendControlCommand(command, payload = {}) {
         command,
         payload: {
           conveyor_id: conveyorCode,
-          mode: window.__RUNTIME_MODE__,
+          mode: window.__RUNTIME_MODE__ || "PRODUCTION",
           ...payload,
         },
       }),
@@ -370,6 +403,235 @@ async function sendControlCommand(command, payload = {}) {
 
 window.sendControlCommand = sendControlCommand;
 
+let pendingCameraScanCommandId = "";
+let lastHandledCameraScanCommandId = "";
+let cameraScanTimeout = null;
+let lastDiscoveredCameras = [];
+
+const getCameraPicker = () => document.querySelector("[data-camera-picker]");
+
+const setCameraScanStatus = (message, isError = false) => {
+  const status = document.querySelector("[data-camera-scan-status]");
+  if (!status) return;
+
+  status.textContent = message;
+  status.classList.toggle("is-error", isError);
+};
+
+const setCameraScanButtonLoading = (loading) => {
+  const button = document.querySelector("[data-camera-scan-button]");
+  if (!button) return;
+
+  button.disabled = loading;
+  button.textContent = loading ? "Đang quét..." : "Quét camera";
+};
+
+const cameraScanErrorMessage = (message) => {
+  const normalized = String(message || "").trim().toLowerCase();
+
+  if (normalized.includes("no camera found")) {
+    return "Không tìm thấy camera. Vui lòng kiểm tra nguồn và kết nối mạng.";
+  }
+
+  if (
+    normalized.includes("busy") ||
+    normalized.includes("noaccess") ||
+    normalized.includes("access denied")
+  ) {
+    return "Camera đang được chương trình khác sử dụng.";
+  }
+
+  return "Không thể quét camera. Vui lòng kiểm tra kết nối và thử lại.";
+};
+
+const cameraAccessInfo = (camera) => {
+  const raw = String(camera?.access_status || "").toLowerCase();
+  const busy = ["busy", "noaccess", "read-only", "readonly", "unavailable"].some(
+    (value) => raw.includes(value)
+  );
+
+  return busy
+    ? { label: "Đang được sử dụng", busy: true }
+    : { label: "Có thể sử dụng", busy: false };
+};
+
+const appendCameraDetail = (card, label, value) => {
+  const line = document.createElement("p");
+  line.className = "camera-device-card__detail";
+
+  const strong = document.createElement("strong");
+  strong.textContent = `${label}: `;
+
+  line.appendChild(strong);
+  line.appendChild(document.createTextNode(value || "-"));
+  card.appendChild(line);
+};
+
+const renderCameraCards = (cameras) => {
+  const grid = document.querySelector("[data-camera-scan-results]");
+  const input = document.getElementById("camera_ip");
+  if (!grid || !input) return;
+
+  grid.innerHTML = "";
+  lastDiscoveredCameras = Array.isArray(cameras) ? cameras : [];
+
+  if (lastDiscoveredCameras.length === 0) {
+    setCameraScanStatus(
+      "Không tìm thấy camera. Vui lòng kiểm tra nguồn và kết nối mạng.",
+      true
+    );
+    return;
+  }
+
+  const selectedIp = String(input.value || "").trim();
+
+  lastDiscoveredCameras.forEach((camera, index) => {
+    const ip = String(camera.ip || camera.camera_ip || camera.ip_address || "").trim();
+    const access = cameraAccessInfo(camera);
+    const selectable = !!ip && !access.busy;
+    const selected = !!ip && ip === selectedIp;
+
+    const card = document.createElement("article");
+    card.className = `camera-device-card${selected ? " is-selected" : ""}`;
+
+    const head = document.createElement("div");
+    head.className = "camera-device-card__head";
+
+    const titleWrap = document.createElement("div");
+    const title = document.createElement("h4");
+    title.className = "camera-device-card__title";
+    title.textContent = `Camera ${index + 1}`;
+
+    const status = document.createElement("span");
+    status.className = `camera-device-card__status${access.busy ? " is-busy" : ""}${
+      !ip ? " is-error" : ""
+    }`;
+    status.textContent = ip ? access.label : "Không xác định được địa chỉ";
+
+    titleWrap.appendChild(title);
+    titleWrap.appendChild(status);
+    head.appendChild(titleWrap);
+    card.appendChild(head);
+
+    appendCameraDetail(card, "Loại camera", camera.model || "Camera công nghiệp");
+    appendCameraDetail(card, "Địa chỉ mạng", ip || "Không xác định");
+
+    const details = document.createElement("details");
+    details.className = "camera-device-card__technical";
+    const summary = document.createElement("summary");
+    summary.textContent = "Thông tin kỹ thuật";
+    const serial = document.createElement("p");
+    serial.textContent = `Mã thiết bị: ${camera.serial_number || camera.id || "-"}`;
+    details.appendChild(summary);
+    details.appendChild(serial);
+    card.appendChild(details);
+
+    const chooseButton = document.createElement("button");
+    chooseButton.type = "button";
+    chooseButton.className = selected ? "btn btn--success" : "btn btn--primary";
+    chooseButton.disabled = !selectable;
+    chooseButton.textContent = selected ? "Đã chọn" : "Chọn camera";
+    chooseButton.addEventListener("click", () => {
+      input.value = ip;
+      renderCameraCards(lastDiscoveredCameras);
+    });
+
+    card.appendChild(chooseButton);
+    grid.appendChild(card);
+  });
+
+  const selectedFound = lastDiscoveredCameras.some(
+    (camera) =>
+      String(camera.ip || camera.camera_ip || camera.ip_address || "").trim() ===
+      selectedIp
+  );
+
+  setCameraScanStatus(
+    selectedFound
+      ? `Tìm thấy ${lastDiscoveredCameras.length} camera.`
+      : `Tìm thấy ${lastDiscoveredCameras.length} camera. Hãy chọn một camera.`
+  );
+};
+
+const handleCameraScanAck = (ack) => {
+  if (!getCameraPicker() || ack?.command !== "SCAN_CAMERAS") return;
+  if (
+    pendingCameraScanCommandId &&
+    ack.command_id &&
+    ack.command_id !== pendingCameraScanCommandId
+  ) {
+    return;
+  }
+
+  clearTimeout(cameraScanTimeout);
+  lastHandledCameraScanCommandId = ack.command_id || "";
+  pendingCameraScanCommandId = "";
+  setCameraScanButtonLoading(false);
+
+  if (ack.status !== "SUCCESS") {
+    setCameraScanStatus(cameraScanErrorMessage(ack.message), true);
+    return;
+  }
+
+  renderCameraCards(ack.data?.cameras || []);
+};
+
+const requestCameraScan = async () => {
+  if (!getCameraPicker()) return;
+
+  setCameraScanButtonLoading(true);
+  setCameraScanStatus("Đang quét camera...");
+
+  try {
+    const response = await fetch("/control/command", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        command: "SCAN_CAMERAS",
+        payload: {},
+      }),
+    });
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error(data.message || "Không thể quét camera.");
+    }
+
+    const commandId = data.data?.command_id || "";
+    if (commandId && commandId === lastHandledCameraScanCommandId) {
+      pendingCameraScanCommandId = "";
+      setCameraScanButtonLoading(false);
+      return;
+    }
+
+    pendingCameraScanCommandId = commandId;
+    clearTimeout(cameraScanTimeout);
+    cameraScanTimeout = setTimeout(() => {
+      pendingCameraScanCommandId = "";
+      setCameraScanButtonLoading(false);
+      setCameraScanStatus(
+        "Không nhận được phản hồi. Vui lòng kiểm tra kết nối và thử lại.",
+        true
+      );
+    }, 12000);
+  } catch (error) {
+    setCameraScanButtonLoading(false);
+    setCameraScanStatus(cameraScanErrorMessage(error.message), true);
+  }
+};
+
+const initCameraPicker = () => {
+  const picker = getCameraPicker();
+  if (!picker) return;
+
+  const scanButton = picker.querySelector("[data-camera-scan-button]");
+  if (scanButton) {
+    scanButton.addEventListener("click", requestCameraScan);
+  }
+};
+
 function initSerialPortSelect() {
   const serialSelect = document.getElementById("serial_port");
   if (!serialSelect || !socket) return;
@@ -379,31 +641,32 @@ function initSerialPortSelect() {
   fetch("/settings/serial-ports").catch(() => {
     showToast("Không gửi được yêu cầu quét cổng Serial.", "error");
   });
+  if(socket){
+    socket.on("control_ack", (payload) => {
+      if (!["GET_SERIAL_PORT", "GET_SERIAL_PORTS"].includes(payload.command)) return;
 
-  socket.on("control_ack", (payload) => {
-    if (!["GET_SERIAL_PORT", "GET_SERIAL_PORTS"].includes(payload.command)) return;
+      const ports = payload?.data?.ports || payload?.ports || [];
 
-    const ports = payload?.data?.ports || payload?.ports || [];
+      serialSelect.innerHTML = "";
 
-    serialSelect.innerHTML = "";
+      const emptyOption = document.createElement("option");
+      emptyOption.value = "";
+      emptyOption.textContent = "-- Chọn cổng kết nối --";
+      serialSelect.appendChild(emptyOption);
 
-    const emptyOption = document.createElement("option");
-    emptyOption.value = "";
-    emptyOption.textContent = "-- Chọn cổng kết nối --";
-    serialSelect.appendChild(emptyOption);
+      ports.forEach((port) => {
+        const option = document.createElement("option");
+        const value = port.device || port.path || port.value || "";
 
-    ports.forEach((port) => {
-      const option = document.createElement("option");
-      const value = port.device || port.path || port.value || "";
+        option.value = value;
+        option.textContent = `Cổng kết nối ${value}${port.description ? ` - ${port.description}` : ""}`;
 
-      option.value = value;
-      option.textContent = `Cổng kết nối ${value}${port.description ? ` - ${port.description}` : ""}`;
+        if (value === currentPort) option.selected = true;
 
-      if (value === currentPort) option.selected = true;
-
-      serialSelect.appendChild(option);
+        serialSelect.appendChild(option);
+      });
     });
-  });
+  }
 }
 
 function initFullnameValidation() {
@@ -463,125 +726,168 @@ function initHistoryImageModal() {
     modalImage.removeAttribute("src");
   });
 }
+if(socket){
+  socket.on("connect", () => {
+    sessionStorage.removeItem("last_internal_navigation_at");
 
-socket.on("connect", () => {
-  sessionStorage.removeItem("last_internal_navigation_at");
+    if (hasMonitorContext()) {
+      socket.emit("join_monitor", {
+        conveyor_id: getCurrentConveyorCode(),
+      });
+    }
+  });
 
-  if (hasMonitorContext()) {
-    socket.emit("join_monitor", {
-      conveyor_id: getCurrentConveyorCode(),
-    });
-  }
-});
+  socket.on("session_rejected", (payload) => {
+    alert(payload.message || "Phiên đăng nhập không hợp lệ.");
+    window.location.href = "/login";
+  });
 
-socket.on("session_rejected", (payload) => {
-  alert(payload.message || "Phiên đăng nhập không hợp lệ.");
-  window.location.href = "/login";
-});
+  socket.on("mqtt_status", (data) => {
+    updateMqttStatus(data.status);
+  });
 
-socket.on("mqtt_status", (data) => {
-  updateMqttStatus(data.status);
-});
+  socket.on("inspection_result", (data) => {
+    if (!hasMonitorContext()) return;
 
-socket.on("inspection_result", (data) => {
-  if (!hasMonitorContext()) return;
+    const resultConveyorCode = normalizeCode(data.conveyor_id);
+    if (resultConveyorCode && resultConveyorCode !== getCurrentConveyorCode()) return;
 
-  const resultConveyorCode = normalizeCode(data.conveyor_id);
-  if (resultConveyorCode && resultConveyorCode !== getCurrentConveyorCode()) return;
+    inspectionSessionActive = true;
+    renderInspectionResult(data);
+    setInspectionSessionStatus(true, "RUNNING");
+    //showToast(`Đã nhận kết quả kiểm tra: ${resultLabel(data.label)}`, "info");
+  });
 
-  inspectionSessionActive = true;
-  renderInspectionResult(data);
-  setAiStatus("connected", "Hệ thống đang chạy");
-  //showToast(`Đã nhận kết quả kiểm tra: ${resultLabel(data.label)}`, "info");
-});
-
-socket.on("control_ack", (ack) => {
-  updateControlAckBox(ack);
-
-  if (ack.status === "SUCCESS") {
-    showToast(`${commandLabel(ack.command)} thành công`, "success");
-
-    if (ack.command === "START_SYSTEM") {
-      inspectionSessionActive = true;
-      setAiStatus("warning", "Đang khởi động hệ thống...");
+  socket.on("control_ack", (ack) => {
+    if (ack.command === "SCAN_CAMERAS") {
+      if (ack.status === "ERROR") handleCameraScanAck(ack);
+      return;
     }
 
-    if (ack.command === "STOP_SYSTEM") {
+    updateControlAckBox(ack);
+
+    if (ack.status === "SUCCESS" && ack.command === "START_SYSTEM") {
+      inspectionSessionActive = true;
+      setInspectionSessionStatus(false, "STARTING");
+      //showToast("AI đã nhận yêu cầu bắt đầu phiên kiểm tra", "info");
+    }
+
+    if (ack.status === "SUCCESS" && ack.command === "STOP_SYSTEM") {
       inspectionSessionActive = false;
       clearInspectionResult();
-      setAiStatus("warning", "Đang dừng hệ thống...");
+      setInspectionSessionStatus(false, "STOPPING");
+      //showToast("AI đã nhận yêu cầu kết thúc phiên kiểm tra", "info");
     }
 
-    if (ack.command === "GET_STATUS") {
-      setAiStatus("connected", "Đã nhận trạng thái hệ thống");
+    if (ack.status === "SUCCESS" && !["START_SYSTEM", "STOP_SYSTEM"].includes(ack.command)) {
+      //showToast(`${commandLabel(ack.command)} thành công`, "success");
+
+      if (ack.command === "GET_STATUS") {
+        showToast("Đã đọc trạng thái băng tải từ Arduino", "success");
+      }
     }
-  }
 
-  if (ack.status === "ERROR") {
-    const message = userMessage(ack.message, "Thao tác không thực hiện được.");
+    if (ack.status === "ERROR") {
+      const message = userMessage(ack.message, "Thao tác không thực hiện được.");
 
-    showToast(`${commandLabel(ack.command)} thất bại: ${message}`, "error");
-    setAiStatus("disconnected", `Lỗi: ${message}`);
-  }
-});
-
-socket.on("system_status", (status) => {
-  const dbStatus = normalizeCode(status.db_status || status.status);
-  const running = status.running === true || dbStatus === "RUNNING";
-
-  if (running || dbStatus === "STARTING") {
-    inspectionSessionActive = true;
-    setAiStatus(
-      running ? "connected" : "warning",
-      running ? "Hệ thống đang chạy" : "Đang khởi động hệ thống..."
-    );
-    return;
-  }
-
-  if (dbStatus === "STOPPING") {
-    inspectionSessionActive = false;
-    clearInspectionResult();
-    setAiStatus("warning", "Đang dừng hệ thống...");
-    return;
-  }
-
-  if (dbStatus === "READY") {
-    inspectionSessionActive = false;
-    clearInspectionResult();
-    setAiStatus("warning", "Sẵn sàng vận hành");
-    return;
-  }
-
-  if (dbStatus === "ERROR") {
-    inspectionSessionActive = false;
-    clearInspectionResult();
-    setAiStatus("disconnected", "Hệ thống đang lỗi");
-    return;
-  }
-
-  inspectionSessionActive = false;
-  clearInspectionResult();
-  setAiStatus("disconnected", "Hệ thống đang dừng");
-});
-
-socket.on("system_error", (payload) => {
-  const message = userMessage(payload.message, "Hệ thống AI gặp lỗi.");
-
-  setAiStatus("disconnected", `Lỗi: ${message}`);
-  showToast(message, "error");
-});
-
-[
-  ["user_disconnected", "error"],
-  ["user_session_expired", "error"],
-  ["auto_stop_triggered", "error"],
-  ["user_reconnected", "success"],
-  ["auto_stop_cancelled", "success"],
-].forEach(([eventName, type]) => {
-  socket.on(eventName, (payload) => {
-    showToast(payload.message, payload.auto_stopped ? "info" : type);
+      showToast(`${commandLabel(ack.command)} thất bại: ${message}`, "error");
+      setAiStatus("disconnected", `Lỗi: ${message}`);
+    }
   });
-});
+
+  socket.on("camera_scan_results", handleCameraScanAck);
+
+  socket.on("system_status", (status) => {
+    const dbStatus = normalizeCode(status.db_status || status.conveyor_status);
+    const sessionRunning = status.session_running === true;
+    const sessionStatus = normalizeCode(status.session_status || status.status);
+
+    inspectionSessionActive = sessionRunning;
+    setInspectionSessionStatus(sessionRunning, sessionStatus);
+
+    if (dbStatus === "RUNNING") {
+      setAiStatus("connected", "Băng tải đang chạy");
+      return;
+    }
+
+    if (dbStatus === "ERROR") {
+      setAiStatus("disconnected", "Băng tải đang dừng khẩn cấp");
+      return;
+    }
+    //
+    if (dbStatus === "OFFLINE") {
+      setAiStatus("disconnected", "Không đọc được trạng thái Arduino");
+      return;
+    }
+
+    setAiStatus("warning", "Băng tải đang dừng");
+  });
+
+  socket.on("system_error", (payload) => {
+    const message = userMessage(payload.message, "Hệ thống AI gặp lỗi.");
+
+    setAiStatus("disconnected", `Lỗi: ${message}`);
+    showToast(message, "error");
+  });
+
+  [
+    ["user_disconnected", "error"],
+    ["user_session_expired", "error"],
+    ["auto_stop_triggered", "error"],
+    ["user_reconnected", "success"],
+    ["auto_stop_cancelled", "success"],
+  ].forEach(([eventName, type]) => {
+    socket.on(eventName, (payload) => {
+      showToast(payload.message, payload.auto_stopped ? "info" : type);
+    });
+  });
+
+}
+const initArduinoSpeedSelects = () => {
+  const lowSelect = document.getElementById("arduino_speed_low_level");
+  const highSelect = document.getElementById("arduino_speed_high_level");
+
+  if (!lowSelect || !highSelect) return;
+
+  const presets = Array.isArray(window.SPEED_PRESETS)
+    ? window.SPEED_PRESETS
+    : [];
+
+  const updateHighOptions = () => {
+    const lowLevel = Number(lowSelect.value);
+    const previousHighLevel = Number(highSelect.value);
+
+    const validHighPresets = presets.filter(
+      (preset) => Number(preset.level) > lowLevel
+    );
+
+    highSelect.innerHTML = "";
+
+    validHighPresets.forEach((preset) => {
+      const option = document.createElement("option");
+
+      option.value = preset.level;
+      option.textContent =
+        `${preset.level} - ${preset.label} | ` +
+        `PWM ${preset.pwm} | RPM ${preset.rpm}`;
+
+      highSelect.appendChild(option);
+    });
+
+    const previousValueStillValid = validHighPresets.some(
+      (preset) => Number(preset.level) === previousHighLevel
+    );
+
+    if (previousValueStillValid) {
+      highSelect.value = String(previousHighLevel);
+    } else if (validHighPresets.length > 0) {
+      highSelect.value = String(validHighPresets[0].level);
+    }
+  };
+
+  lowSelect.addEventListener("change", updateHighOptions);
+  updateHighOptions();
+};
 
 document.addEventListener("DOMContentLoaded", () => {
   if (window.__LATEST_INSPECTION__) {
@@ -589,8 +895,10 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   initSerialPortSelect();
+  initCameraPicker();
   initFullnameValidation();
   initHistoryImageModal();
+  initArduinoSpeedSelects();
 
   if (hasMonitorContext()) {
     setTimeout(() => sendControlCommand("GET_STATUS"), 600);

@@ -2,9 +2,11 @@ import { Request, Response } from "express";
 import Conveyor from "../model/conveyor.model";
 import ConveyorConfig from "../model/conveyorConfigSchema.model";
 import ModelRegistry from "../model/modelRegister.model";
+import Camera from "../model/camera.model";
 import { publishControlCommand } from "../service/mqtt.service";
 import { canAccessConveyor } from "../helper/conveyorAccess.helper";
 import Control_log from "../model/control_logs.model";
+import { randomUUID } from "crypto";
 
 const allowedCommands = [
   "START_SYSTEM",
@@ -17,6 +19,7 @@ const allowedCommands = [
   "LIGHT_CHECK",
   "RESET_ARDUINO_CONFIG_DEFAULT",
   "APPLY_ARDUINO_CONFIG",
+  "SCAN_CAMERAS",
 ];
 
 const normalizeConveyorCode = (value: any) =>
@@ -42,7 +45,6 @@ const publicErrorMessage = (error: any) => {
   ) {
     return "Không kết nối được tới MongoDB";
   }
-  console.log("LỖI: ",raw)
   return "Không gửi được yêu cầu tới hệ thống kiểm tra.";
 };
 
@@ -65,8 +67,20 @@ export const sendCommand = async (req: Request, res: Response) => {
 
     const payloadData = payload && typeof payload === "object" ? payload : {};
     const conveyorCode = normalizeConveyorCode(
-      payloadData.conveyor_id);
-    const runtimeMode = normalizeRuntimeMode(payloadData.mode || req.body.mode || req.query.mode || req.query.tab);
+      payloadData.conveyor_id || payloadData.conveyor_code
+    );
+    const runtimeMode = normalizeRuntimeMode(payloadData.mode);
+
+    if (command === "SCAN_CAMERAS") {
+      const data = publishControlCommand(command, {
+        requested_by: res.locals.user?.user_id || "",
+      });
+
+      return res.json({
+        message: "Đang quét camera.",
+        data,
+      });
+    }
 
     if (!conveyorCode) {
       return res.status(400).json({
@@ -103,12 +117,6 @@ export const sendCommand = async (req: Request, res: Response) => {
       });
     }
 
-    // if (command === "START_SYSTEM" && runningStatuses.includes(currentStatus)) {
-    //   return res.status(409).json({
-    //     message: `Băng tải ${conveyorCode} đang ${currentStatus}, không thể khởi động thêm chế độ khác.`,
-    //   });
-    // }
-
     const config = await ConveyorConfig.findOne({
       conveyor_id: conveyorCode,
     }).lean<any>();
@@ -121,15 +129,15 @@ export const sendCommand = async (req: Request, res: Response) => {
 
     if (command === "START_SYSTEM") {
       const configMode = normalizeRuntimeMode(config.config_mode);
-// Đảm bảo rằng chế độ trong cấu hình khớp với chế độ vận hành mà người dùng muốn khởi động
-      if (configMode !== runtimeMode) {
-        return res.status(400).json({
-          message:
-            runtimeMode === "TEST"
-              ? "Cấu hình hiện tại không ở chế độ TEST. Vui lòng vào tab Kiểm thử model để lưu cấu hình trước."
-              : "Cấu hình hiện tại không ở chế độ PRODUCTION. Vui lòng vào tab Vận hành chính để lưu cấu hình trước.",
-        });
-      }
+      // Đảm bảo rằng chế độ trong cấu hình khớp với chế độ vận hành mà người dùng muốn khởi động
+      // if (configMode !== runtimeMode) {
+      //   return res.status(400).json({
+      //     message:
+      //       runtimeMode === "TEST"
+      //         ? "Cấu hình hiện tại không ở chế độ TEST. Vui lòng vào tab Kiểm thử model để lưu cấu hình trước."
+      //         : "Cấu hình hiện tại không ở chế độ PRODUCTION. Vui lòng vào tab Vận hành chính để lưu cấu hình trước.",
+      //   });
+      // }
 
       if (!config.model_id) {
         return res.status(400).json({
@@ -137,6 +145,24 @@ export const sendCommand = async (req: Request, res: Response) => {
             runtimeMode === "TEST"
               ? "Chưa chọn model kiểm thử."
               : "Chưa chọn model vận hành chính.",
+        });
+      }
+
+      const camera = config.camera_id
+        ? await Camera.findOne({ camera_id: config.camera_id }).lean<any>()
+        : null;
+
+      if (!camera) {
+        return res.status(400).json({
+          message: "Chưa chọn camera hợp lệ cho băng tải.",
+        });
+      }
+
+      const cameraIp = String(camera.camera_ip || "").trim();
+
+      if (!cameraIp) {
+        return res.status(400).json({
+          message: "Camera đã chọn chưa có địa chỉ mạng hợp lệ.",
         });
       }
 
@@ -159,20 +185,18 @@ export const sendCommand = async (req: Request, res: Response) => {
       const data = publishControlCommand(command, {
         ...payloadData,
         conveyor_id: conveyorCode,
-        //conveyor_code: conveyorCode,
+        camera_ip: cameraIp,
         mode: runtimeMode,
 
         config: {
           conveyor_id: conveyorCode,
           camera_id: config.camera_id,
+          camera_ip: cameraIp,
           camera_trigger_delay: config.camera_trigger_delay,
           camera_trigger_delay_ms: config.camera_trigger_delay_ms,
           serial_port: config.serial_port,
           baud_rate: config.baud_rate,
           ai_threshold: config.ai_threshold,
-          // speed: config.speed,
-          // goc_home: config.goc_home,
-          // goc_gat: config.goc_gat,
           arduino_speed_low_level: config.arduino_speed_low_level,
           arduino_speed_high_level: config.arduino_speed_high_level,
           arduino_servo_home_angle: config.arduino_servo_home_angle,
@@ -195,24 +219,20 @@ export const sendCommand = async (req: Request, res: Response) => {
       });
 
       await Control_log.create({
+        control_log_id: `CTRL-${randomUUID()}`,
         user_id: res.locals.user?.user_id || "",
         conveyor_id: conveyorCode,
-        cmd: "START",
+        cmd: "START_INSPECTION_SESSION",
         status: "SUCCESS",
-        message: "Người dùng gửi lệnh Start hệ thống",
+        message: "Người dùng bắt đầu phiên kiểm tra",
         created_at: new Date(),
       });
-
-      await Conveyor.updateOne(
-        { conveyor_id: conveyorCode },
-        { $set: { status: "STARTING" } }
-      );
 
       return res.json({
         message:
           runtimeMode === "TEST"
-            ? "Đã gửi lệnh khởi động kiểm thử model."
-            : "Đã gửi lệnh khởi động vận hành chính.",
+            ? "Đã gửi yêu cầu bắt đầu phiên kiểm thử model."
+            : "Đã gửi yêu cầu bắt đầu phiên kiểm tra.",
         data,
       });
     }
@@ -221,26 +241,21 @@ export const sendCommand = async (req: Request, res: Response) => {
       const data = publishControlCommand(command, {
         ...payloadData,
         conveyor_id: conveyorCode,
-        //conveyor_code: conveyorCode,
         mode: runtimeMode,
       });
 
       await Control_log.create({
+        control_log_id: `CTRL-${randomUUID()}`,
         user_id: res.locals.user?.user_id || "",
         conveyor_id: conveyorCode,
-        cmd: "STOP",
+        cmd: "STOP_INSPECTION_SESSION",
         status: "SUCCESS",
-        message: "Người dùng gửi lệnh Stop hệ thống",
+        message: "Người dùng kết thúc phiên kiểm tra",
         created_at: new Date(),
       });
 
-      await Conveyor.updateOne(
-        { conveyor_id: conveyorCode },
-        { $set: { status: "STOPPING" } }
-      );
-
       return res.json({
-        message: "Đã gửi lệnh dừng hệ thống.",
+        message: "Đã gửi yêu cầu kết thúc phiên kiểm tra.",
         data,
       });
     }
@@ -248,7 +263,6 @@ export const sendCommand = async (req: Request, res: Response) => {
     const data = publishControlCommand(command, {
       ...payloadData,
       conveyor_id: conveyorCode,
-      //conveyor_code: conveyorCode,
       mode: runtimeMode,
     });
 

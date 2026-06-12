@@ -10,14 +10,16 @@ import cv2
 import time
 from harvesters.core import Harvester
 from genicam.gentl import TimeoutException
+from devices.camera_discovery import resolve_device_index, scan_device_dicts
 
 
 class HikCamera:
-    def __init__(self, cti_path=CTI_PATH):
+    def __init__(self, cti_path=CTI_PATH, camera_ip=None):
         print("--- Init Camera ---")
 
         self.h = None
         self.ia = None
+        self.camera_ip = str(camera_ip or "").strip()
         self._last_error_print = 0
 
         try:
@@ -28,11 +30,25 @@ class HikCamera:
             if len(self.h.device_info_list) == 0:
                 raise RuntimeError("Khong tim thay camera.")
 
-            self.ia = self.h.create(0)
+            device_index = resolve_device_index(self.h, self.camera_ip)
+            self.ia = self.h.create(device_index)
             self._configure_camera()
         except Exception:
             self.stop()
             raise
+
+    @staticmethod
+    def scan_devices(cti_path=CTI_PATH):
+        harvester = Harvester()
+        try:
+            harvester.add_file(cti_path)
+            harvester.update()
+            return scan_device_dicts(harvester)
+        finally:
+            try:
+                harvester.reset()
+            except Exception:
+                pass
 
     def _configure_camera(self):
         n = self.ia.remote_device.node_map
@@ -212,7 +228,6 @@ class HikCamera:
             with self.ia.fetch(timeout=timeout) as buf:
                 return self._buffer_to_frame(buf)
         except TimeoutException:
-            self._print_limited(f"Camera fetch timeout after {timeout}s; no frame returned.")
             return None
         except Exception as e:
             self._print_limited(f"⚠️ Capture error: {e}")

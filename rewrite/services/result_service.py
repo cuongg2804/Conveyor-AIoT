@@ -8,8 +8,16 @@ from rewrite.config.config import MONGO_URI, MONGO_DB_NAME
 class ResultService:
   def __init__(self):
     self.client = MongoClient(MONGO_URI)
+    self.client.admin.command("ping")
     self.db = self.client[MONGO_DB_NAME]
     self.collection = self.db["inspection_results"]
+    self._drop_legacy_job_id_index()
+
+  def _drop_legacy_job_id_index(self):
+    indexes = self.collection.index_information()
+    if "job_id_1" in indexes:
+      self.collection.drop_index("job_id_1")
+      print("Dropped legacy MongoDB index: inspection_results.job_id_1")
 
   def save_result(self, conveyor_id, stt, result, inspection_id=None):
     if inspection_id is None:

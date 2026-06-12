@@ -190,6 +190,8 @@ class AnomalyGUI:
     # =========================
     def handle_web_start_command(self, payload: dict):
         conveyor_id = payload.get("conveyor_id")
+        config_payload = payload.get("config") if isinstance(payload.get("config"), dict) else {}
+        camera_ip = payload.get("camera_ip") or config_payload.get("camera_ip")
 
         if not conveyor_id:
             raise RuntimeError("Thiếu conveyor_id trong MQTT payload")
@@ -206,6 +208,7 @@ class AnomalyGUI:
             lambda: self.start_system(
                 show_message=False,
                 conveyor_id=conveyor_id,
+                camera_ip=camera_ip,
             )
         )
 
@@ -807,7 +810,7 @@ class AnomalyGUI:
             self.threshold_var.set(str(value))
             self.log(f"Threshold tạm thời = {value}. Khi start sẽ ưu tiên đọc DB.")
 
-    def start_system(self, show_message=True, conveyor_id=None):
+    def start_system(self, show_message=True, conveyor_id=None, camera_ip=None):
         try:
             # Nếu hệ thống đang chạy thì không start lại
             if self.controller is not None and (
@@ -835,7 +838,10 @@ class AnomalyGUI:
             self.log(f"[START] Starting system with conveyor_id={conveyor_id}")
 
             # create_controller sẽ tự đọc config/threshold từ DB theo conveyor_id
-            self.controller, self.conveyor_config = self.controller_factory.create(conveyor_id)
+            self.controller, self.conveyor_config = self.controller_factory.create(
+                conveyor_id,
+                camera_ip=camera_ip,
+            )
 
             # Chạy controller ở thread riêng để không block Tkinter GUI
             self.controller_thread = threading.Thread(
@@ -1116,7 +1122,7 @@ class AnomalyGUI:
 
         self.safe_ui(_)
 
-    def update_multiframe_results(self, frame_results, avg_score, final_label, threshold_used):
+    def update_multiframe_results(self, frame_results, ng_count, final_label, threshold_used):
         def _():
             for i in range(3):
                 if i >= len(frame_results):
@@ -1154,26 +1160,26 @@ class AnomalyGUI:
                     self.overlay_photos[i] = None
                     self.overlay_image_labels[i].config(image="", text="Không có ảnh khoanh lỗi")
 
-            self.update_result_display(avg_score, final_label, threshold_used)
+            self.update_result_display(ng_count, final_label, threshold_used)
 
         self.safe_ui(_)
 
-    def update_result_display(self, avg_score, final_label, threshold_used):
+    def update_result_display(self, ng_count, final_label, threshold_used):
         label_str = str(final_label).strip().lower()
 
-        self.score_var.set(f"{float(avg_score):.6f}")
+        self.score_var.set(f"{int(ng_count)}/3 NG")
         self.label_var.set(str(final_label))
         self.threshold_var.set(str(threshold_used))
 
         if label_str == "ng":
             self.result_var.set(
-                f"SẢN PHẨM LỖI | AVG={float(avg_score):.6f} > TH={float(threshold_used):.6f}"
+                f"SẢN PHẨM LỖI | NG FRAMES={int(ng_count)}/3 | TH={float(threshold_used):.6f}"
             )
             self.result_label.config(bg="#f8d7da", fg="#842029")
 
         elif label_str == "ok":
             self.result_var.set(
-                f"SẢN PHẨM ĐẠT | AVG={float(avg_score):.6f} <= TH={float(threshold_used):.6f}"
+                f"SẢN PHẨM ĐẠT | NG FRAMES={int(ng_count)}/3 | TH={float(threshold_used):.6f}"
             )
             self.result_label.config(bg="#d1e7dd", fg="#0f5132")
 

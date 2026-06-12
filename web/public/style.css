@@ -2358,3 +2358,149 @@ img[src]:not([src=""]) + .image-placeholder {
   margin-top: 16px;
   color: #64748b;
 }
+
+/* =========================================================
+   CAMERA DISCOVERY
+========================================================= */
+
+.camera-form-card {
+  max-width: 980px;
+}
+
+.camera-picker {
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: #f8fafc;
+}
+
+.camera-picker__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.camera-picker__title {
+  margin: 0;
+  color: var(--text);
+  font-size: 17px;
+  font-weight: 950;
+}
+
+.camera-picker__desc,
+.camera-picker__status,
+.camera-device-card__detail,
+.camera-device-card__technical {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.camera-picker__desc {
+  margin: 5px 0 0;
+}
+
+.camera-picker__status {
+  margin: 14px 0 0;
+}
+
+.camera-picker__status.is-error {
+  color: var(--danger);
+}
+
+.camera-picker__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.camera-device-card {
+  padding: 16px;
+  border: 2px solid #e2e8f0;
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.camera-device-card.is-selected {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.camera-device-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.camera-device-card__title {
+  margin: 0;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 950;
+}
+
+.camera-device-card__status {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 6px;
+  color: var(--success);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.camera-device-card__status.is-busy,
+.camera-device-card__status.is-error {
+  color: var(--danger);
+}
+
+.camera-device-card__detail {
+  margin: 12px 0 0;
+}
+
+.camera-device-card__detail strong {
+  color: #334155;
+}
+
+.camera-device-card__technical {
+  margin-top: 12px;
+}
+
+.camera-device-card__technical summary {
+  cursor: pointer;
+  color: #1e3a8a;
+}
+
+.camera-device-card__technical p {
+  margin: 7px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.camera-device-card .btn {
+  width: 100%;
+  margin-top: 14px;
+}
+
+.camera-device-card .btn:disabled,
+.camera-picker__head .btn:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.camera-ip-field .field__control[readonly] {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+@media (max-width: 800px) {
+  .camera-picker__head {
+    flex-direction: column;
+  }
+
+  .camera-picker__grid {
+    grid-template-columns: 1fr;
+  }
+}

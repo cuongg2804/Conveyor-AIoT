@@ -16,6 +16,7 @@ html(lang="vi")
           .login-error= error
 
         form.login-form(method="POST" action="/login")
+          input#device_id(type="hidden" name="device_id")
           .field
             label.field__label(for="username") Tài khoản
             input#username.field__control(type="text" name="username" required)
@@ -25,3 +26,4 @@ html(lang="vi")
             input#password.field__control(type="password" name="password" required)
 
           button.btn.btn--primary(type="submit") Đăng nhập
+    script(src="/script.js")

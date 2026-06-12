@@ -43,6 +43,8 @@ class RewriteGUI:
 
       self.build_ui()
       self.start_control_service()
+      self.last_published_runtime_status = None
+      self.schedule_runtime_status_poll()
       self.root.protocol("WM_DELETE_WINDOW", self.on_close)
 
   def start_control_service(self):
@@ -134,14 +136,16 @@ class RewriteGUI:
       image_label.pack()
       self.frame_image_labels.append(image_label)
 
-  def start_system(self, conveyor_id="CONVEYOR-01"):
+  def start_system(self, conveyor_id="BT_IWFY2PY", camera_ip=None):
     try:
 
       conveyor_id = str(conveyor_id).strip().upper()
       self.status_var.set("STARTING")
+      self.close_config_arduino()
       self.controller.start(
         conveyor_id,
-        on_result=self.handle_inspection_result
+        on_result=self.handle_inspection_result,
+        camera_ip=camera_ip,
       )
       print(f"Start system: {conveyor_id}")
       self.update_status_view()
@@ -194,6 +198,25 @@ class RewriteGUI:
         self.control_service.publish_status()
     except Exception as e:
       print(f"Publish runtime status error: {e}")
+
+  def schedule_runtime_status_poll(self):
+    try:
+      status = self.controller.get_status()
+      snapshot = (
+        status.get("conveyor_id"),
+        status.get("conveyor_status"),
+        status.get("session_status"),
+        status.get("session_running"),
+        status.get("arduino_status"),
+      )
+      if snapshot != self.last_published_runtime_status:
+        self.last_published_runtime_status = snapshot
+        self.update_status_view()
+        self.publish_runtime_status()
+    except Exception as e:
+      print(f"Runtime status poll error: {e}")
+    finally:
+      self.root.after(1000, self.schedule_runtime_status_poll)
 
   def update_status_view(self):
     status = self.controller.get_status()
@@ -269,6 +292,8 @@ class RewriteGUI:
 
   def handle_web_start_command(self, payload):
     conveyor_id = payload.get("conveyor_id") or payload.get("conveyor_code")
+    config_payload = payload.get("config") if isinstance(payload.get("config"), dict) else {}
+    camera_ip = payload.get("camera_ip") or config_payload.get("camera_ip")
 
     if not conveyor_id:
       raise RuntimeError("Missing conveyor_id")
@@ -277,7 +302,7 @@ class RewriteGUI:
 
     self.root.after(
       0,
-      lambda: self.start_system(conveyor_id=conveyor_id)
+      lambda: self.start_system(conveyor_id=conveyor_id, camera_ip=camera_ip)
     )
 
     return {
@@ -302,12 +327,15 @@ class RewriteGUI:
     conveyor_id = str(conveyor_id).strip().upper()
     if self.controller is not None and self.controller.running and self.controller.conveyor_id == conveyor_id:
       config = RuntimeConfigService().get_config(conveyor_id)
-      self.controller.conveyor_config = config
+      applied = self.controller.apply_runtime_config(config)
       self.update_status_view()
+    else:
+      applied = {}
 
     return {
       "accepted": True,
       "conveyor_id": conveyor_id,
+      **applied,
       "message": "Config reload accepted",
     }
 
@@ -433,7 +461,7 @@ class RewriteGUI:
         self.close_config_arduino()
       raise
 
-  def get_web_status(self):
+  def get_web_status(self, payload=None):
     return self.controller.get_status()
 
   def handle_inspection_result(self, result):
@@ -455,7 +483,7 @@ class RewriteGUI:
 
     try:
       if self.controller is not None:
-        self.controller.stop()
+        self.controller.shutdown()
     except Exception as e:
       print(f"Controller stop error: {e}")
 
@@ -463,7 +491,8 @@ class RewriteGUI:
     self.root.destroy()
 
   def build_mqtt_result_payload(self, result):
-    status = self.controller.get_status()
+    # Result publishing must not wait for the lower-priority GET_STATE poll.
+    status = self.controller.get_status(refresh_conveyor=False)
 
     frames = []
     for item in result.get("frames", []):
@@ -472,6 +501,7 @@ class RewriteGUI:
         "predicted_label": item.get("pred_label"),
         "predicted_score": float(item.get("pred_score", 0.0)),
         "roi_path": item.get("roi_path"),
+        "overlay_path": item.get("overlay_path"),
         "contour_msg": item.get("contour_msg"),
         "contour_warning": item.get("contour_warning"),
       })

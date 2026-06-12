@@ -46,6 +46,18 @@ const ipValid = (value: any) => {
   });
 };
 
+const cameraIpExists = async (cameraIp: string, excludeCameraId = "") => {
+  const filter: any = { camera_ip: cameraIp };
+
+  if (excludeCameraId) {
+    filter.camera_id = { $ne: excludeCameraId };
+  }
+
+  return !!(await Camera.exists(filter));
+};
+
+const isDuplicateKeyError = (error: any) => Number(error?.code) === 11000;
+
 export const index = async (req: Request, res: Response) => {
   try {
     const status = String(req.query.status || "").trim().toUpperCase();
@@ -117,6 +129,7 @@ export const create = async (req: Request, res: Response) => {
       camera_name: "",
       camera_ip: "",
       status: "AVAILABLE",
+      created: req.query.created === "1",
     },
   });
 };
@@ -141,10 +154,20 @@ export const createPost = async (req: Request, res: Response) => {
     }
     if(!ipValid(camera_ip)) {
       return res.render("cameras/create", {
-        tittle: "Thêm camera",
-        error: "Địa chỉ IP không hợp lệ. Vui lòng kiểm tra lại!",
+        title: "Thêm camera",
+        error: "Camera đã chọn không hợp lệ. Vui lòng quét và chọn lại.",
         form: req.body,
       })
+    }
+
+    const normalizedCameraIp = String(camera_ip || "").trim();
+
+    if (await cameraIpExists(normalizedCameraIp)) {
+      return res.render("cameras/create", {
+        title: "Thêm camera",
+        error: "Camera này đã có trong hệ thống.",
+        form: req.body,
+      });
     }
 
     const existed = await Camera.findOne({
@@ -162,18 +185,20 @@ export const createPost = async (req: Request, res: Response) => {
     await Camera.create({
       camera_id: finalCameraId,
       camera_name: String(camera_name).trim(),
-      camera_ip: String(camera_ip || "").trim(),
+      camera_ip: normalizedCameraIp,
       status: "AVAILABLE",
       conveyor_id: "",
     });
 
-    return res.redirect("/cameras");
-  } catch (error) {
+    return res.redirect("/cameras?created=1");
+  } catch (error: any) {
     console.error("Create camera error:", error);
 
     return res.render("cameras/create", {
       title: "Thêm camera",
-      error: "Không thể thêm camera.",
+      error: isDuplicateKeyError(error)
+        ? "Camera này đã có trong hệ thống."
+        : "Không thể thêm camera.",
       form: req.body,
     });
   }
@@ -195,6 +220,7 @@ export const edit = async (req: Request, res: Response) => {
       title: "Cập nhật camera",
       camera,
       error: null,
+      updated: req.query.updated === "1",
     });
   } catch (error) {
     console.error("Load edit camera error:", error);
@@ -215,7 +241,7 @@ export const editPost = async (req: Request, res: Response) => {
     if (!camera_name) {
       const camera = await Camera.findOne({ camera_id: cameraId }).lean();
 
-      return res.render("cameras/edit", {
+      return res.render("cameras/edit/${cameraId}?updated=1", {
         title: "Cập nhật camera",
         camera: {
           ...camera,
@@ -236,7 +262,23 @@ export const editPost = async (req: Request, res: Response) => {
           ...req.body,
           camera_id: cameraId,
         },
-        error: "Địa chỉ IP không hợp lệ. Vui lòng kiểm tra lại!",
+        error: "Camera đã chọn không hợp lệ. Vui lòng quét và chọn lại.",
+      });
+    }
+
+    const normalizedCameraIp = String(camera_ip || "").trim();
+
+    if (await cameraIpExists(normalizedCameraIp, cameraId)) {
+      const camera = await Camera.findOne({ camera_id: cameraId }).lean();
+
+      return res.render("cameras/edit", {
+        title: "Cập nhật camera",
+        camera: {
+          ...camera,
+          ...req.body,
+          camera_id: cameraId,
+        },
+        error: "Camera này đã có trong hệ thống.",
       });
     }
 
@@ -245,15 +287,31 @@ export const editPost = async (req: Request, res: Response) => {
       {
         $set: {
           camera_name: String(camera_name).trim(),
-          camera_ip: String(camera_ip || "").trim(),
+          camera_ip: normalizedCameraIp,
           description: String(description || "").trim(),
         },
       }
     );
 
-    return res.redirect("/cameras");
-  } catch (error) {
+    return res.redirect(`/cameras/edit/${cameraId}?updated=1`);
+  } catch (error: any) {
     console.error("Update camera error:", error);
+
+    if (isDuplicateKeyError(error)) {
+      const cameraId = normalizeCode(req.params.camera_id);
+      const camera = await Camera.findOne({ camera_id: cameraId }).lean();
+
+      return res.render("cameras/edit", {
+        title: "Cập nhật camera",
+        camera: {
+          ...camera,
+          ...req.body,
+          camera_id: cameraId,
+        },
+        error: "Camera này đã có trong hệ thống.",
+      });
+    }
+
     return res.status(500).send("Không thể cập nhật camera.");
   }
 };

@@ -68,7 +68,7 @@ class ControllerFactory:
             except Exception:
                 pass
 
-    def create(self, conveyor_id: str) -> tuple:
+    def create(self, conveyor_id: str, camera_ip=None) -> tuple:
         resources = StartupResources(self.log)
         conveyor_id = str(conveyor_id).strip().upper()
 
@@ -81,12 +81,14 @@ class ControllerFactory:
         try:
             self.log(f"[CONFIG] Loading conveyor config: {conveyor_id}")
             conveyor_config = self.load_conveyor_config(conveyor_id)
+            if camera_ip:
+                conveyor_config["camera_ip"] = str(camera_ip).strip()
 
             serial_port = str(conveyor_config["serial_port"])
             baud_rate = int(conveyor_config["baud_rate"])
             image_threshold = float(conveyor_config["ai_threshold"])
             camera_trigger_delay = conveyor_config.get("camera_trigger_delay")
-            camera_source = conveyor_config.get("camera_source")
+            camera_source = conveyor_config.get("camera_ip") or conveyor_config.get("camera_source")
 
             self.cb("set_threshold", str(image_threshold))
             self.log(
@@ -100,7 +102,11 @@ class ControllerFactory:
             model = self._create_model(image_threshold)
             arduino = self._create_arduino(resources, serial_port, baud_rate)
             self._apply_arduino_config(arduino, conveyor_config)
-            camera = self._create_camera(resources, camera_trigger_delay)
+            camera = self._create_camera(
+                resources,
+                camera_trigger_delay,
+                conveyor_config.get("camera_ip"),
+            )
 
             # Khởi tạo các thành phần quan trọng
             queue = ResultQueue()
@@ -157,9 +163,9 @@ class ControllerFactory:
         self.cb("set_arduino_status", f"Da ket noi ({serial_port})")
         return arduino
 
-    def _create_camera(self, resources, camera_trigger_delay):
+    def _create_camera(self, resources, camera_trigger_delay, camera_ip):
         self.log("Khoi tao camera...")
-        camera = HikCamera()
+        camera = HikCamera(camera_ip=camera_ip)
         resources.add("Camera", camera, "stop")
         camera.start()
         self.cb("set_camera_status", "Dang chay")

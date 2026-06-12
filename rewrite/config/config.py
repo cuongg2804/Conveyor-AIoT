@@ -1,8 +1,8 @@
 import os
 from pathlib import Path
 
-MONGO_URI = os.getenv("MONGO_URI", "mongodb://admin:admin123456@localhost:27018/conveyor_aiot?authSource=admin")
-MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "AIoT")
+MONGO_URI = os.getenv("MONGO_URI", "mongodb://admin:admin123456@localhost:27019/conveyor_aiot?authSource=admin")
+MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "conveyor_aiot")
 MONGO_COLLECTION_NAME = os.getenv("MONGO_COLLECTION_NAME", "inspection_results")
 MONGO_CONVEYOR_COLLECTION_NAME = os.getenv("MONGO_CONVEYOR_COLLECTION_NAME", "conveyor_configs")
 

@@ -24,6 +24,7 @@ class SystemController:
 
     self.arduino = None
     self.arduino_status = "DISCONNECTED"
+    self.conveyor_status = "OFFLINE"
 
     self.camera = None
     self.camera_status = "DISCONNECTED"
@@ -40,6 +41,7 @@ class SystemController:
     self.loop_running = False
     self.on_result = None
     self.stop_event = threading.Event()
+    self.runtime_config_lock = threading.Lock()
 
     self.result_service = None
     self.stt = 0
@@ -49,7 +51,7 @@ class SystemController:
     self.runtime_state = RuntimeStateManager()
     self.logger = LatencyLogger()
 
-  def start(self, conveyor_id,on_result=None):
+  def start(self, conveyor_id, on_result=None, camera_ip=None):
     if self.running == True:
       print("System already running")
       return
@@ -62,6 +64,8 @@ class SystemController:
 
       if config is None:
         raise RuntimeError("RuntimeConfigService returned empty config")
+      if camera_ip:
+        config["camera_ip"] = str(camera_ip).strip()
       self.conveyor_config = config
       self.requested_model = config.get("model")
 
@@ -74,32 +78,51 @@ class SystemController:
       runtime_threshold = threshold
 
       try:
-        local_model_path = self.model_cache.ensure_cached(self.requested_model)
-        self.model_format = detect_model_format(local_model_path, self.requested_model)
-        self.model = create_model_engine(
-          model_path=local_model_path,
-          device="cuda",
-          threshold=threshold,
-          model_config=self.requested_model,
-        )
-        state = self.runtime_state.promote_current(self.requested_model, local_model_path)
-        self.running_model = state.get("current_model")
-        self.rollback_model = state.get("rollback_model")
-        self.model_cache.prune([
-          (self.running_model or {}).get("model_id"),
-          (self.rollback_model or {}).get("model_id"),
-        ])
+        loaded_model = self.load_requested_model(self.requested_model, threshold)
+        self.model = loaded_model["model"]
+        self.model_format = loaded_model["model_format"]
+        self.running_model = loaded_model["running_model"]
+        self.rollback_model = loaded_model["rollback_model"]
       except Exception as model_error:
         self.model = None
         runtime_threshold = self.load_rollback_model(threshold, model_error)
         config["ai_threshold"] = runtime_threshold
 
-      #Connect Arduino
-      self.arduino = ArduinoComm(config.get("serial_port"),config.get("baud_rate"))
-      self.arduino.connect()
+      # Keep one serial connection alive so reading physical conveyor state does
+      # not repeatedly reset an Arduino Uno.
+      serial_port = config.get("serial_port")
+      baud_rate = config.get("baud_rate")
+      reuse_arduino = (
+        self.arduino is not None
+        and self.arduino.is_connected()
+        and str(self.arduino.port).upper() == str(serial_port).upper()
+        and int(self.arduino.baudrate) == int(baud_rate or 9600)
+      )
+      if not reuse_arduino:
+        if self.arduino is not None:
+          self.arduino.close()
+        self.arduino = ArduinoComm(serial_port, baud_rate)
+        self.arduino.connect()
       self.arduino_status = "CONNECTED"
+      self.refresh_conveyor_status()
+      if self.conveyor_status == "STOPPED":
+        try:
+          self.apply_arduino_config(config)
+        except RuntimeError as arduino_config_error:
+          if "config protocol is not responding" not in str(arduino_config_error):
+            raise
+          self.arduino_status = "CONNECTED_LEGACY"
+          print(
+            "Arduino config protocol unavailable; "
+            f"continuing with firmware defaults: {arduino_config_error}"
+          )
 
-      self.camera = Camera()
+      self.camera = Camera(
+        configure_trigger=True,
+        camera_ip=config.get("camera_ip"),
+      )
+      self.camera.connect()
+      self.apply_camera_trigger_delay(config)
       self.camera.start()
       self.camera_status = self.camera.get_status().get("status")
 
@@ -111,11 +134,13 @@ class SystemController:
         should_stop=self.should_stop_requested,
       )
 
+      self.arduino.send_line("START")
       self.running = True
       if self.status != "RUNNING_ROLLBACK":
         self.status = "RUNNING"
       self.start_inspection_loop(on_result=on_result)
-      print("SYSTEM STARTED")
+      print(self.model_format)
+      print("INSPECTION SESSION STARTED")
     except Exception as e:
       print(f"Start system failed: {e}")
       self.cleanup_startup_failure()
@@ -139,11 +164,12 @@ class SystemController:
 
     self.inspection_thread = None
 
-    if self.arduino is not None:
-      self.arduino.close()
-      self.arduino = None
-
-    self.arduino_status = "DISCONNECTED"
+    if self.arduino is not None and self.arduino.is_connected():
+      self.arduino_status = "CONNECTED"
+      self.refresh_conveyor_status()
+    else:
+      self.arduino_status = "DISCONNECTED"
+      self.conveyor_status = "OFFLINE"
 
     if self.camera is not None:
       self.camera.stop()
@@ -166,7 +192,7 @@ class SystemController:
     self.model_format = None
 
     self.status = "STOPPED"
-    print("SYSTEM STOPPED")
+    print("INSPECTION SESSION STOPPED")
 
   def load_rollback_model(self, threshold, original_error):
     state = self.runtime_state.load()
@@ -192,6 +218,48 @@ class SystemController:
       raise RuntimeError(
         f"MODEL_LOAD_FAILED: {original_error}; ROLLBACK_LOAD_FAILED: {rollback_error}"
       )
+
+  def model_identity(self, model_config):
+    if not model_config:
+      return None
+
+    return (
+      str(model_config.get("model_id") or "").strip(),
+      str(model_config.get("version") or "").strip(),
+      str(model_config.get("bucket") or "").strip(),
+      str(model_config.get("object_key") or "").strip(),
+    )
+
+  def is_same_model(self, left, right):
+    return self.model_identity(left) == self.model_identity(right)
+
+  def load_requested_model(self, model_config, threshold):
+    if not model_config:
+      raise RuntimeError("Missing model config")
+
+    local_model_path = self.model_cache.ensure_cached(model_config)
+    model_format = detect_model_format(local_model_path, model_config)
+    model = create_model_engine(
+      model_path=local_model_path,
+      device="cuda",
+      threshold=threshold,
+      model_config=model_config,
+    )
+    state = self.runtime_state.promote_current(model_config, local_model_path)
+    running_model = state.get("current_model")
+    rollback_model = state.get("rollback_model")
+    self.model_cache.prune([
+      (running_model or {}).get("model_id"),
+      (rollback_model or {}).get("model_id"),
+    ])
+
+    return {
+      "model": model,
+      "model_format": model_format,
+      "running_model": running_model,
+      "rollback_model": rollback_model,
+      "local_model_path": local_model_path,
+    }
 
   def run_once(self):
     if not self.running:
@@ -239,6 +307,16 @@ class SystemController:
 
         frame["roi_path"] = upload_result.get("url")
         frame["roi_object_key"] = upload_result.get("object_key")
+
+        overlay_result = self.storage_service.save_overlay(
+          conveyor_id=self.conveyor_id,
+          inspection_id=inspection_id,
+          frame_index=frame.get("frame_index"),
+          overlay_image=frame.get("display_mask"),
+        )
+
+        frame["overlay_path"] = overlay_result.get("url")
+        frame["overlay_object_key"] = overlay_result.get("object_key")
     timings["storage_ms"] = (time.perf_counter() - storage_start) * 1000.0
     #End Minio
     self.stt += 1
@@ -258,45 +336,55 @@ class SystemController:
     timings["mongo_ms"] = (time.perf_counter() - mongo_start) * 1000.0
     self.last_result = result
 
-    print("Result: ", result)
-
-    if self.arduino is not None:
-      arduino_start = time.perf_counter()
-      self.arduino.send_result(result["final_label"])
-      timings["arduino_ms"] = (time.perf_counter() - arduino_start) * 1000.0
-
-    print("Inspection result:", {
-      "label": result["final_label"],
-      "ng_count": result.get("ng_count"),
-      "threshold": result["threshold"],
-    })
-
-    timings["controller_postprocess_ms"] = (time.perf_counter() - controller_start) * 1000.0
-    timings["end_to_end_ms"] = (
-      float(timings.get("pipeline_total_ms", 0.0)) + timings["controller_postprocess_ms"]
+    frame_scores = [
+      round(float(frame.get("pred_score", 0.0)), 3)
+      for frame in result.get("frames", [])
+    ]
+    print(
+      f"Inspection result: label={result['final_label']} "
+      f"ng_count={result.get('ng_count')} "
+      f"threshold={float(result['threshold']):.3f} "
+      f"frame_scores={frame_scores}"
     )
 
-    if self.logger is not None:
-      model_status = self.model.get_status() if self.model is not None else {}
-      running_model = self.running_model or {}
-      self.logger.log({
-        "timestamp": result.get("timestamp", time.time()),
-        "job_id": result.get("stt"),
-        "inspection_id": result.get("inspection_id"),
-        "conveyor_code": self.conveyor_id,
-        "model_id": running_model.get("model_id"),
-        "model_name": running_model.get("model_name"),
-        "model_version": running_model.get("version"),
-        "model_format": self.model_format,
-        "model_provider": model_status.get("provider") or model_status.get("device"),
-        "label": result.get("final_label"),
-        "ng_count": int(result.get("ng_count", 0) or 0),
-        "threshold": float(result.get("threshold", 0.0)),
-        **timings,
-      })
+    result["_latency_timings"] = timings
+    result["_controller_start"] = controller_start
 
     return result
-  def get_status(self):
+
+  def _log_result_latency(self, result):
+    timings = result.pop("_latency_timings", {})
+    controller_start = result.pop("_controller_start", None)
+
+    if controller_start is not None:
+      total_ms = (time.perf_counter() - controller_start) * 1000.0
+      timings["end_to_end_ms"] = total_ms
+      timings["controller_postprocess_ms"] = max(
+        0.0,
+        total_ms - float(timings.get("pipeline_total_ms", 0.0)),
+      )
+
+    if self.logger is None:
+      return
+
+    model_status = self.model.get_status() if self.model is not None else {}
+    running_model = self.running_model or {}
+    self.logger.log({
+      "timestamp": result.get("timestamp", time.time()),
+      "stt": result.get("stt"),
+      "inspection_id": result.get("inspection_id"),
+      "conveyor_id": self.conveyor_id,
+      "model_id": running_model.get("model_id"),
+      "model_name": running_model.get("model_name"),
+      "model_version": running_model.get("version"),
+      "model_format": self.model_format,
+      "model_provider": model_status.get("provider") or model_status.get("device"),
+      "label": result.get("final_label"),
+      "ng_count": int(result.get("ng_count", 0) or 0),
+      "threshold": float(result.get("threshold", 0.0)),
+      **timings,
+    })
+  def get_status(self, refresh_conveyor=True):
     config = self.conveyor_config or {}
 
     camera_status = (
@@ -315,12 +403,19 @@ class SystemController:
     if self.last_result is not None:
       last_label = self.last_result.get("final_label")
 
+    if refresh_conveyor:
+      self.refresh_conveyor_status()
+
     return {
       "running": self.running,
       "status": self.status,
+      "session_running": self.running,
+      "session_status": self.status,
+      "conveyor_status": self.conveyor_status,
       "conveyor_id": self.conveyor_id,
-      "camera_source": config.get("camera_source"),
+      "camera_source": config.get("camera_source") or config.get("camera_id"),
       "camera_status": camera_status,
+      "camera_trigger_delay": config.get("camera_trigger_delay_ms", config.get("camera_trigger_delay")),
       "serial_port": config.get("serial_port"),
       "baud_rate": config.get("baud_rate"),
       "ai_threshold": config.get("ai_threshold"),
@@ -332,6 +427,105 @@ class SystemController:
       "model_format": self.model_format,
       "model_status": self.model.get_status() if self.model is not None else None,
     }
+
+  def refresh_conveyor_status(self):
+    if self.arduino is None or not self.arduino.is_connected():
+      self.conveyor_status = "OFFLINE"
+      return self.conveyor_status
+
+    try:
+      state = self.arduino.get_conveyor_state()
+      if state is not None:
+        self.conveyor_status = state
+    except Exception:
+      pass
+
+    return self.conveyor_status
+
+  def shutdown(self):
+    if self.running:
+      self.stop()
+    if self.arduino is not None:
+      self.arduino.close()
+      self.arduino = None
+    self.arduino_status = "DISCONNECTED"
+    self.conveyor_status = "OFFLINE"
+
+  def apply_camera_trigger_delay(self, config):
+    if self.camera is None:
+      raise RuntimeError("Camera is not initialized")
+
+    delay = config.get("camera_trigger_delay_ms")
+    if delay is None:
+      delay = config.get("camera_trigger_delay")
+    if delay is None:
+      return None
+
+    actual_delay = self.camera.set_trigger_delay(float(delay), persist=True)
+    config["camera_trigger_delay"] = actual_delay
+    config["camera_trigger_delay_ms"] = actual_delay
+    print(f"Applied camera trigger delay: {actual_delay}")
+    return actual_delay
+
+  def apply_arduino_config(self, config):
+    if self.arduino is None:
+      raise RuntimeError("Arduino is not initialized")
+
+    result = self.arduino.apply_config(
+      speed_low_level=config.get("arduino_speed_low_level", 2),
+      speed_high_level=config.get("arduino_speed_high_level", 5),
+      servo_home_angle=config.get("arduino_servo_home_angle", 0),
+      servo_gate_angle=config.get("arduino_servo_gate_angle", 130),
+      light_min_lux=config.get("arduino_light_min_lux", 1000),
+      light_max_lux=config.get("arduino_light_max_lux", 2000),
+    )
+    print("Applied Arduino runtime config")
+    return result
+
+  def apply_runtime_config(self, config):
+    with self.runtime_config_lock:
+      actual_delay = None
+      arduino_config = None
+      model_reloaded = False
+
+      if self.running and self.camera is not None:
+        actual_delay = self.apply_camera_trigger_delay(config)
+      if self.running and self.arduino is not None:
+        arduino_config = self.apply_arduino_config(config)
+
+      threshold = float(config.get("ai_threshold", self.pipeline.threshold if self.pipeline else 0.0))
+      requested_model = config.get("model") or self.requested_model
+
+      if requested_model is not None and not self.is_same_model(requested_model, self.requested_model):
+        loaded_model = self.load_requested_model(requested_model, threshold)
+        self.model = loaded_model["model"]
+        self.model_format = loaded_model["model_format"]
+        self.requested_model = requested_model
+        self.running_model = loaded_model["running_model"]
+        self.rollback_model = loaded_model["rollback_model"]
+        model_reloaded = True
+      elif self.model is not None:
+        self.model.image_threshold = threshold
+
+      if self.pipeline is not None:
+        self.pipeline = PipelineService(
+          camera=self.camera,
+          model=self.model,
+          threshold=threshold,
+          num_frames=self.pipeline.num_frames,
+          should_stop=self.should_stop_requested,
+        )
+
+      self.conveyor_config = config
+      self.conveyor_config["ai_threshold"] = threshold
+      return {
+        "camera_trigger_delay": actual_delay,
+        "arduino_config": arduino_config,
+        "ai_threshold": threshold,
+        "model_reloaded": model_reloaded,
+        "running_model": self.running_model,
+      }
+
   def start_inspection_loop(self, on_result=None):
     if self.loop_running:
       print("Inspection loop already running")
@@ -396,10 +590,28 @@ class SystemController:
         result = self.run_once()
 
         if result is not None and callable(self.on_result):
+          mqtt_start = time.perf_counter()
           self.on_result(result)
+          result["_latency_timings"]["mqtt_ms"] = (
+            time.perf_counter() - mqtt_start
+          ) * 1000.0
+
+        if result is not None and self.arduino is not None:
+          arduino_start = time.perf_counter()
+          self.arduino.send_result(result["final_label"])
+          result["_latency_timings"]["arduino_ms"] = (
+            time.perf_counter() - arduino_start
+          ) * 1000.0
+
+        if result is not None:
+          self._log_result_latency(result)
 
       except Exception as e:
-        if self.loop_running and self.running:
+        if (
+          self.loop_running
+          and self.running
+          and str(e) != "No frame received from camera"
+        ):
           print(f"Inspection loop error: {e}")
         time.sleep(0.1)
 

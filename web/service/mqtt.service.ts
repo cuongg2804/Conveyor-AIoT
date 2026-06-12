@@ -110,6 +110,13 @@ export const initMqttService = (client: MqttClient, io: Server): void => {
           ) {
             io.emit("serial_ports", payload.data?.ports || [])
           }
+
+          if (
+            payload.command === "SCAN_CAMERAS" &&
+            payload.status === "SUCCESS"
+          ) {
+            io.emit("camera_scan_results", payload);
+          }
           return;
 
         case MQTT_TOPICS.SYSTEM_STATUS:

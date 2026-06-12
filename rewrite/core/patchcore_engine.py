@@ -58,11 +58,11 @@ class PatchCoreEngine:
       raise FileNotFoundError(f"Checkpoint not found: {self.ckpt_path}")
 
     try:
-      checkpoint = torch.load(self.ckpt_path, map_location="cpu")
+      checkpoint = torch.load(self.ckpt_path, map_location="cpu", weights_only=False)
 
       hparams = checkpoint.get("hyper_parameters", {})
       if hasattr(hparams, "__dict__"):
-        hparmas = vars(hparams)
+        hparams = vars(hparams)
 
       backbone = hparams.get("backbone")
       layers = hparams.get("layers")

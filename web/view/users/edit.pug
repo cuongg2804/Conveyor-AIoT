@@ -9,6 +9,9 @@ block main
                 a.btn.btn--secondary(href="/users") Quay lại
         if error
             .alert.alert--error #{error}
+
+        if updated
+        .alert.alert--success Cập nhật thành công.
         
         .card 
             form.setting-form(method="POST" action=`/users/edit/${userEdit.user_id}`)

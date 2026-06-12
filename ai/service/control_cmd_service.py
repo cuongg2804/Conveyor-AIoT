@@ -13,6 +13,7 @@ from config import (
     MQTT_TOPIC_SYSTEM_ERROR,
 )
 from devices.arduino_comm import ArduinoComm
+from devices.camera_hik import HikCamera
 
 
 class ControlCommandService:
@@ -22,12 +23,14 @@ class ControlCommandService:
         stop_handler: Callable[[dict], dict],
         status_handler: Callable[[dict], dict],
         reload_config_handler: Optional[Callable[[dict], dict]] = None,
+        arduino_handler: Optional[Callable[[dict], dict]] = None,
         log_handler: Optional[Callable[[str], None]] = None,
     ):
         self.start_handler = start_handler
         self.stop_handler = stop_handler
         self.status_handler = status_handler
         self.reload_config_handler = reload_config_handler
+        self.arduino_handler = arduino_handler
         self.log_handler = log_handler or print
 
         self.mqtt = MQTTService(
@@ -112,6 +115,40 @@ class ControlCommandService:
                         "ports": ports
                     }
                 )
+
+            elif command == "SCAN_CAMERAS":
+                ack = self.success_ack(
+                    command_id,
+                    command,
+                    "Camera scan completed",
+                    {
+                        "cameras": HikCamera.scan_devices()
+                    }
+                )
+            # elif command in [
+            #     "APPLY_ARDUINO_CONFIG",
+            #     "READ_ARDUINO_CONFIG",
+            #     "GET_ARDUINO_CONFIG",
+            #     "LIGHT_CHECK",
+            #     "RESET_ARDUINO_DEFAULT",
+            #     "RESET_ARDUINO_CONFIG_DEFAULT",
+            # ]:
+            #     self.require_conveyor_id(command_payload)
+
+            #     if not callable(self.arduino_handler):
+            #         raise RuntimeError("Arduino handler is not configured")
+
+            #     data = self.arduino_handler({
+            #         **command_payload,
+            #         "command": command,
+            #     })
+
+            #     ack = self.success_ack(
+            #         command_id,
+            #         command,
+            #         "Arduino command executed",
+            #         data,
+            #     )
 
             else:
                 ack = self.error_ack(command_id, command, f"Unsupported command: {command}")

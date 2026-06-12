@@ -10,9 +10,22 @@ export const login = async (req: Request, res: Response) => {
         error: null
     })
 }
+
+const parseDeviceIdFromToken = (token?: string) => {
+  const raw = String(token || "").trim();
+
+  if (!raw.includes(".")) return "";
+
+  return raw.split(".")[0];
+};
+
+const createDeviceToken = (deviceId: string) => {
+  return `${deviceId}.${crypto.randomBytes(32).toString("hex")}`;
+};
 export const loginPost = async (req: Request, res: Response) => {
     try {
-        const { username, password } = req.body;
+        const { username, password, device_id } = req.body;
+        const deviceId = String(device_id || "").trim();
         if(!username || !password) {
         return res.render("auth/login", {
                 title: "Đăng nhập hệ thống",
@@ -35,14 +48,23 @@ export const loginPost = async (req: Request, res: Response) => {
                 error: "Mật khẩu không chính xác.",
             });
         }
-        if (user.status === "ONLINE") {
+        if (!deviceId) {
+            return res.render("auth/login", {
+                title: "Đăng nhập hệ thống",
+                error: "Không xác định được thiết bị đăng nhập.",
+            });
+        }
+        const oldToken = String(user.token || "").trim();
+        const activeDeviceId = parseDeviceIdFromToken(oldToken);
+        const isOnline = String(user.status || "").toUpperCase() === "ONLINE";
+
+        if (isOnline && oldToken && activeDeviceId && activeDeviceId !== deviceId) {
             return res.render("auth/login", {
                 title: "Đăng nhập hệ thống",
                 error: "Tài khoản này đang được đăng nhập trên một thiết bị khác.",
             });
         }
-        
-        const token = crypto.randomBytes(32).toString("hex");
+        const token = createDeviceToken(deviceId);
         await User.updateOne(
             { user_id: user.user_id },
             { $set: { token } }

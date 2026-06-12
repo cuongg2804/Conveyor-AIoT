@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"}],"uuid":"5412d6df19224ce58368cfa02a27bf6d","collectionName":"conveyor_configs","type":"collection"}

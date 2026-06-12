@@ -63,13 +63,12 @@ block main
               input#f1_score.field__control(type="number" name="f1_score" value=model.f1_score step="0.0001" min="0" max="1")
 
           .field
-            label.field__label(for="status") Trạng thái
-            select#status.field__control(name="status" required)
-              option(value="testing" selected=model.status === "testing") testing
-              option(value="active" selected=model.status === "active") active
-              option(value="inactive" selected=model.status === "inactive") inactive
-              option(value="archived" selected=model.status === "archived") archived
-              option(value="failed" selected=model.status === "failed") failed
+            label.field__label(for="status") Trạng thái 
+            input#status.field__control(
+                type="text"
+                value=model.status || "-"
+                disabled
+                )
 
           .btn-row
             button.btn.btn--primary(type="submit") Lưu thay đổi

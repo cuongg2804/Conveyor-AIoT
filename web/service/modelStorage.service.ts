@@ -138,7 +138,7 @@ export const buildRegistryUpdate = (body: any): ModelRegistryUpdate => {
 };
 
 export const updateModelRegistry = async (modelId: string, update: ModelRegistryUpdate) => {
-  const model = await ModelRegistry.findByIdAndUpdate(
+  const model = await ModelRegistry.findOneAndUpdate(
     {
       model_id: String(modelId || "").trim(),
     },

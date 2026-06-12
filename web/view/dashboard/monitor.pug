@@ -48,12 +48,11 @@ block main
       .side-panel
         .card.control-card
           .card__head
-            h2.card__title Điều khiển nhanh
-            p.card__desc Điều khiển hệ thống kiểm tra
+            h2.card__title Phiên kiểm tra
 
           .btn-row
-            button.btn.btn--success(type="button" onclick="sendControlCommand('START_SYSTEM')") Khởi động
-            button.btn.btn--danger(type="button" onclick="sendControlCommand('STOP_SYSTEM')") Dừng
+            button.btn.btn--success(type="button" onclick="sendControlCommand('START_SYSTEM')") Bắt đầu
+            button.btn.btn--danger(type="button" onclick="sendControlCommand('STOP_SYSTEM')") Kết thúc
             button.btn.btn--secondary(type="button" onclick="sendControlCommand('GET_STATUS')") Kiểm tra trạng thái
 
           .control-ack-box
@@ -120,10 +119,16 @@ block main
               | Chưa kết nối
 
           .system-status
-            span.system-status__label Hệ thống kiểm tra
+            span.system-status__label Trạng thái băng tải
             span#aiStatus.system-status__value(class=conveyor.status)
               span.status-dot
               | #{conveyorStatusText}
+
+          .system-status
+            span.system-status__label Phiên kiểm tra AI
+            span#inspectionSessionStatus.system-status__value
+              span.status-dot
+              | Chưa bắt đầu
 
           .system-status
             span.system-status__label Máy chủ WEB
@@ -133,6 +138,6 @@ block main
 
   script.
     window.__CONVEYOR_ID__ = !{JSON.stringify(conveyor.conveyor_id || "")};
-    window.__RUNTIME_MODE__ = !{JSON.stringify(runtimeMode || "PRODUCTION")};
+    window.__RUNTIME_MODE__ = !{JSON.stringify(mode  || "PRODUCTION")};
     window.__CONVEYOR_STATUS__ = !{JSON.stringify(conveyor.status || null)};
     window.__LATEST_INSPECTION__ = !{JSON.stringify(latestInspection || null)};

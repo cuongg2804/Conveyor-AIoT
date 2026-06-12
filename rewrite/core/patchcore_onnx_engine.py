@@ -4,6 +4,8 @@ import time
 import cv2
 import numpy as np
 
+PIXEL_THRESHOLD = 0.3
+
 
 class PatchCoreOnnxEngine:
   def __init__(self, onnx_path, device="cuda", image_threshold=30):
@@ -178,8 +180,8 @@ class PatchCoreOnnxEngine:
 
   def _extract_prediction(self, output_map, index):
     score_values = self._pick_output(output_map, ["pred_score", "score", "image_score"])
-    anomaly_values = self._pick_output(output_map, ["anomaly_map", "anomaly_maps"])
-    mask_values = self._pick_output(output_map, ["pred_mask", "mask", "pred_masks"])
+    anomaly_values = self._pick_output(output_map, ["anomaly_map", "anomaly_maps", "heat_map"])
+    mask_values = self._pick_output(output_map, ["pred_mask", "mask", "pred_masks", "segmentations"])
 
     pred_score = self._to_score(self._get_batch_item(score_values, index))
     anomaly_map = self._get_batch_item(anomaly_values, index)
@@ -188,6 +190,10 @@ class PatchCoreOnnxEngine:
 
     pred_mask = self._normalize_mask_uint8(self._get_batch_item(mask_values, index))
     pred_label = "OK" if pred_score < self.image_threshold else "NG"
+
+    if pred_mask is None and anomaly_map is not None:
+      amap_norm = cv2.normalize(anomaly_map, None, 0, 1.0, cv2.NORM_MINMAX)
+      pred_mask = (amap_norm > PIXEL_THRESHOLD).astype(np.uint8) * 255
 
     return {
       "pred_score": pred_score,

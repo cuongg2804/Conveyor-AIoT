@@ -12,7 +12,7 @@ class LatencyLogger:
         "inspection_id",
         "conveyor_id",
         "label",
-        "avg_score",
+        "ng_count",
         "threshold",
         "capture_ms",
         "contour_ms",
