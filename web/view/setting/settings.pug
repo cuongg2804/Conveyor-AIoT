@@ -133,7 +133,7 @@ block main
                 select#serial_port.field__control(
                   name="serial_port"
                   data-current=config.serial_port || ""
-                  required
+                  
                 )
                   option(value="" selected=!config.serial_port) -- Chọn cổng kết nối Arduino--
                   if config.serial_port
@@ -148,7 +148,7 @@ block main
                   max="115200"
                   step="1"
                   value=config.baud_rate || 9600
-                  required
+                  
                 )
 
           .settings-section
@@ -189,7 +189,7 @@ block main
             .settings-section-grid.settings-section-grid--two
               .field
                 label.field__label(for="model_id") Model AI
-                select#model_id.field__control(name="model_id" required)
+                select#model_id.field__control(name="model_id")
                   if currentTab === "test"
                     option(value="" selected=!config.model_id) -- Chọn model chờ kiểm thử --
                     each model in testingModelList
@@ -212,7 +212,7 @@ block main
                   name="ai_threshold"
                   step="0.000001"
                   value=config.ai_threshold || 30.436506
-                  required
+                  
                 )
 
           .settings-section
@@ -231,7 +231,7 @@ block main
                   select#arduino_speed_low_level.field__control(
                     name="arduino_speed_low_level"
                     data-selected=safeArduinoConfig.speed_low_level
-                    required
+                    
                   )
                     each preset in safeSpeedPresets
                       option(
@@ -244,7 +244,7 @@ block main
                   select#arduino_speed_high_level.field__control(
                     name="arduino_speed_high_level"
                     data-selected=safeArduinoConfig.speed_high_level
-                    required
+                    
                   )
                     each preset in safeSpeedPresets
                       option(
@@ -267,7 +267,7 @@ block main
                     max="180"
                     step="1"
                     value=safeArduinoConfig.servo_home_angle
-                    required
+                    
                   )
 
                 .field
@@ -279,7 +279,7 @@ block main
                     max="180"
                     step="1"
                     value=safeArduinoConfig.servo_gate_angle
-                    required
+                    
                   )
 
             .settings-subsection
@@ -297,7 +297,7 @@ block main
                     max="3000"
                     step="1"
                     value=safeArduinoConfig.light_min_lux
-                    required
+                    
                   )
 
                 .field
@@ -309,7 +309,7 @@ block main
                     max="3000"
                     step="1"
                     value=safeArduinoConfig.light_max_lux
-                    required
+                    
                   )
 
               .light-preview

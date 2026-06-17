@@ -36,6 +36,7 @@ export type ModelRegistryUpdate = {
   recall?: number | null;
   f1_score?: number | null;
   status: "testing" | "active" | "inactive" | "archived" | "failed";
+  product_code?: String | null;
 };
 
 const allowedModelExtensions = [".ckpt", ".onnx"];
@@ -94,6 +95,10 @@ export const buildRegistryUpdate = (body: any): ModelRegistryUpdate => {
   if (!Number.isFinite(threshold)) {
     throw new Error("Threshold phải là số.");
   }
+  const product_code = String(body.product_code || "").trim();
+  if(!product_code){
+    throw new Error("Sảm phẩm không hợp lệ.")
+  }
 
   const status = String(body.status || "testing").trim();
   if (!allowedStatuses.includes(status)) {
@@ -134,6 +139,7 @@ export const buildRegistryUpdate = (body: any): ModelRegistryUpdate => {
     recall: isValidMetric(body.recall, "Recall"),
     f1_score: isValidMetric(body.f1_score, "F1 Score"),
     status: status as ModelRegistryUpdate["status"],
+    product_code: product_code as ModelRegistryUpdate["product_code"]
   };
 };
 

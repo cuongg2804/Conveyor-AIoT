@@ -1742,11 +1742,14 @@ img[src]:not([src=""]) + .image-placeholder {
   align-items: start;
 }
 
+
 .model-upload-form {
   display: grid;
   gap: 16px;
 }
+/* .model-upload-edit {
 
+} */
 .model-form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

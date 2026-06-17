@@ -47,7 +47,6 @@ block main
                                 th Băng tải
                                 th Lệnh điều khiển
                                 th Trạng thái
-                                th Ghi chú
                         tbody
                             if controlLogs.length
                                 each item in controlLogs
@@ -57,7 +56,6 @@ block main
                                         td= item.conveyor_name || "-"
                                         td= item.cmd || "-"
                                         td= item.status || "-"
-                                        td= item.message || "-"
                             else 
                                 tr 
                                     td(colspan="6") Không có dữ liệu
@@ -72,7 +70,6 @@ block main
                                 th Băng tải
                                 th Mục thay đổi
                                 th Giá trị cập nhật
-                                th Ghi chú
                         tbody
                             if configLogs.length
                                 each item in configLogs
@@ -80,12 +77,13 @@ block main
                                         td= item.created_at ? new Date(item.created_at).toLocaleString("vi-VN") : "-"
                                         td= item.user_name || "-"
                                         td= item.conveyor_name || "-"
-                                        td
-                                            if item.changes && Object.keys(item.changes).length
-                                                each value, key in item.changes
-                                                    div= key
-                                            else 
-                                                | -
+                                        td= item.message || "-"
+                                            //- if item.changes && Object.keys(item.changes).length
+                                            //-     each value, key in item.changes
+                                            //-         div= key
+                                            //- else 
+                                            //-     | -
+                                            
                                         td 
                                             if item.changes && Object.keys(item.changes).length
                                                 each value, key in item.changes
@@ -93,7 +91,7 @@ block main
                                                         span #{value.old || "-"} → #{value.new || "-"}
                                             else
                                                 | -
-                                        td= item.message || "-"
+                                        //td= item.message || "-"
                             else 
                                 tr 
                                     td(colspan="6") Không có dữ liệu          

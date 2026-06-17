@@ -129,15 +129,6 @@ export const sendCommand = async (req: Request, res: Response) => {
 
     if (command === "START_SYSTEM") {
       const configMode = normalizeRuntimeMode(config.config_mode);
-      // Đảm bảo rằng chế độ trong cấu hình khớp với chế độ vận hành mà người dùng muốn khởi động
-      // if (configMode !== runtimeMode) {
-      //   return res.status(400).json({
-      //     message:
-      //       runtimeMode === "TEST"
-      //         ? "Cấu hình hiện tại không ở chế độ TEST. Vui lòng vào tab Kiểm thử model để lưu cấu hình trước."
-      //         : "Cấu hình hiện tại không ở chế độ PRODUCTION. Vui lòng vào tab Vận hành chính để lưu cấu hình trước.",
-      //   });
-      // }
 
       if (!config.model_id) {
         return res.status(400).json({
@@ -187,7 +178,7 @@ export const sendCommand = async (req: Request, res: Response) => {
         conveyor_id: conveyorCode,
         camera_ip: cameraIp,
         mode: runtimeMode,
-
+        DelayTime: config.DelayTime ?? config.camera_trigger_delay_ms ?? config.camera_trigger_delay,
         config: {
           conveyor_id: conveyorCode,
           camera_id: config.camera_id,
@@ -210,6 +201,7 @@ export const sendCommand = async (req: Request, res: Response) => {
           model_name: model.model_name,
           version: model.version,
           product_code: model.product_code,
+          model_format: model.model_format || String(model.object_key || "").split(".").pop(),
           storage_type: model.storage_type,
           bucket: model.bucket,
           object_key: model.object_key,

@@ -6,7 +6,7 @@ import { Request, Response } from "express";
 import InspectionResult from "../model/inspection-result.model";
 import Conveyor from "../model/conveyor.model";
 import { withPublicFrameImageUrls, withPublicInspectionImageUrls } from "../helper/image-url";
-
+import minioClient from "../config/minio";
 const PAGE_SIZE = 10;
 
 // Lay ngay hien tai theo dinh dang yyyy-mm-dd de gan vao input type="date".
@@ -27,9 +27,8 @@ const currentMonthValue = () => new Date().toISOString().slice(0, 7);
 const currentYearValue = () => String(new Date().getFullYear());
 
 const monthRange = (monthValue: string) => {
-  const value = monthValue || currentMonthValue();
-  const [year, month] = value.split("-").map(Number);
-
+  const value = monthValue || currentMonthValue(); //tháng đang lọc
+  const [year, month] = value.split("-").map(Number);// chuyển từ phần tử String sang Number
   const start = new Date(year, month - 1, 1, 0, 0, 0).getTime() / 1000;
   const end = new Date(year, month, 0, 23, 59, 59, 999).getTime() / 1000;
 
@@ -59,7 +58,7 @@ const MIN_STATS_YEAR = 2024;
 const isValidDateValue = (value: string) => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
 
-  const selectedDate = new Date(`${value}T00:00:00`);
+  const selectedDate = new Date(`${value}T00:00:00`); // chuyển chuỗi ngày String thành Date object
   if (Number.isNaN(selectedDate.getTime())) return false;
 
   const today = new Date();
@@ -221,17 +220,36 @@ const getStorageRoot = () => {
   return path.join(process.cwd(), "storage");
 };
 
-const imageUrlToLocalPath = (imageUrl: string) => {
+const streamToBuffer = async (stream: NodeJS.ReadableStream) => {
+  const chunks: Buffer[] = [];
+
+  for await (const chunk of stream) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  }
+
+  return Buffer.concat(chunks);
+};
+
+const minioImageToBuffer = async (imageUrl: string) => {
   if (!imageUrl) return null;
 
   const cleanUrl = String(imageUrl).split("?")[0];
+  const prefix = "/media/minio/";
 
-  if (!cleanUrl.startsWith("/images/")) {
+  if (!cleanUrl.startsWith(prefix)) {
     return null;
   }
 
-  const relativePath = cleanUrl.replace("/images/", "");
-  return path.join(getStorageRoot(), relativePath);
+  const pathPart = cleanUrl.replace(prefix, "");
+  const [bucketPart, ...objectParts] = pathPart.split("/");
+
+  const bucket = decodeURIComponent(bucketPart);
+  const objectKey = objectParts.map(decodeURIComponent).join("/");
+
+  if (!bucket || !objectKey) return null;
+
+  const stream = await minioClient.getObject(bucket, objectKey);
+  return streamToBuffer(stream);
 };
 
 const setupPdfResponse = (res: Response, filename: string) => {
@@ -510,20 +528,20 @@ export const exportPdf = async (req: Request, res: Response) => {
 
 export const exportDetailPdf = async (req: Request, res: Response) => {
   try {
-    const stt = Number(req.params.stt);
+    const inspectionId = Number(req.params.inspection_id);
 
     const selectedInspectionMode =
       String(req.query.inspectionMode || "PRODUCTION").toUpperCase() === "TEST"
         ? "TEST"
         : "PRODUCTION";
 
-    if (!Number.isFinite(stt)) {
-      return res.status(400).send("Mã lượt kiểm tra không hợp lệ.");
+    if (!inspectionId) {
+      return res.status(400).send("Mã phiên kiểm tra không hợp lệ.");
     }
 
     const filter: any = {
       ...getValidInspectionFilter(selectedInspectionMode),
-      stt: stt,
+      inspection_id: inspectionId,
     };
 
     if (req.query.conveyor_id) {
@@ -544,7 +562,7 @@ export const exportDetailPdf = async (req: Request, res: Response) => {
         )
       : [];
 
-    const filename = `chi-tiet-kiem-tra-${inspection.stt || stt}.pdf`;
+    const filename = `chi-tiet-kiem-tra-${inspection.inspection_id || inspectionId}.pdf`;
     setupPdfResponse(res, filename);
 
     const doc = new PDFDocument({
@@ -558,7 +576,7 @@ export const exportDetailPdf = async (req: Request, res: Response) => {
 
     drawTitle(
       doc,
-      `BÁO CÁO CHI TIẾT LƯỢT KIỂM TRA ${inspection.stt || stt}`,
+      `BÁO CÁO CHI TIẾT LƯỢT KIỂM TRA ${inspection.inspection_id || inspectionId}`,
       `Inspection ID: ${inspection.inspection_id || "-"}`
     );
 
@@ -591,8 +609,8 @@ export const exportDetailPdf = async (req: Request, res: Response) => {
 
       doc.moveDown(0.4);
 
-      const roiLocalPath = imageUrlToLocalPath(frame.roi_path);
-      const overlayLocalPath = imageUrlToLocalPath(frame.overlay_path);
+      const roiBuffer = await minioImageToBuffer(frame.roi_path);
+      const overlayBuffer = await minioImageToBuffer(frame.overlay_path);
 
       const imageY = doc.y;
       const imageWidth = 240;
@@ -600,8 +618,8 @@ export const exportDetailPdf = async (req: Request, res: Response) => {
 
       doc.font("bold").fontSize(9).text("Ảnh sản phẩm", 36, imageY);
 
-      if (roiLocalPath && fs.existsSync(roiLocalPath)) {
-        doc.image(roiLocalPath, 36, imageY + 16, {
+      if (roiBuffer) {
+        doc.image(roiBuffer, 36, imageY + 16, {
           fit: [imageWidth, imageHeight],
         });
       } else {
@@ -612,8 +630,8 @@ export const exportDetailPdf = async (req: Request, res: Response) => {
 
       doc.font("bold").fontSize(9).text("Ảnh khoanh lỗi", 310, imageY);
 
-      if (overlayLocalPath && fs.existsSync(overlayLocalPath)) {
-        doc.image(overlayLocalPath, 310, imageY + 16, {
+      if (overlayBuffer) {
+        doc.image(overlayBuffer, 310, imageY + 16, {
           fit: [imageWidth, imageHeight],
         });
       } else {
@@ -641,8 +659,8 @@ export const exportDetailPdf = async (req: Request, res: Response) => {
 
     doc.end();
   } catch (error) {
-    console.error("Lỗi xuất file PDF chi tiết lượt kiểm tra:", error);
-    return res.status(500).send("Không thể xuất file PDF chi tiết lượt kiểm tra.");
+    console.error("Lỗi xuất file PDF:", error);
+    return res.status(500).send("Không thể xuất file PDF.");
   }
 };
 
@@ -710,15 +728,15 @@ export const index = async (req: Request, res: Response) => {
 
     if (!clearFilter) {
       if (selectedMode === "day" && !isValidDateValue(selectedDateValue)) {
-        error = "Ngày thống kê không hợp lệ hoặc lớn hơn ngày hiện tại.";
+        error = "Ngày thống kê không hợp lệ.";
       }
 
       if (selectedMode === "month" && !isValidMonthValue(selectedMonthValue)) {
-        error = "Tháng thống kê không hợp lệ hoặc lớn hơn tháng hiện tại.";
+        error = "Tháng thống kê không hợp lệ.";
       }
 
       if (selectedMode === "year" && !isValidYearValue(selectedYearValue)) {
-        error = "Năm thống kê không hợp lệ hoặc lớn hơn năm hiện tại.";
+        error = "Năm thống kê không hợp lệ.";
       }
     }
 
@@ -733,7 +751,7 @@ export const index = async (req: Request, res: Response) => {
       );
 
       if (selectedStartDate.getTime() < conveyorCreatedAt.getTime()) {
-        error = `Không thể thống kê trước ngày băng tải "${(selectedConveyor as any).name}" được khởi tạo.`;
+        error = `Lỗi thống kê.`;
       }
     }
     // nếu có lỗi thì render lại trang và không query DB

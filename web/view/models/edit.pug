@@ -9,31 +9,31 @@ block main
       .dashboard-actions
         a.btn.btn--secondary(href="/models") Quay lại
 
-    .model-upload-layout
-      .card
-        .card__head
-          h2.card__title Thông tin định danh
-          p.card__desc Các trường này gắn với object key trên MinIO nên không sửa tại đây.
+    .model-upload-edit
+      //- .card
+      //-   .card__head
+      //-     h2.card__title Thông tin mô hình AI
+      //-     p.card__desc 
 
-        .upload-result
-          .upload-result__row
-            span Product
-            strong= model.product_code
-          .upload-result__row
-            span Model
-            strong= model.model_name
-          .upload-result__row
-            span Version
-            strong= model.version
-          .upload-result__row
-            span Format
-            strong= model.model_format || (model.object_key || "").split(".").pop()
-          .upload-result__row
-            span Bucket
-            strong= model.bucket
-          .upload-result__row
-            span Object key
-            strong= model.object_key
+      //-   .upload-result
+      //-     .upload-result__row
+      //-       span Product
+      //-       strong= model.product_code
+      //-     .upload-result__row
+      //-       span Model
+      //-       strong= model.model_name
+      //-     .upload-result__row
+      //-       span Version
+      //-       strong= model.version
+      //-     .upload-result__row
+      //-       span Format
+      //-       strong= model.model_format || (model.object_key || "").split(".").pop()
+      //-     .upload-result__row
+      //-       span Bucket
+      //-       strong= model.bucket
+      //-     .upload-result__row
+      //-       span Object key
+      //-       strong= model.object_key
 
       .card
         .card__head
@@ -41,34 +41,56 @@ block main
           p.card__desc Cập nhật thông số đánh giá và trạng thái sử dụng.
 
         form.model-upload-form(method="POST" action=`/models/${model.model_id}/edit`)
-          .field
-            label.field__label(for="threshold") Threshold
-            input#threshold.field__control(type="number" name="threshold" value=model.threshold step="0.000001" min="0" required)
+          .model-form-grid
+            .field
+                label.field__label(for="product_code") Sản phẩm
+                input#product.field__control(type="text" name="product_code" value=model.product_code required)
+            .field
+              label.field__label(for="threshold") Threshold
+              input#threshold.field__control(type="number" name="threshold" value=model.threshold step="0.000001" min="0" required)
 
           .model-form-grid
             .field
+              label.field__label(for="model_name") Mô hình AI
+              input#model_name.field__control(type="text" name="model_name" value=model.model_name disabled)
+            .field
+              label.field__label(for="version") Phiên bản
+              input#version.field__control(type="text" name="version" value=model.version disabled)
+            .field
+              label.field__label(for="model_format") Format
+              input#model_format.field__control(type="text" name="model_format" value=model.model_format || (model.object_key || "").split(".").pop() disabled)
+
+            .field
+              label.field__label(for="product") Bucket
+              input#bucket.field__control(type="text" name="bucket" value=model.bucket disabled)
+
+          
+          .model-form-grid
+            .field
               label.field__label(for="accuracy") Accuracy
-              input#accuracy.field__control(type="number" name="accuracy" value=model.accuracy step="0.0001" min="0" max="1")
+              input#accuracy.field__control(type="number" name="accuracy" value=model.accuracy step="0.0001" min="0" max="1" disabled)
 
             .field
               label.field__label(for="precision") Precision
-              input#precision.field__control(type="number" name="precision" value=model.precision step="0.0001" min="0" max="1")
+              input#precision.field__control(type="number" name="precision" value=model.precision step="0.0001" min="0" max="1" disabled)
 
             .field
               label.field__label(for="recall") Recall
-              input#recall.field__control(type="number" name="recall" value=model.recall step="0.0001" min="0" max="1")
+              input#recall.field__control(type="number" name="recall" value=model.recall step="0.0001" min="0" max="1" disabled)
 
             .field
               label.field__label(for="f1_score") F1 score
-              input#f1_score.field__control(type="number" name="f1_score" value=model.f1_score step="0.0001" min="0" max="1")
-
-          .field
-            label.field__label(for="status") Trạng thái 
-            input#status.field__control(
-                type="text"
-                value=model.status || "-"
-                disabled
-                )
+              input#f1_score.field__control(type="number" name="f1_score" value=model.f1_score step="0.0001" min="0" max="1" disabled)
+            .field
+              label.field__label(for="object_key") Object key
+              input#object_key.field__control(type="text" name="object_key" value=model.object_key disabled)
+            .field
+              label.field__label(for="status") Trạng thái 
+              input#status.field__control(
+                  type="text"
+                  value=model.status || "-"
+                  disabled
+                  )
 
           .btn-row
             button.btn.btn--primary(type="submit") Lưu thay đổi

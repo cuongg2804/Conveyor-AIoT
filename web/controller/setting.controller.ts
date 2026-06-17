@@ -203,7 +203,7 @@ export const settings = async (req: Request, res: Response) => {
 
     const operators = await User.find(
       {
-        user_id: { $nin: usedUserIds },
+//        user_id: { $nin: usedUserIds },
       },
       {
         _id: 0,
@@ -412,39 +412,30 @@ export const updateSettings = async (req: Request, res: Response) => {
       oldConfig.config_mode || "PRODUCTION"
     ).toUpperCase();
 
-    const currentModel = oldConfig.model_id
-      ? await ModelRegistry.findOne({ model_id: oldConfig.model_id }).lean()
-      : null;
-
-    const isTestingModelLocked =
-      selectedTab === "test" &&
-      oldConfig.config_mode === "TEST" &&
-      !!oldConfig.model_id &&
-      (currentModel as any)?.status === "testing";
+    const currentModel: any = null;
+    const isTestingModelLocked = false;
 
     if (selectedTab === "production") {
-      if (!selectedModelId) {
-        return res.status(400).send("Vui lòng chọn model đã phê duyệt.");
+      if (selectedModelId) {
+          const activeModel = await ModelRegistry.findOne({
+          model_id: selectedModelId,
+          status: "active",
+        }).lean<any>();
+        if (!activeModel) {
+          return res
+            .status(400)
+            .send("Model vận hành không tồn tại hoặc chưa được phê duyệt.");
+        }
+        nextModelId = activeModel.model_id;
+        nextConfigMode = "PRODUCTION";
+        if (thresholdOverride === null && activeModel.threshold !== undefined) {
+          newAiThreshold = Number(activeModel.threshold);
+        }
       }
-
-      const activeModel = await ModelRegistry.findOne({
-        model_id: selectedModelId,
-        status: "active",
-      }).lean<any>();
-
-      if (!activeModel) {
-        return res
-          .status(400)
-          .send("Model vận hành không tồn tại hoặc chưa được phê duyệt.");
-      }
-
-      nextModelId = activeModel.model_id;
-      nextConfigMode = "PRODUCTION";
-      if (thresholdOverride === null && activeModel.threshold !== undefined) {
-        newAiThreshold = Number(activeModel.threshold);
-      }
+    } else {
+      nextModelId = String(oldConfig.model_id || "");
+      nextConfigMode = String(oldConfig.config_mode || "PRODUCTION").toUpperCase();
     }
-
     if (selectedTab === "test") {
       if (isTestingModelLocked) {
         nextModelId = String(oldConfig.model_id || "");
@@ -453,11 +444,8 @@ export const updateSettings = async (req: Request, res: Response) => {
           newAiThreshold = Number((currentModel as any).threshold);
         }
       } else {
-        if (!selectedModelId) {
-          return res.status(400).send("Vui lòng chọn model cần kiểm thử.");
-        }
-
-        const testingModel = await ModelRegistry.findOne({
+        if (selectedModelId) {
+          const testingModel = await ModelRegistry.findOne({
           model_id: selectedModelId,
           status: "testing"
         }).lean<any>();
@@ -477,6 +465,7 @@ export const updateSettings = async (req: Request, res: Response) => {
         }
       }
     }
+  }
     console.log("Selected model_id:", selectedModelId);
 
 
@@ -598,6 +587,7 @@ export const updateSettings = async (req: Request, res: Response) => {
           camera_id: newCameraId,
           camera_trigger_delay: newCameraTriggerDelay,
           camera_trigger_delay_ms: newCameraTriggerDelay,
+          DelayTime: newCameraTriggerDelay,
           serial_port: String(serial_port || "").trim(),
           baud_rate: newBaudRate,
           ai_threshold: newAiThreshold,

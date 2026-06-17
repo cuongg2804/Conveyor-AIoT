@@ -12,18 +12,20 @@ const gen_conveyor_id = () => {
 const getCreateViewData = async (form: any = {}, error: string | null = null) => {
   const cameras = await Camera.find({ status: "AVAILABLE" }).lean();
 
-  const usedOperatorIds = await Conveyor.find({
-    user_id: { $ne: "" },
-  }).distinct("user_id");
+  // const usedOperatorIds = await Conveyor.find({
+  //   is_active: true,
+  //   user_id: { $ne: "" },
+  // }).distinct("user_id");
 
   const operators = await User.find(
     {
-      user_id: { $nin: usedOperatorIds },
+      //user_id: { $nin: usedOperatorIds },
     },
     {
       _id: 0,
       user_id: 1,
       fullname: 1,
+      username: 1,
     }
   ).lean();
 
@@ -244,12 +246,15 @@ export const deleteConveyor = async (
       );
     }
 
-    await ConveyorConfig.deleteOne({
-      conveyor_id: conveyorId,
-    });
+    // await ConveyorConfig.deleteOne({
+    //   conveyor_id: conveyorId,
+    // });
 
-    await Conveyor.deleteOne({
+    await Conveyor.updateOne({
       conveyor_id: conveyorId,
+    },
+    {
+      $set: {is_active: false}
     });
 
     return res.redirect("/conveyors");

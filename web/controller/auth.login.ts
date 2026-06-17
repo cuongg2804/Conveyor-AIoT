@@ -67,10 +67,6 @@ export const loginPost = async (req: Request, res: Response) => {
         const token = createDeviceToken(deviceId);
         await User.updateOne(
             { user_id: user.user_id },
-            { $set: { token } }
-        );
-        await User.updateOne(
-            { user_id: user.user_id },
             {
                 $set: {
                 token,
@@ -79,7 +75,7 @@ export const loginPost = async (req: Request, res: Response) => {
             }
         );
         res.cookie("token", token, {
-            httpOnly: true, // chỉ cho phép cookie được truy cập qua HTTP(S)
+           httpOnly: true, // chỉ cho phép cookie được truy cập qua HTTP(S)
             sameSite: "lax", // lax để cho phép gửi cookie trong các yêu cầu cùng nguồn và một số yêu cầu khác nguồn (như khi người dùng nhấp vào liên kết từ trang khác)
             maxAge: 24 * 60 * 60 * 1000 // 1 ngày = 24 giờ * 60 phút * 60 giây * 1000 ms
         })

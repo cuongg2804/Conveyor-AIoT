@@ -107,12 +107,12 @@ export const handleInspectionResultMessage = async (payload: any, io: Server) =>
     }
 
     if (!conveyorId) {
-      console.warn("Thiếu conveyor_id/conveyor_code trong MQTT payload:", payload);
+      console.warn("Thiếu conveyor_id trong MQTT payload:", payload);
       return;
     }
 
     if (!Number.isFinite(stt)) {
-      console.warn("Số thứ tự kiểm tra không hợp lệ:", payload);
+      console.warn("Lượt kiểm tra không hợp lệ:", payload);
       return;
     }
 

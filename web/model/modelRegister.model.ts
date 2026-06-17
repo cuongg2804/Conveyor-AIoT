@@ -26,6 +26,14 @@ const ModelRegistrySchema = new mongoose.Schema(
       uppercase: true,
       index: true,
     },
+    model_format: {
+      type: String,
+      enum: ["ckpt", "onnx"],
+      default: undefined,
+      trim: true,
+      lowercase: true,
+      index: true,
+    },
     storage_type: {
       type: String,
       enum: ["minio", "local", "s3"],

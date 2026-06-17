@@ -59,30 +59,6 @@ const conveyorConfigSchema = new mongoose.Schema(
       default: 30.436506,
     },
 
-    // speed: {
-    //   type: Number,
-    //   default: 150,
-    //   required: true,
-    //   min: 0,
-    //   max: 255,
-    // },
-
-    // goc_home: {
-    //   type: Number,
-    //   default: 0,
-    //   required: true,
-    //   min: 0,
-    //   max: 180,
-    // },
-
-    // goc_gat: {
-    //   type: Number,
-    //   default: 120,
-    //   required: true,
-    //   min: 0,
-    //   max: 180,
-    // },
-
     arduino_speed_low_level: {
       type: Number,
       min: 1,
@@ -130,11 +106,10 @@ const conveyorConfigSchema = new mongoose.Schema(
       default: null,
     },
 
-    // mode: {
-    //   type: String,
-    //   enum: ["AUTO", "MANUAL"],
-    //   default: "AUTO",
-    // },
+    DelayTime: {
+      type: Number,
+      default: 0,
+    },
 
     status: {
       type: String,

@@ -6,8 +6,15 @@ import User from "../model/user.model";
 
 export const index = async (req: Request, res: Response) => {
   try {
-    const conveyors = await Conveyor.find({ is_active: true })
-      .lean();
+    const currentUser = res.locals.user || {};
+    const isAdmin = String(currentUser.role || "").toUpperCase() === "ADMIN";
+    const conveyorQuery: any = { is_active: true };
+
+    if (!isAdmin) {
+      conveyorQuery.user_id = currentUser.user_id;
+    }
+
+    const conveyors = await Conveyor.find(conveyorQuery).lean();
     const conveyorIds = conveyors.map((c: any) => c.conveyor_id);
 
     const configs = await ConveyorConfig.find({
@@ -22,11 +29,6 @@ export const index = async (req: Request, res: Response) => {
       user_id: {$in: conveyors.map((c: any) => c.user_id).filter(Boolean)} 
     }).lean()
     const userMap = new Map(users.map((u: any) => [u.user_id, u]))
-
-    const currentUser = res.locals.user;
-    const isAdmin = String(currentUser.role || "").toUpperCase() === "ADMIN"
-    const conveyorQuery = isAdmin ? {is_active : true} : {is_active: true, user_id: currentUser.user_id}
-    //const conveyors = await Conveyor.find(conveyorQuery).lean();
 
     const configMap = new Map(configs.map((c: any) => [c.conveyor_id, c]));
     const cameraMap = new Map(cameras.map((c: any) => [c.camera_id, c]));
