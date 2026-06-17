@@ -216,7 +216,7 @@ class SystemController:
                 return False
         if self.mongo is not None and hasattr(self.mongo, "get_max_stt"):
             try:
-                self.stt = self.mongo.get_max_stt()
+                self.stt = self.mongo.get_max_stt_today(conveyor_id=self.conveyor_id)
                 self.cb("log", f"Continue stt from database: next={self.stt + 1}")
             except Exception as e:
                 print("[Controller] Cannot initialize stt from database:", e)
