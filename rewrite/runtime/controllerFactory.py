@@ -73,7 +73,7 @@ class SystemController:
       self.requested_model = config.get("model")
 
       self.result_service = ResultService()
-      self.stt = self.result_service.get_max_stt()
+      self.stt = self.result_service.get_max_stt_today(conveyor_id=self.conveyor_id)
 
       self.storage_service = StorageService()
 

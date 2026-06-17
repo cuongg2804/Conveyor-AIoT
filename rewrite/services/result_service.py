@@ -1,6 +1,7 @@
 import time
 import uuid
 from pymongo import MongoClient
+from datetime import datetime, timedelta
 
 from rewrite.config.config import MONGO_URI, MONGO_DB_NAME
 
@@ -50,18 +51,32 @@ class ResultService:
     self.collection.insert_one(document)
     document["_id"] = str(document["_id"])
     return document
+  def get_max_stt_today(self, conveyor_id=None) -> int:
+    now = datetime.now()
+    start = datetime(now.year, now.month, now.day)
+    end = start + timedelta(days=1)
 
-  def get_max_stt(self):
-    doc = self.collection.find_one(
-      {},
-      sort=[("stt", -1)],
-      projection={"stt": 1}
+    query = {
+        "timestamp": {
+            "$gte": start.timestamp(),
+            "$lt": end.timestamp(),
+        }
+    }
+
+    if conveyor_id:
+        query["conveyor_id"] = conveyor_id
+
+    latest = self.collection.find_one(
+        query,
+        {"stt": 1},
+        sort=[("stt", -1)]
     )
 
-    if not doc:
-      return 0
+    if not latest:
+        return 0
 
-    return int(doc.get("stt", 0) or 0)
+    return int(latest.get("stt", 0) or 0)
+  
 
   def close(self):
     self.client.close()
