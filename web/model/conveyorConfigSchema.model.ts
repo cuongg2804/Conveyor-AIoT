@@ -41,6 +41,11 @@ const conveyorConfigSchema = new mongoose.Schema(
       default: 0,
     },
 
+    DelayTime: {
+      type: Number,
+      default: 0,
+    },
+
     serial_port: {
       type: String,
       trim: true,

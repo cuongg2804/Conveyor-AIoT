@@ -50,6 +50,7 @@ export const getRuntimeConfig = async (req: Request, res: Response) => {
         camera_id: config.camera_id,
         serial_port: config.serial_port,
         baud_rate: config.baud_rate,
+        DelayTime: config.DelayTime ?? config.camera_trigger_delay_ms ?? config.camera_trigger_delay,
         camera_trigger_delay: config.camera_trigger_delay,
         camera_trigger_delay_ms: config.camera_trigger_delay_ms,
         ai_threshold: config.ai_threshold,

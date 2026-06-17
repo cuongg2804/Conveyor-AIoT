@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import Conveyor from "../model/conveyor.model";
 import ConveyorConfig from "../model/conveyorConfigSchema.model";
 import ModelRegistry from "../model/modelRegister.model";
+import Camera from "../model/camera.model";
 import { publishControlCommand } from "../service/mqtt.service";
 import { canAccessConveyor } from "../helper/conveyorAccess.helper";
 import Control_log from "../model/control_logs.model";
@@ -135,6 +136,24 @@ export const sendCommand = async (req: Request, res: Response) => {
         });
       }
 
+      const camera = config.camera_id
+        ? await Camera.findOne({ camera_id: config.camera_id }).lean<any>()
+        : null;
+
+      if (!camera) {
+        return res.status(400).json({
+          message: "Chua chon camera hop le cho bang tai.",
+        });
+      }
+
+      const cameraIp = String(camera.camera_ip || "").trim();
+
+      if (!cameraIp) {
+        return res.status(400).json({
+          message: "Camera da chon chua co dia chi mang hop le.",
+        });
+      }
+
       const requiredModelStatus = runtimeMode === "TEST" ? "testing" : "active";
 
       const model = await ModelRegistry.findOne({
@@ -160,6 +179,8 @@ export const sendCommand = async (req: Request, res: Response) => {
         config: {
           conveyor_id: conveyorCode,
           camera_id: config.camera_id,
+          camera_ip: cameraIp,
+          DelayTime: config.DelayTime ?? config.camera_trigger_delay_ms ?? config.camera_trigger_delay,
           camera_trigger_delay: config.camera_trigger_delay,
           camera_trigger_delay_ms: config.camera_trigger_delay_ms,
           serial_port: config.serial_port,
@@ -181,6 +202,7 @@ export const sendCommand = async (req: Request, res: Response) => {
           model_name: model.model_name,
           version: model.version,
           product_code: model.product_code,
+          model_format: model.model_format || String(model.object_key || "").split(".").pop(),
           storage_type: model.storage_type,
           bucket: model.bucket,
           object_key: model.object_key,

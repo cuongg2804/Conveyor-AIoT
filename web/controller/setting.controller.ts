@@ -424,15 +424,8 @@ export const updateSettings = async (req: Request, res: Response) => {
       oldConfig.config_mode || "PRODUCTION"
     ).toUpperCase();
 
-    const currentModel = oldConfig.model_id
-      ? await ModelRegistry.findOne({ model_id: oldConfig.model_id }).lean()
-      : null;
-
-    const isTestingModelLocked =
-      selectedTab === "test" &&
-      oldConfig.config_mode === "TEST" &&
-      !!oldConfig.model_id &&
-      (currentModel as any)?.status === "testing";
+    const currentModel: any = null;
+    const isTestingModelLocked = false;
 
     if (selectedTab === "production") {
       if (!selectedModelId) {
@@ -613,6 +606,7 @@ export const updateSettings = async (req: Request, res: Response) => {
           camera_id: newCameraId,
           camera_trigger_delay: newCameraTriggerDelay,
           camera_trigger_delay_ms: newCameraTriggerDelay,
+          DelayTime: newCameraTriggerDelay,
           serial_port: String(serial_port || "").trim(),
           baud_rate: newBaudRate,
           ai_threshold: newAiThreshold,
