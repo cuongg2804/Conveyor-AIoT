@@ -113,7 +113,7 @@ const conveyorConfigSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["ACTIVE", "INACTIVE", "MAINTENANCE"],
+      enum: ["ACTIVE", "INACTIVE"],
       default: "ACTIVE",
     },
   },
