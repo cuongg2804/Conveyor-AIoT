@@ -7,7 +7,7 @@ router.get("/", controller.index);
 
 router.get("/export/pdf", controller.exportPdf);
 
-router.get("/:stt/export/pdf", controller.exportDetailPdf);
-router.get("/:stt", controller.detail);
+router.get("/:inspection_id/export/pdf", controller.exportDetailPdf);
+router.get("/:inspection_id", controller.detail);
 
 export default router;

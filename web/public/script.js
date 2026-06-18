@@ -71,7 +71,7 @@ const COMMAND_LABELS = {
   START_SYSTEM: "Bắt đầu phiên kiểm tra",
   STOP_SYSTEM: "Kết thúc phiên kiểm tra",
   GET_STATUS: "Kiểm tra trạng thái",
-  GET_SERIAL_PORT: "Quét cổng Serial",
+  //GET_SERIAL_PORT: "Quét cổng Serial",
   GET_SERIAL_PORTS: "Quét cổng Serial",
   SCAN_CAMERAS: "Quét camera",
   RESET_ARDUINO_CONFIG_DEFAULT: "Khôi phục cấu hình Arduino",
@@ -643,7 +643,7 @@ function initSerialPortSelect() {
   });
   if(socket){
     socket.on("control_ack", (payload) => {
-      if (!["GET_SERIAL_PORT", "GET_SERIAL_PORTS"].includes(payload.command)) return;
+      if (!["GET_SERIAL_PORTS"].includes(payload.command)) return;
 
       const ports = payload?.data?.ports || payload?.ports || [];
 
@@ -900,7 +900,25 @@ document.addEventListener("DOMContentLoaded", () => {
   initHistoryImageModal();
   initArduinoSpeedSelects();
 
-  if (hasMonitorContext()) {
-    setTimeout(() => sendControlCommand("GET_STATUS"), 600);
-  }
+  // if (hasMonitorContext()) {
+  //   setTimeout(() => sendControlCommand("GET_STATUS"), 600);
+  // }
+});
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll(".js-password-toggle").forEach((button) => {
+    button.addEventListener("click", () => {
+      const targetId = button.dataset.target;
+      const input = document.getElementById(targetId);
+
+      if (!input) return;
+
+      const isPassword = input.type === "password";
+      input.type = isPassword ? "text" : "password";
+      button.textContent = isPassword ? "🙈" : "👁";
+      button.setAttribute(
+        "aria-label",
+        isPassword ? "Ẩn mật khẩu" : "Hiển thị mật khẩu"
+      );
+    });
+  });
 });

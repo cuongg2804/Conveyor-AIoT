@@ -405,7 +405,7 @@ export const updateSettings = async (req: Request, res: Response) => {
     let newAiThreshold =
       thresholdOverride !== null
         ? thresholdOverride
-        : Number(ai_threshold || oldConfig.ai_threshold || 30.436506);
+        : Number(ai_threshold || oldConfig.ai_threshold || 30);
 
     let nextModelId = String(oldConfig.model_id || "").trim();
     let nextConfigMode = String(
@@ -447,7 +447,7 @@ export const updateSettings = async (req: Request, res: Response) => {
         if (selectedModelId) {
           const testingModel = await ModelRegistry.findOne({
           model_id: selectedModelId,
-          status: "testing"
+          status: {$in: ["testing", "failed"]}
         }).lean<any>();
 
         if (!testingModel) {
@@ -457,7 +457,12 @@ export const updateSettings = async (req: Request, res: Response) => {
               "Model kiểm thử không tồn tại hoặc không ở trạng thái testing."
             );
         }
-
+        if (testingModel.status === "failed") {
+          await ModelRegistry.updateOne(
+            { model_id: testingModel.model_id },
+            { $set: { status: "testing" } }
+          );
+        }
         nextModelId = testingModel.model_id;
         nextConfigMode = "TEST";
         if (thresholdOverride === null && testingModel.threshold !== undefined) {

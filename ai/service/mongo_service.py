@@ -1,6 +1,7 @@
 from pymongo import MongoClient, DESCENDING
 from typing import Optional, Dict, Any, List
 from config import MONGO_URI, MONGO_DB_NAME, MONGO_COLLECTION_NAME
+from datetime import datetime, timedelta
 
 
 class MongoService:
@@ -17,6 +18,32 @@ class MongoService:
 
     def _has_index(self, name: str) -> bool:
         return name in self.collection.index_information()
+
+    def get_max_stt_today(self, conveyor_id=None) -> int:
+        now = datetime.now()
+        start = datetime(now.year, now.month, now.day)
+        end = start + timedelta(days=1)
+
+        query = {
+            "timestamp": {
+                "$gte": start.timestamp(),
+                "$lt": end.timestamp(),
+            }
+        }
+
+        if conveyor_id:
+            query["conveyor_id"] = conveyor_id
+
+        latest = self.collection.find_one(
+            query,
+            {"stt": 1},
+            sort=[("stt", DESCENDING)]
+        )
+
+        if not latest:
+            return 0
+
+        return int(latest.get("stt", 0) or 0)
 
     def _ensure_indexes(self) -> None:
         indexes = self.collection.index_information()

@@ -1,6 +1,21 @@
-extend ../layout/default.pug 
+﻿extend ../layout/default.pug 
 
 block main
+    -
+        const commandLabels = {
+            START_INSPECTION_SESSION: "Bắt đầu phiên kiểm tra",
+            STOP_INSPECTION_SESSION: "Kết thúc phiên kiểm tra",
+            START_SYSTEM: "Bắt đầu hệ thống",
+            STOP_SYSTEM: "Dừng hệ thống",
+            GET_STATUS: "Kiểm tra trạng thái",
+            RELOAD_CONFIG: "Áp dụng lại cấu hình",
+            GET_SERIAL_PORTS: "Quét cổng kết nối",
+            GET_ARDUINO_CONFIG: "Kiểm tra cấu hình Arduino",
+            LIGHT_CHECK: "Kiểm tra ánh sáng",
+            RESET_ARDUINO_CONFIG_DEFAULT: "Khôi phục cấu hình Arduino mặc định",
+            APPLY_ARDUINO_CONFIG: "Áp dụng cấu hình Arduino",
+            SCAN_CAMERAS: "Quét camera"
+        };
     .page 
         .dashboard_header
             .dashboard_heading 
@@ -46,7 +61,7 @@ block main
                                 th Người điều khiển
                                 th Băng tải
                                 th Lệnh điều khiển
-                                th Trạng thái
+                                //th Trạng thái
                         tbody
                             if controlLogs.length
                                 each item in controlLogs
@@ -54,8 +69,8 @@ block main
                                         td= item.created_at ? new Date(item.created_at).toLocaleString("vi-VN") : "-"
                                         td= item.user_name  || "-"
                                         td= item.conveyor_name || "-"
-                                        td= item.cmd || "-"
-                                        td= item.status || "-"
+                                        td= commandLabels[item.cmd] || item.cmd || "-"
+                                        //td= item.status || "-"
                             else 
                                 tr 
                                     td(colspan="6") Không có dữ liệu

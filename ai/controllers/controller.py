@@ -49,6 +49,7 @@ class SystemController:
         self.last_batch_saved_at = 0.0
         self.config_service = config_service
         self.runtime_config = {}
+        self.stt_day = ""
 
     def cb(self, name, *args, **kwargs):
         func = self.callbacks.get(name)
@@ -214,9 +215,10 @@ class SystemController:
                 self.cb("log", f"Lỗi: {e}")
                 self.running = False
                 return False
-        if self.mongo is not None and hasattr(self.mongo, "get_max_stt"):
+        if self.mongo is not None and hasattr(self.mongo, "get_max_stt_today"):
             try:
                 self.stt = self.mongo.get_max_stt_today(conveyor_id=self.conveyor_id)
+                self.stt_day = time.strftime("%Y-%m-%d")
                 self.cb("log", f"Continue stt from database: next={self.stt + 1}")
             except Exception as e:
                 print("[Controller] Cannot initialize stt from database:", e)
@@ -291,7 +293,15 @@ class SystemController:
                 "log",
                 "Duplicate-like batch detected, but live result is still handled.",
             )
+        current_day = time.strftime("%Y-%m-%d", time.localtime(timestamp))
 
+        if current_day != self.stt_day:
+            self.stt_day = current_day
+
+            if self.mongo is not None and hasattr(self.mongo, "get_max_stt_today"):
+                self.stt = self.mongo.get_max_stt_today(conveyor_id=self.conveyor_id)
+            else:
+                self.stt = 0
         self.stt += 1
         self.batch_count += 1
         inspection_id = f"INS-{time.strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:6]}"

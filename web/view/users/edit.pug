@@ -11,7 +11,7 @@ block main
             .alert.alert--error #{error}
 
         if updated
-        .alert.alert--success Cập nhật thành công.
+            .alert.alert--success Cập nhật thành công.
         
         .card 
             form.setting-form(method="POST" action=`/users/edit/${userEdit.user_id}`)
@@ -42,7 +42,13 @@ block main
                     )
                 .field
                     label.field__label(for="password") Mật khẩu
-                    input#password.field__control(type="password" name="password" placeholder="Để trống nếu không muốn thay đổi mật khẩu")
+                    .password-field
+                        input#password.field__control(type="password" name="password" placeholder="Để trống nếu không muốn thay đổi mật khẩu")
+                        button.password-toggle.js-password-toggle(
+                            type="button"
+                            aria-label="Hiển thị mật khẩu"
+                            data-target="password"
+                        ) 👁
                 .field
                     label.field__label(for="role") Phân quyền
                     select#role.field__control(name="role" required)
@@ -50,3 +56,25 @@ block main
                         option(value="ADMIN" selected=userEdit.role === "ADMIN") ADMIN
                 .settings-actions
                     button.btn.btn--primary(type="submit") Cập nhật tài khoản
+block scripts
+  if error
+    script.
+      Toastify({
+        text: "#{error}",
+        duration: 3000,
+        gravity: "top",
+        position: "right",
+        backgroundColor: "#ef4444",
+        close: true
+      }).showToast();
+
+  if success
+    script.
+      Toastify({
+        text: "#{success}",
+        duration: 3000,
+        gravity: "top",
+        position: "right",
+        backgroundColor: "#16a34a",
+        close: true
+      }).showToast();

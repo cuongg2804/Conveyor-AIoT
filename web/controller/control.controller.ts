@@ -13,7 +13,6 @@ const allowedCommands = [
   "STOP_SYSTEM",
   "GET_STATUS",
   "RELOAD_CONFIG",
-  "GET_SERIAL_PORT",
   "GET_SERIAL_PORTS",
   "GET_ARDUINO_CONFIG",
   "LIGHT_CHECK",
@@ -48,6 +47,17 @@ const publicErrorMessage = (error: any) => {
   return "Không gửi được yêu cầu tới hệ thống kiểm tra.";
 };
 
+const commandLogMessages: Record<string, string> = {
+  GET_STATUS: "Kiểm tra trạng thái hệ thống.",
+  RELOAD_CONFIG: "Áp dụng lại cấu hình cho băng tải.",
+  //GET_SERIAL_PORT: "Quét cổng Serial",
+  GET_SERIAL_PORTS: "Quét cổng kết nối.",
+  GET_ARDUINO_CONFIG: "Kiểm tra cấu hình Arduino.",
+  LIGHT_CHECK: "Kiểm tra ánh sáng.",
+  RESET_ARDUINO_CONFIG_DEFAULT: "Reset cấu hình mặc định." ,
+  APPLY_ARDUINO_CONFIG: "Áp dụng cấu hình Arduino."
+}
+
 export const sendCommand = async (req: Request, res: Response) => {
   try {
     const { command, payload } = req.body || {};
@@ -74,6 +84,16 @@ export const sendCommand = async (req: Request, res: Response) => {
     if (command === "SCAN_CAMERAS") {
       const data = publishControlCommand(command, {
         requested_by: res.locals.user?.user_id || "",
+      });
+
+      await Control_log.create({
+        control_log_id: `CTRL-${randomUUID()}`,
+        user_id: res.locals.user?.user_id || "",
+        conveyor_id: conveyorCode,
+        cmd: "SCAN_CAMERAS",
+        status: "SUCCESS",
+        message: "Người dùng thực hiện quét Camera",
+        created_at: new Date(),
       });
 
       return res.json({
@@ -153,7 +173,7 @@ export const sendCommand = async (req: Request, res: Response) => {
 
       if (!cameraIp) {
         return res.status(400).json({
-          message: "Camera đã chọn chưa có địa chỉ mạng hợp lệ.",
+          message: "Camera đã chọn có địa chỉ IP không hợp lệ.",
         });
       }
 
@@ -256,6 +276,16 @@ export const sendCommand = async (req: Request, res: Response) => {
       ...payloadData,
       conveyor_id: conveyorCode,
       mode: runtimeMode,
+    });
+
+    await Control_log.create({
+      control_log_id: `CTRL-${randomUUID()}`,
+      user_id: res.locals.user?.user_id || "",
+      conveyor_id: conveyorCode,
+      cmd: command,
+      status: "SUCCESS",
+      message: commandLogMessages[command],
+      created_at: new Date(),
     });
 
     return res.json({

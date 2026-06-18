@@ -51,6 +51,7 @@ class SystemController:
     self.runtime_state = RuntimeStateManager()
     self.logger = LatencyLogger()
     self.run_mode = "PRODUCTION"
+    self.stt_day = ""
 
   def start(self, conveyor_id, on_result=None, camera_ip=None, mode="PRODUCTION"):
     mode = str(mode or "PRODUCTION").strip().upper()
@@ -74,6 +75,7 @@ class SystemController:
 
       self.result_service = ResultService()
       self.stt = self.result_service.get_max_stt_today(conveyor_id=self.conveyor_id)
+      self.stt_day = time.strftime("%Y-%m-%d")
 
       self.storage_service = StorageService()
 
@@ -322,6 +324,17 @@ class SystemController:
         frame["overlay_object_key"] = overlay_result.get("object_key")
     timings["storage_ms"] = (time.perf_counter() - storage_start) * 1000.0
     #End Minio
+    current_day = time.strftime("%Y-%m-%d")
+
+    if current_day != self.stt_day:
+        self.stt_day = current_day
+
+        if self.result_service is not None:
+            self.stt = self.result_service.get_max_stt_today(
+                conveyor_id=self.conveyor_id
+            )
+        else:
+            self.stt = 0
     self.stt += 1
     mongo_start = time.perf_counter()
     if self.result_service is not None:

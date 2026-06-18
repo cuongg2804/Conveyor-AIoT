@@ -679,7 +679,7 @@ img[src]:not([src=""]) + .image-placeholder {
   height: 62px;
   padding: 0 22px;
   border-radius: 18px;
-  background: #e5e7eb;
+  background: gainsboro;
   color: #111827;
   font-size: 28px;
   font-weight: 950;
@@ -2506,4 +2506,23 @@ img[src]:not([src=""]) + .image-placeholder {
   .camera-picker__grid {
     grid-template-columns: 1fr;
   }
+}
+.password-field {
+  position: relative;
+}
+
+.password-field .field__control {
+  padding-right: 44px;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
 }

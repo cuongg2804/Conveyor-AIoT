@@ -82,27 +82,27 @@ block main
           table.table
             thead
               tr
-                th Model ID
+                //th Model ID
                 th Product
                 th Model
                 th Version
                 th Format
                 th Threshold
                 th Trạng thái
-                th Object key
+                //- th Object key
                 th Thao tác
             tbody
               each item in models
                 tr
-                  td= item.model_id
+                  //td= item.model_id
                   td= item.product_code
                   td= item.model_name
                   td= item.version
                   td= item.model_format || (item.object_key || "").split(".").pop()
                   td= item.threshold
                   td= item.status
-                  td
-                    span.model-object-key= item.object_key
+                  //- td
+                  //-   span.model-object-key= item.object_key
                   td
                     .table-actions
                       a.btn.btn--secondary.btn--sm(href=`/models/${item.model_id}/edit`) Sửa
@@ -134,7 +134,7 @@ block scripts
         text: "#{success}",
         duration: 3000,
         gravity: "top",
-        position: "right",
+        position: "left",
         backgroundColor: "#16a34a",
         close: true
       }).showToast();

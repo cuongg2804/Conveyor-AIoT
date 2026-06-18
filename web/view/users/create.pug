@@ -31,15 +31,21 @@ block main
 
                 .field
                     label.field__label(for="password") Mật khẩu
-                    input#password.field__control(
-                        type="password"
-                        name="password"
-                        value=form.password
-                        minlength="8"
-                        maxlength="32"
-                        title="Password phải từ 8-32 ký tự, gồm chữ hoa, chữ thường, chữ số, ký tự đặc biệt và không chứa khoảng trắng"
-                        required
-                    )
+                    .password-filed
+                        input#password.field__control(
+                            type="password"
+                            name="password"
+                            value=form.password
+                            minlength="8"
+                            maxlength="32"
+                            title="Password phải từ 8-32 ký tự, gồm chữ hoa, chữ thường, chữ số, ký tự đặc biệt và không chứa khoảng trắng"
+                            required
+                        )
+                        button.password-toggle.js-password-toggle(
+                            type="button"
+                            aria-label="Hiển thị mật khẩu"
+                            data-target="password"
+                        ) 👁
                     ul.field__hint-list
                         li Mật khẩu phải chứa từ 8-32 ký tự.
                         li Phải bao gồm ít nhất một chữ hoa, một chữ thường, một chữ số và một ký tự đặc biệt.

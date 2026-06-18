@@ -193,13 +193,17 @@ const previewItem = async (item: any) => {
 
 const FONT_REGULAR = "C:/Windows/Fonts/arial.ttf";
 const FONT_BOLD = "C:/Windows/Fonts/arialbd.ttf";
+const VIETNAM_TIME_ZONE = "Asia/Ho_Chi_Minh";
 
 const formatDateTime = (timestamp: any) => {
   const ts = Number(timestamp);
   if (!Number.isFinite(ts)) return "-";
 
   const date = ts > 1000000000000 ? new Date(ts) : new Date(ts * 1000);
-  return date.toLocaleString("vi-VN");
+  return date.toLocaleString("vi-VN", {
+    timeZone: VIETNAM_TIME_ZONE,
+    hour12: false,
+  });
 };
 
 const formatScore = (value: any, digits = 3) => {
