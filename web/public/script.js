@@ -97,6 +97,7 @@ const RUNNING_STATUSES = ["STARTING", "RUNNING"];
 let inspectionSessionActive = RUNNING_STATUSES.includes(
   String(window.__CONVEYOR_STATUS__ || "").toUpperCase()
 );
+let pendingModelApprovalAfterStop = false;
 
 const commandLabel = (command) => COMMAND_LABELS[command] || "Thao tác";
 const ackStatusLabel = (status) => ACK_STATUS_LABELS[status] || "Đang cập nhật";
@@ -181,6 +182,37 @@ const formatTimestamp = (timestamp) => {
 };
 
 const normalizeCode = (value) => String(value || "").trim().toUpperCase();
+
+const isTestRuntimeMode = () => normalizeCode(window.__RUNTIME_MODE__) === "TEST";
+
+function showModelApprovalModal() {
+  const modal = document.getElementById("modelApprovalModal");
+  if (!modal || !isTestRuntimeMode()) return;
+
+  if (typeof $ === "function" && typeof $(modal).modal === "function") {
+    $(modal).modal("show");
+    return;
+  }
+
+  modal.classList.add("show");
+  modal.style.display = "block";
+  modal.removeAttribute("aria-hidden");
+}
+
+function showModelApprovalAfterStopIfReady(dbStatus, sessionStatus, sessionRunning) {
+  if (!pendingModelApprovalAfterStop || !isTestRuntimeMode()) return;
+
+  const stoppedStatuses = ["STOPPED", "STOP", "READY", "OFFLINE"];
+  const stoppedByDb = stoppedStatuses.includes(normalizeCode(dbStatus));
+  const stoppedBySession =
+    sessionRunning === false &&
+    ["", "STOPPED", "STOP", "READY"].includes(normalizeCode(sessionStatus));
+
+  if (!stoppedByDb && !stoppedBySession) return;
+
+  pendingModelApprovalAfterStop = false;
+  showModelApprovalModal();
+}
 
 function hasMonitorContext() {
   return Boolean(document.querySelector("[data-conveyor-code]"));
@@ -378,10 +410,14 @@ async function sendControlCommand(command, payload = {}) {
 
     showToast(`Đã gửi yêu cầu: ${label}`, "success");
 
-    if (command === "START_SYSTEM") inspectionSessionActive = true;
+    if (command === "START_SYSTEM") {
+      inspectionSessionActive = true;
+      pendingModelApprovalAfterStop = false;
+    }
 
     if (command === "STOP_SYSTEM") {
       inspectionSessionActive = false;
+      if (isTestRuntimeMode()) pendingModelApprovalAfterStop = true;
       clearInspectionResult();
     }
 
@@ -804,6 +840,7 @@ if(socket){
 
     inspectionSessionActive = sessionRunning;
     setInspectionSessionStatus(sessionRunning, sessionStatus);
+    showModelApprovalAfterStopIfReady(dbStatus, sessionStatus, sessionRunning);
 
     if (dbStatus === "RUNNING") {
       setAiStatus("connected", "Băng tải đang chạy");

@@ -53,37 +53,10 @@ block main
           .btn-row
             button.btn.btn--success(type="button" onclick="sendControlCommand('START_SYSTEM')") Bắt đầu
             button.btn.btn--danger(type="button" onclick="sendControlCommand('STOP_SYSTEM')") Kết thúc
-            button.btn.btn--secondary(type="button" onclick="sendControlCommand('GET_STATUS')") Kiểm tra trạng thái
+            button.btn.btn--secondary(type="button" onclick="sendControlCommand('GET_STATUS')") Trạng thái
 
           .control-ack-box
             p#lastControlAck Chưa có phản hồi từ hệ thống
-
-        if isTestMode
-          .card
-            .card__head
-              h2.card__title Phê duyệt model kiểm thử
-              if isRunning
-                p.card__desc Vui lòng bấm Dừng trước khi phê duyệt model.
-              else
-                p.card__desc Chọn Đạt để chuyển model sang active, hoặc Không đạt để đánh dấu failed.
-
-            if isRunning
-              .alert.alert--error Chỉ được phê duyệt sau khi đã dừng kiểm thử.
-            else
-              form.btn-row(method="POST" action=`/settings/${conveyor.conveyor_id}/approve-model`)
-                button.btn.btn--success(
-                  type="submit"
-                  name="decision"
-                  value="PASS"
-                  onclick="return confirm('Xác nhận model này ĐẠT và được dùng cho vận hành thật?');"
-                ) Đạt
-
-                button.btn.btn--danger(
-                  type="submit"
-                  name="decision"
-                  value="FAIL"
-                  onclick="return confirm('Xác nhận model này KHÔNG ĐẠT?');"
-                ) Không đạt
 
         .result-card.card
           .card__head
@@ -141,3 +114,26 @@ block main
     window.__RUNTIME_MODE__ = !{JSON.stringify(mode  || "PRODUCTION")};
     window.__CONVEYOR_STATUS__ = !{JSON.stringify(conveyor.status || null)};
     window.__LATEST_INSPECTION__ = !{JSON.stringify(latestInspection || null)};
+
+  if isTestMode
+    #modelApprovalModal.modal.fade(tabindex="-1" role="dialog" aria-labelledby="modelApprovalModalTitle" aria-hidden="true")
+      .modal-dialog.modal-dialog-centered(role="document")
+        .modal-content
+          .modal-header
+            h5#modelApprovalModalTitle.modal-title Thông báo
+            button.close(type="button" data-dismiss="modal" aria-label="Đóng")
+              span(aria-hidden="true") &times;
+          .modal-body
+            p Phê duyệt model AI #{selectedModel ? selectedModel.model_name : "-"}
+            form.btn-row(method="POST" action=`/settings/${conveyor.conveyor_id}/approve-model`)
+              button.btn.btn--success(
+                type="submit"
+                name="decision"
+                value="PASS"
+              ) Đạt
+
+              button.btn.btn--danger(
+                type="submit"
+                name="decision"
+                value="FAIL"
+              ) Không đạt

@@ -4,6 +4,8 @@ import InspectionResult from "../model/inspection-result.model";
 import Conveyor from "../model/conveyor.model";
 import { withPublicFrameImageUrls, withPublicInspectionImageUrls } from "../helper/image-url";
 import { canAccessConveyor } from "../helper/conveyorAccess.helper";
+import ConveyorConfig from "../model/conveyorConfigSchema.model";
+import ModelRegistry from "../model/modelRegister.model";
 
 const normalizeConveyorCode = (value: any) =>
   String(value || "").trim().toUpperCase();
@@ -49,6 +51,13 @@ export const monitor = async (req: Request, res: Response) => {
     if (!conveyor) {
       return res.status(404).send("Không tìm thấy băng tải.");
     }
+    const config = await ConveyorConfig.findOne({
+      conveyor_id: conveyorCode,
+    }).lean<any>();
+
+    const selectedModel = config?.model_id
+    ? await ModelRegistry.findOne({ model_id: config.model_id }).lean<any>()
+    : null;
 
     const isRunning = ["STARTING", "RUNNING"].includes(
       String((conveyor as any).status || "").toUpperCase()
@@ -83,6 +92,7 @@ export const monitor = async (req: Request, res: Response) => {
       dashboardUrl: "/dashboard",
       settingsUrl: `/settings/${conveyorCode}`,
       mode,
+      selectedModel,
 //      currentTab: mode === "TEST" ? "test" : "production",
     });
   } catch (error) {
