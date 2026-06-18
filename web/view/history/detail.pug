@@ -20,7 +20,7 @@ block main
 
       .dashboard-actions
         a.btn.btn--secondary(href=backUrl) Quay lại
-        a.btn.btn--primary(href=`/history/${inspection.stt}/export/pdf?conveyor_id=${inspection.conveyor_id || ""}`) Xuất PDF
+        a.btn.btn--primary(href=`/history/${encodeURIComponent(inspection.inspection_id || "")}/export/pdf?inspectionMode=${encodeURIComponent(inspection.mode || "PRODUCTION")}`) Xuất PDF
 
     .card.product-detail-summary
       .card__head
@@ -61,42 +61,43 @@ block main
 
     .card.product-frames-card
       .card__head
-        h2.card__title  Frame kiểm tra
+        h2.card__title Frame kiểm tra
         p.card__desc Ảnh sản phẩm và ảnh khoanh lỗi theo từng frame
-        if selectedFrame
-          .product-frame-grid
-              - const frame = selectedFrame
-              - const frameLabel = frame.predicted_label === "OK" ? "Đạt" : frame.predicted_label === "NG" ? "Không đạt" : "-"
-              - const frameLabelClass = frame.predicted_label === "OK" ? "ok" : frame.predicted_label === "NG" ? "ng" : ""
-              - const frameScore = frame.predicted_score !== undefined ? Number(frame.predicted_score).toFixed(3) : "-"
 
-              .product-frame-card
-                  .product-frame-card__head
-                      h3 Frame #{frame.frame_index || "-"}
-                      span.history-label-badge(class=frameLabelClass) #{frameLabel}
+      if selectedFrame
+        .product-frame-grid
+          - const frame = selectedFrame
+          - const frameLabel = frame.predicted_label === "OK" ? "Đạt" : frame.predicted_label === "NG" ? "Không đạt" : "-"
+          - const frameLabelClass = frame.predicted_label === "OK" ? "ok" : frame.predicted_label === "NG" ? "ng" : ""
+          - const frameScore = frame.predicted_score !== undefined ? Number(frame.predicted_score).toFixed(3) : "-"
 
-                  .product-frame-card__score
-                      span Điểm dự đoán
-                      strong #{frameScore}
+          .product-frame-card
+            .product-frame-card__head
+              h3 Frame #{frame.frame_index || "-"}
+              span.history-label-badge(class=frameLabelClass) #{frameLabel}
 
-                  .product-frame-images
-                      .product-frame-image
-                          .product-frame-image__label Ảnh sản phẩm
-                          if frame.roi_path
-                              img(src=frame.roi_path alt=`Ảnh sản phẩm frame ${frame.frame_index || ""}`)
-                          else
-                              .history-thumb__empty Chưa có ảnh
+            .product-frame-card__score
+              span Điểm dự đoán
+              strong #{frameScore}
 
-                      .product-frame-image
-                          .product-frame-image__label Ảnh khoanh lỗi
-                          if frame.overlay_path
-                              img(src=frame.overlay_path alt=`Ảnh khoanh lỗi frame ${frame.frame_index || ""}`)
-                          else
-                              .history-thumb__empty Chưa có ảnh
+            .product-frame-images
+              .product-frame-image
+                .product-frame-image__label Ảnh sản phẩm
+                if frame.roi_path
+                  img(src=frame.roi_path alt=`Ảnh sản phẩm frame ${frame.frame_index || ""}`)
+                else
+                  .history-thumb__empty Chưa có ảnh
+
+              .product-frame-image
+                .product-frame-image__label Ảnh khoanh lỗi
+                if frame.overlay_path
+                  img(src=frame.overlay_path alt=`Ảnh khoanh lỗi frame ${frame.frame_index || ""}`)
+                else
+                  .history-thumb__empty Chưa có ảnh
       else
-          .empty-state
-              h3 Chưa có dữ liệu ảnh
-              p Lượt kiểm tra này chưa có ảnh database.
+        .empty-state
+          h3 Chưa có dữ liệu ảnh
+          p Lượt kiểm tra này chưa có ảnh database.
       //- if inspection.frames && inspection.frames.length > 0
       //-   .product-frame-grid
       //-     each frame in inspection.frames

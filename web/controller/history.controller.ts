@@ -532,7 +532,7 @@ export const exportPdf = async (req: Request, res: Response) => {
 
 export const exportDetailPdf = async (req: Request, res: Response) => {
   try {
-    const inspectionId = Number(req.params.inspection_id);
+    const inspectionId = String(req.params.inspection_id || "").trim();
 
     const selectedInspectionMode =
       String(req.query.inspectionMode || "PRODUCTION").toUpperCase() === "TEST"
@@ -975,24 +975,24 @@ export const index = async (req: Request, res: Response) => {
 
 export const detail = async (req: Request, res: Response) => {
   try {
-    // Lay stt tu URL /history/:stt.
-    const stt = Number(req.params.stt);
-    if (!Number.isFinite(stt)) return res.status(400).send("Mã lượt kiểm tra không hợp lệ.");
+    // Lay inspection_id tu URL /history/:inspection_id.
+    const inspectionId = String(req.params.inspection_id || "").trim();
+    if (!inspectionId) return res.status(400).send("Mã phiên kiểm tra không hợp lệ.");
 
     const selectedInspectionMode =
       String(req.query.inspectionMode || "PRODUCTION").toUpperCase() === "TEST"
         ? "TEST"
         : "PRODUCTION";
 
-    // Tim lan kiem tra theo stt va chi lay ban ghi hop le.
-    const filter: any = { ...getValidInspectionFilter(selectedInspectionMode), stt: stt };
+    // Tim lan kiem tra theo inspection_id va chi lay ban ghi hop le.
+    const filter: any = { ...getValidInspectionFilter(selectedInspectionMode), inspection_id: inspectionId };
 
-    // Neu URL co conveyor_id thi loc them de tranh trung stt giua cac bang tai.
+    // Neu URL co conveyor_id thi loc them neu can gioi han trong mot bang tai.
     if (req.query.conveyor_id) {
       filter.conveyor_id = String(req.query.conveyor_id).trim().toUpperCase();
     }
 
-    // Lay ban ghi moi nhat neu co nhieu ban ghi cung stt.
+    // inspection_id la duy nhat, sort chi de phong du lieu cu bi trung.
     const inspection: any = await InspectionResult.findOne(filter, { _id: 0 })
       .sort({ timestamp: -1 })
       .lean();
@@ -1001,7 +1001,7 @@ export const detail = async (req: Request, res: Response) => {
 
     // Sap xep frame theo frame_index truoc khi dua ra trang detail.
     return res.render("history/detail", {
-      title: `Chi tiet luot ${stt}`,
+      title: `Chi tiet luot ${inspection.inspection_id || inspectionId}`,
       inspection: {
         ...withPublicInspectionImageUrls(inspection),
         display_id: inspection.stt || "-",
