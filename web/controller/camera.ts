@@ -1,6 +1,5 @@
 import { Request, Response } from "express";
 import Conveyor from "../model/conveyor.model";
-import User from "../model/user.model";
 import Camera from "../model/camera.model";
 
 /*
@@ -241,7 +240,7 @@ export const editPost = async (req: Request, res: Response) => {
     if (!camera_name) {
       const camera = await Camera.findOne({ camera_id: cameraId }).lean();
 
-      return res.render("cameras/edit/${cameraId}?updated=1", {
+      return res.render("cameras/edit", {
         title: "Cập nhật camera",
         camera: {
           ...camera,
@@ -249,6 +248,7 @@ export const editPost = async (req: Request, res: Response) => {
           camera_id: cameraId,
         },
         error: "Tên camera không được để trống.",
+        updated: false,
       });
     }
 

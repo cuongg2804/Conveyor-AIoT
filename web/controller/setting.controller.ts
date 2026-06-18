@@ -196,15 +196,8 @@ export const settings = async (req: Request, res: Response) => {
       ],
     }).lean();
 
-    const usedUserIds = await Conveyor.find({
-      conveyor_id: { $ne: conveyorId },
-      user_id: { $exists: true, $ne: "" },
-    }).distinct("user_id");
-
     const operators = await User.find(
-      {
-//        user_id: { $nin: usedUserIds },
-      },
+      {},
       {
         _id: 0,
         user_id: 1,
@@ -221,16 +214,6 @@ export const settings = async (req: Request, res: Response) => {
       .sort({ created_at: -1 })
       .lean();
 
-    const selectedModel = config.model_id
-      ? await ModelRegistry.findOne({ model_id: config.model_id }).lean()
-      : null;
-
-    const isTestingModelLocked =
-      selectedTab === "test" &&
-      config.config_mode === "TEST" &&
-      !!config.model_id &&
-      (selectedModel as any)?.status === "testing";
-
     return res.render("setting/settings", {
       title: "Cấu hình băng tải",
       conveyor,
@@ -242,8 +225,6 @@ export const settings = async (req: Request, res: Response) => {
       selectedConfigMode,
       activeModels,
       testingModels,
-      selectedModel,
-      isTestingModelLocked,
 
       ModelRegistryList: activeModels,
 
@@ -412,12 +393,11 @@ export const updateSettings = async (req: Request, res: Response) => {
       oldConfig.config_mode || "PRODUCTION"
     ).toUpperCase();
 
-    const currentModel: any = null;
-    const isTestingModelLocked = false;
-
     if (selectedTab === "production") {
+      nextConfigMode = "PRODUCTION";
+
       if (selectedModelId) {
-          const activeModel = await ModelRegistry.findOne({
+        const activeModel = await ModelRegistry.findOne({
           model_id: selectedModelId,
           status: "active",
         }).lean<any>();
@@ -432,20 +412,13 @@ export const updateSettings = async (req: Request, res: Response) => {
           newAiThreshold = Number(activeModel.threshold);
         }
       }
-    } else {
-      nextModelId = String(oldConfig.model_id || "");
-      nextConfigMode = String(oldConfig.config_mode || "PRODUCTION").toUpperCase();
     }
+
     if (selectedTab === "test") {
-      if (isTestingModelLocked) {
-        nextModelId = String(oldConfig.model_id || "");
-        nextConfigMode = "TEST";
-        if (thresholdOverride === null && (currentModel as any)?.threshold !== undefined) {
-          newAiThreshold = Number((currentModel as any).threshold);
-        }
-      } else {
-        if (selectedModelId) {
-          const testingModel = await ModelRegistry.findOne({
+      nextConfigMode = "TEST";
+
+      if (selectedModelId) {
+        const testingModel = await ModelRegistry.findOne({
           model_id: selectedModelId,
           status: {$in: ["testing", "failed"]}
         }).lean<any>();
@@ -470,9 +443,6 @@ export const updateSettings = async (req: Request, res: Response) => {
         }
       }
     }
-  }
-    console.log("Selected model_id:", selectedModelId);
-
 
     if (oldCameraId && oldCameraId !== newCameraId) {
       await Camera.updateOne(

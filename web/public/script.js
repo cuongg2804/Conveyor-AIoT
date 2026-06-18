@@ -71,7 +71,6 @@ const COMMAND_LABELS = {
   START_SYSTEM: "Bắt đầu phiên kiểm tra",
   STOP_SYSTEM: "Kết thúc phiên kiểm tra",
   GET_STATUS: "Kiểm tra trạng thái",
-  //GET_SERIAL_PORT: "Quét cổng Serial",
   GET_SERIAL_PORTS: "Quét cổng Serial",
   SCAN_CAMERAS: "Quét camera",
   RESET_ARDUINO_CONFIG_DEFAULT: "Khôi phục cấu hình Arduino",

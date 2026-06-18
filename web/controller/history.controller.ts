@@ -7,6 +7,8 @@ import InspectionResult from "../model/inspection-result.model";
 import Conveyor from "../model/conveyor.model";
 import { withPublicFrameImageUrls, withPublicInspectionImageUrls } from "../helper/image-url";
 import minioClient from "../config/minio";
+import ModelRegistry from "../model/modelRegister.model";
+import { Model } from "mongoose";
 const PAGE_SIZE = 10;
 
 // Lay ngay hien tai theo dinh dang yyyy-mm-dd de gan vao input type="date".
@@ -996,7 +998,10 @@ export const detail = async (req: Request, res: Response) => {
     const inspection: any = await InspectionResult.findOne(filter, { _id: 0 })
       .sort({ timestamp: -1 })
       .lean();
-
+    const model = inspection.model_id ? await ModelRegistry.findOne(
+      { model_id: inspection.model_id},
+      {_id: 0, model_id: 1, model_name: 1}
+    ).lean<any>() : null
     if (!inspection) return res.status(404).send("Không tìm thấy lượt kiểm tra.");
 
     // Sap xep frame theo frame_index truoc khi dua ra trang detail.
@@ -1005,6 +1010,7 @@ export const detail = async (req: Request, res: Response) => {
       inspection: {
         ...withPublicInspectionImageUrls(inspection),
         display_id: inspection.stt || "-",
+        model_name: model?.model_name || inspection.model_id || "",
         frames: Array.isArray(inspection.frames)
           ? inspection.frames.map(withPublicFrameImageUrls).sort(
               (a: any, b: any) => Number(a.frame_index) - Number(b.frame_index)

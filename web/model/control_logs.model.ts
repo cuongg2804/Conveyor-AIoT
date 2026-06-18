@@ -21,6 +21,11 @@ const control_logs_schema = new mongoose.Schema({
         required: true,
         trim: true,
     },
+    message: {
+        type: String,
+        trim: true,
+        default: "",
+    },
     status: {
         type: String,
         required: true,

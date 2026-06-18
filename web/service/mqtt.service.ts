@@ -160,7 +160,7 @@ export const publishControlCommand = (
     command,
     source: "WEB",
     timestamp: Date.now() / 1000, // Thời gian hiện tại tính bằng giây kể từ epoch
-    payload, // Dữ liệu bổ sung đi kèm lệnh, ví dụ: { conveyor_code: "CONV01" }
+    payload, // Dữ liệu bổ sung đi kèm lệnh: requested_by
   };
 
   publish(MQTT_TOPICS.CONTROL_COMMAND, commandPayload, 1);

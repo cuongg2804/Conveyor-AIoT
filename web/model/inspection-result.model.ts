@@ -61,6 +61,12 @@ const inspectionResultSchema = new mongoose.Schema(
       default: "PRODUCTION",
       index: true,
     },
+    model_id: {
+      type: String,
+      required: true,
+      trim: true,
+      index: true,
+    }
   },
   {
     timestamps: {

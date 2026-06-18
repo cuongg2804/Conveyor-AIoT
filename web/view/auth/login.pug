@@ -20,10 +20,14 @@ html(lang="vi")
           .field
             label.field__label(for="username") Tài khoản
             input#username.field__control(type="text" name="username" required)
-
           .field
             label.field__label(for="password") Mật khẩu
-            input#password.field__control(type="password" name="password" required)
-
+            .password-field
+              input#password.field__control(type="password" name="password" required)
+              button.password-toggle.js-password-toggle(
+                type="button"
+                aria-label="Hiển thị mật khẩu"
+                data-target="password"
+              ) 👁
           button.btn.btn--primary(type="submit") Đăng nhập
     script(src="/script.js")

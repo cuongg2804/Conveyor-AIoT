@@ -50,13 +50,12 @@ const publicErrorMessage = (error: any) => {
 const commandLogMessages: Record<string, string> = {
   GET_STATUS: "Kiểm tra trạng thái hệ thống.",
   RELOAD_CONFIG: "Áp dụng lại cấu hình cho băng tải.",
-  //GET_SERIAL_PORT: "Quét cổng Serial",
   GET_SERIAL_PORTS: "Quét cổng kết nối.",
   GET_ARDUINO_CONFIG: "Kiểm tra cấu hình Arduino.",
   LIGHT_CHECK: "Kiểm tra ánh sáng.",
   RESET_ARDUINO_CONFIG_DEFAULT: "Reset cấu hình mặc định." ,
   APPLY_ARDUINO_CONFIG: "Áp dụng cấu hình Arduino."
-}
+};
 
 export const sendCommand = async (req: Request, res: Response) => {
   try {

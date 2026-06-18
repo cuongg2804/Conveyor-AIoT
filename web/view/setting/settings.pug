@@ -205,7 +205,7 @@ block main
                         selected=String(config.model_id || "") === String(model.model_id)
                       ) #{model.model_name || model.name} - #{model.version || "-"} - #{model.product_code || "-"}
 
-              .field
+              //.field
                 label.field__label(for="ai_threshold") Ngưỡng đánh giá
                 input#ai_threshold.field__control(
                   type="number"

@@ -69,11 +69,11 @@ block main
                                         td= item.created_at ? new Date(item.created_at).toLocaleString("vi-VN") : "-"
                                         td= item.user_name  || "-"
                                         td= item.conveyor_name || "-"
-                                        td= commandLabels[item.cmd] || item.cmd || "-"
+                                        td= item.message || commandLabels[item.cmd] || item.cmd || "-"
                                         //td= item.status || "-"
                             else 
                                 tr 
-                                    td(colspan="6") Không có dữ liệu
+                                    td(colspan="4") Không có dữ liệu
         if tab === "config"
             .card.history-table-card
                 .table-wrap 
@@ -109,13 +109,13 @@ block main
                                         //td= item.message || "-"
                             else 
                                 tr 
-                                    td(colspan="6") Không có dữ liệu          
+                                    td(colspan="5") Không có dữ liệu
         if pagination && pagination.totalPages > 1
             .pagination
                 if pagination.hasPrev
-                a.pagination__btn(href=pagination.prevUrl) Trước
+                    a.pagination__btn(href=pagination.prevUrl) Trước
 
                 span.pagination__info Trang #{pagination.page} / #{pagination.totalPages}
 
                 if pagination.hasNext
-                a.pagination__btn(href=pagination.nextUrl) Sau                  
+                    a.pagination__btn(href=pagination.nextUrl) Sau

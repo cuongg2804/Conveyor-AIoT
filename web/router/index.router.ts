@@ -27,7 +27,7 @@ router.use("/control", requireAuth, controlRoute);
 router.use("/conveyors", requireAuth, conveyorRoute);
 router.use("/cameras", requireAuth, cameraRoute);
 router.use("/models", requireAuth, modelRoute);
-router.use("/logs", logRoute);
+router.use("/logs", requireAuth, logRoute);
 router.use("/media", requireAuth, mediaRoute);
 router.use("/api/runtime-config", runtimeConfigRoute);
 router.use("/users", requireAuth, userRoute);

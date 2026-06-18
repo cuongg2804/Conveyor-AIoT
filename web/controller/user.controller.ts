@@ -1,10 +1,6 @@
 import { Request, Response } from "express";
 import User from "../model/user.model";
 import bcrypt from "bcryptjs";
-import { error } from "node:console";
-import { readSync } from "node:fs";
-import { title } from "node:process";
-import { update } from "./model.controller";
 
 const gen_user_id = () => {
     return "U_" + Math.random().toString(36).substr(2, 9);
@@ -155,7 +151,6 @@ export const edit = async (req: Request, res: Response) => {
         title: "Cập nhật người dùng",
         userEdit,
         error: null,
-        update: update
     })
 }
 export const editPost = async (req: Request, res: Response) => {

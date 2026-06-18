@@ -2,7 +2,6 @@ import { Request, Response } from "express";
 import User from "../model/user.model";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
-import { error } from "node:console";
 
 export const login = async (req: Request, res: Response) => {
     return res.render("auth/login", {
